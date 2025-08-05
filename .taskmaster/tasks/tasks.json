@@ -1,0 +1,141 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Scaffolding & Dependency Setup",
+        "description": "Initialize the project structure, dependencies, and tooling as defined in the PRD.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Create the directory structure (`snorkelforecast/`, `conditions/`, `static/`). Set up `pyproject.toml` with `uv`. Use `uv add django httpx` to add project dependencies. Create `ruff.toml` for linting.",
+        "testStrategy": "Run `uv sync` to install dependencies from `pyproject.toml` without errors. Run `uv run ruff check .` without errors. Confirm the basic Django project runs via `uv run manage.py runserver`.",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement API Data Fetching Logic",
+        "description": "Implement the core business logic in `conditions/snorkel.py` to fetch and process forecast data from the Open-Meteo APIs.",
+        "details": "Code the `fetch_forecast` function. It should make two `httpx` GET requests, parse the JSON, combine the marine and weather data, and apply the predefined thresholds to determine snorkel suitability for each hour.",
+        "testStrategy": "Manually run the `fetch_forecast` function in a Python shell or a test script and verify it returns a list of 72 `Hour` dictionaries with correct `time` and `ok` boolean values.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create Django View and URL Route",
+        "description": "Create the Django view that serves the homepage and configure the URL routing.",
+        "details": "In `conditions/views.py`, create the `home` view which calls `fetch_forecast()` and passes the result to the template context. In `snorkelforecast/urls.py`, map the root path `\"\"` to the `home` view.",
+        "testStrategy": "With the server running, access a debug endpoint or add a print statement in the view to confirm it's being called and that the `hours` data is being fetched correctly.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Develop Frontend Template",
+        "description": "Build the HTML template to display the snorkel forecast data.",
+        "details": "Create `templates/conditions/index.html`. Use a Django template `for` loop to iterate over the `hours` context variable. Use `if h.ok` to conditionally apply `bg-emerald-400` or `bg-gray-300` Tailwind classes. Format the time display as specified.",
+        "testStrategy": "Visually inspect the rendered HTML in a browser. Confirm that there are 72 hourly blocks and that they are colored green or grey based on the data. Check that the date and time are displayed correctly in the Europe/Madrid timezone.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Setup Static Asset Pipeline (Tailwind CSS)",
+        "description": "Configure the Tailwind CSS build process for static CSS generation.",
+        "details": "Install the Tailwind CSS standalone binary. Create `static/src/input.css` with the `@tailwind` directives. Set up a script or command to run `./tailwind -i static/src/input.css -o static/css/output.css`.",
+        "testStrategy": "Run the build command and verify that `static/css/output.css` is created and contains the compiled CSS. Run in `--watch` mode during development to confirm changes are picked up.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Configure Django Settings for App and Static Files",
+        "description": "Integrate the `conditions` app and static file handling into the main Django project settings.",
+        "details": "In `settings.py`, add `\"conditions\"` to `INSTALLED_APPS`. Add `\"whitenoise.middleware.WhiteNoiseMiddleware\"` to `MIDDLEWARE`. Configure `STATIC_URL = \"/static/\"` and `STATIC_ROOT = BASE_DIR / \"staticfiles\"`.",
+        "testStrategy": "Run `python manage.py check` to ensure no configuration errors. Run `python manage.py collectstatic` and verify files are collected into the `staticfiles` directory.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          5
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Integrate and Test Locally",
+        "description": "Perform a full end-to-end test of the application on the local development server.",
+        "details": "Run both the Tailwind CSS watcher and `uv run python manage.py runserver` concurrently. Navigate to `http://localhost:8000` in a web browser.",
+        "testStrategy": "Verify all acceptance criteria are met locally: the page loads, it shows a 72-hour chart, colors are correct, and the styling from Tailwind CSS is applied.",
+        "priority": "high",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Prepare for Deployment",
+        "description": "Configure the project for production deployment on a container-based platform like Fly.io or Railway.",
+        "details": "Add `gunicorn` to `project.dependencies`. Create a `Dockerfile` that specifies the Python version, copies project files, installs dependencies with `uv`, runs `collectstatic`, and defines the `CMD` to run `gunicorn snorkelforecast.wsgi:application`.",
+        "testStrategy": "Build the Docker image locally (`docker build .`) to ensure it completes without errors. Optionally, run the container locally to verify it serves the application.",
+        "priority": "medium",
+        "dependencies": [
+          7
+        ],
+        "status": "deferred",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Deploy to Production Environment",
+        "description": "Deploy the containerized application to the chosen hosting service (Fly.io or Railway).",
+        "details": "Use the platform's CLI (e.g., `fly deploy`) to deploy the application. Configure any necessary environment variables. Set up DNS records for `snorkelforecast.com` to point to the service.",
+        "testStrategy": "Access the production URL (`https://snorkelforecast.com/`). Verify the site loads, displays the forecast, and functions identically to the local version. Check browser developer tools for any console or network errors.",
+        "priority": "high",
+        "dependencies": [
+          8
+        ],
+        "status": "deferred",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Final Review and Documentation Update",
+        "description": "Conduct a final review of the deployed application and update the project documentation.",
+        "details": "Review the project against all requirements in the PRD. Ensure the code is clean and the `README.md` is updated with accurate instructions for local setup and a link to the live site.",
+        "testStrategy": "Have a peer (or self-review) the code and the live site. Confirm the `README.md` instructions are clear and work as described.",
+        "priority": "low",
+        "dependencies": [
+          9
+        ],
+        "status": "deferred",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-05T18:54:30.974Z",
+      "updated": "2025-08-05T19:58:53.359Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

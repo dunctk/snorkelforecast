@@ -1,0 +1,18 @@
+[project]
+name = "snorkelforecast"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django",
+    "gunicorn>=23.0.0",
+    "httpx",
+    "python-dateutil>=2.9.0.post0",
+    "whitenoise>=6.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "tailwindcss",
+]

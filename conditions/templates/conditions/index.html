@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Carboneras Snorkel Forecast</title>
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
+  </head>
+  <body class="bg-sky-50 min-h-screen flex flex-col items-center p-4">
+    <h1 class="text-2xl font-bold mb-4">Snorkel Forecast – Carboneras</h1>
+
+    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
+      {% for h in hours %}
+        <div class="p-2 rounded {% if h.ok %}bg-emerald-400{% else %}bg-gray-300{% endif %}">
+          <time datetime="{{ h.time|date:'c' }}">
+            {{ h.time|date:'D H:i'|safe }}
+          </time>
+        </div>
+      {% endfor %}
+    </div>
+  </body>
+</html>
