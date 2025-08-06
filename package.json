@@ -2,8 +2,8 @@
   "name": "snorkelforecast",
   "version": "1.0.0",
   "scripts": {
-    "tailwind:watch": "npx @tailwindcss/cli -c tailwind.config.js -i static/src/input.css -o static/css/output.css --watch",
-    "tailwind:build": "npx @tailwindcss/cli -c tailwind.config.js -i static/src/input.css -o static/css/output.css --minify"
+    "tailwind:watch": "npx @tailwindcss/cli --content './conditions/**/*.{html,py}' --content './snorkelforecast/**/*.{html,py}' --content './static/**/*.html' -i static/src/input.css -o static/css/output.css --watch",
+    "tailwind:build": "npx @tailwindcss/cli --content './conditions/**/*.{html,py}' --content './snorkelforecast/**/*.{html,py}' --content './static/**/*.html' -i static/src/input.css -o static/css/output.css --minify"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.11",
