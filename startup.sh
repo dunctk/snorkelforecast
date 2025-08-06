@@ -3,6 +3,9 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# Add project root to PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:/app
+
 # Set Django settings module
 export DJANGO_SETTINGS_MODULE=snorkelforecast.settings
 
