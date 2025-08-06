@@ -50,18 +50,24 @@ def _calculate_score(wave: float | None, wind: float | None, sst: float | None, 
     return wave_score * wind_score * sst_score
 
 
-def fetch_forecast(hours: int = 72) -> list[Hour]:
-    """Return list of hours with snorkel suitability flag (Carboneras only)."""
+def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str = None) -> list[Hour]:
+    """Return list of hours with snorkel suitability flag for any location."""
+    # Use provided coordinates or default to Carboneras
+    if coordinates is None:
+        coordinates = CARBONERAS
+    if timezone_str is None:
+        timezone_str = "Europe/Madrid"
+        
     marine_url = (
         "https://marine-api.open-meteo.com/v1/marine"
-        f"?latitude={CARBONERAS['lat']}&longitude={CARBONERAS['lon']}"
+        f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
         "&hourly=wave_height,sea_surface_temperature"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
     wx_url = (
         "https://api.open-meteo.com/v1/forecast"
-        f"?latitude={CARBONERAS['lat']}&longitude={CARBONERAS['lon']}"
+        f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
         "&hourly=wind_speed_10m&daily=sunrise,sunset"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
@@ -78,7 +84,7 @@ def fetch_forecast(hours: int = 72) -> list[Hour]:
         # Return empty forecast on API failure
         return []
 
-    local = tz.gettz("Europe/Madrid")
+    local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
     daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
     sunrises = [datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local) for s in wx["daily"]["sunrise"]]

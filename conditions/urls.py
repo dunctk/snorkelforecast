@@ -2,5 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('', views.homepage, name='homepage'),
+    path('<str:country>/<str:city>/', views.location_forecast, name='location_forecast'),
+    path('carboneras/', views.home, name='legacy_home'),  # Legacy redirect
 ]
