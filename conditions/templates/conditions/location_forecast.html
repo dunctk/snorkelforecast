@@ -45,7 +45,7 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
-    <div class="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12 gap-2 sm:gap-1 text-xs mb-4">
+    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
         <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});"
