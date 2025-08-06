@@ -8,30 +8,30 @@
     <meta name="description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions.">
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
   </head>
-  <body class="bg-sky-50 min-h-screen flex flex-col items-center p-4">
+  <body class="bg-sky-50 min-h-screen flex flex-col items-center p-4 sm:p-6">
     <!-- Header with navigation -->
-    <header class="w-full max-w-6xl mb-6">
+    <header class="w-full max-w-6xl mb-4 sm:mb-6">
       <nav class="flex justify-between items-center py-4">
-        <a href="{% url 'homepage' %}" class="text-blue-600 hover:text-blue-800 font-medium">← Back to all locations</a>
-        <a href="/" class="text-lg font-semibold text-blue-900">SnorkelForecast.com</a>
+        <a href="{% url 'homepage' %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base min-h-[44px] flex items-center">← Back to all locations</a>
+        <a href="/" class="text-base sm:text-lg font-semibold text-blue-900">SnorkelForecast.com</a>
       </nav>
     </header>
     
-    <h1 class="text-2xl font-bold mb-4">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
-    <p class="text-sm text-gray-600 mb-4">All times are in {{ timezone }}</p>
+    <h1 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-center px-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
+    <p class="text-xs sm:text-sm text-gray-600 mb-4 text-center">All times are in {{ timezone }}</p>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
-      <div class="bg-white p-4 rounded shadow mb-6 w-full max-w-2xl">
-        <h2 class="text-lg font-semibold mb-2">Forecast Summary</h2>
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
         {% with first=hours.0 last=hours|last %}
-          <p class="mb-2">
+          <p class="mb-2 text-sm sm:text-base">
             Over the next {{ summary.total_hours }} hours (from
             {{ first.time|date:"D H:i" }} to {{ last.time|date:"D H:i" }}),
             snorkeling conditions are expected to be suitable for
             {{ summary.ok_count }} hours ({{ summary.percent_ok }}%).
           </p>
           {% if summary.ok_count > 0 %}
-            <p>
+            <p class="text-sm sm:text-base">
               Suitable conditions start at
               {{ summary.earliest_ok|date:"D H:i" }}
               {% if summary.earliest_ok != summary.latest_ok %}
@@ -42,15 +42,17 @@
         {% endwith %}
       </div>
     {% else %}
-      <p class="text-red-600 mb-6">Forecast data is currently unavailable.</p>
+      <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
-    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
+    <div class="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12 gap-2 sm:gap-1 text-xs mb-4">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
-        <div class="p-2 rounded" style="background-color: rgba(74, 222, 128, {{ alpha }});">
-          <time datetime="{{ h.time|date:'c' }}">
-            {{ h.time|date:'D H:i'|safe }}
+        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});"
+          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium">
+            <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
+            <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
+            <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
           </time>
         </div>
         {% endwith %}
@@ -58,12 +60,12 @@
     </div>
 
     {# Explanation of conditions #}
-    <div class="mt-8 w-full max-w-4xl bg-white p-4 rounded shadow">
-        <h2 class="text-lg font-semibold mb-2">How We Calculate Conditions</h2>
-        <p>
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">How We Calculate Conditions</h2>
+        <p class="text-sm sm:text-base">
             We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
         </p>
-        <ul class="list-disc list-inside mt-2">
+        <ul class="list-disc list-inside mt-2 text-sm sm:text-base space-y-1">
             <li><strong>Wave height</strong> is less than 0.3 meters.</li>
             <li><strong>Wind speed</strong> is below 4.5 meters/second.</li>
             <li><strong>Sea surface temperature</strong> is between 22°C and 29°C.</li>
@@ -71,44 +73,46 @@
     </div>
 
     {# Detailed table of snorkel conditions #}
-    <div class="mt-8 w-full max-w-4xl">
-      <h2 class="text-lg font-semibold mb-2">Detailed Conditions</h2>
-      <table class="w-full text-sm text-left text-gray-500 bg-white shadow rounded">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3">Time</th>
-            <th scope="col" class="px-6 py-3">Sunrise</th>
-            <th scope="col" class="px-6 py-3">Sunset</th>
-            <th scope="col" class="px-6 py-3">Wave Height (m)</th>
-            <th scope="col" class="px-6 py-3">Wind Speed (m/s)</th>
-            <th scope="col" class="px-6 py-3">Sea Temp (°C)</th>
-            <th scope="col" class="px-6 py-3">Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for h in hours %}
-            <tr class="border-b">
-              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                {{ h.time|date:"D H:i" }}
-              </th>
-              <td class="px-6 py-4">{{ h.sunrise|date:"H:i" }}</td>
-              <td class="px-6 py-4">{{ h.sunset|date:"H:i" }}</td>
-              <td class="px-6 py-4 {% if not h.wave_ok %}text-red-600 font-bold{% endif %}">
-                {{ h.wave_height|floatformat:2 }}
-              </td>
-              <td class="px-6 py-4 {% if not h.wind_ok %}text-red-600 font-bold{% endif %}">
-                {{ h.wind_speed|floatformat:2 }}
-              </td>
-              <td class="px-6 py-4 {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
-                {{ h.sea_surface_temperature|floatformat:2 }}
-              </td>
-              <td class="px-6 py-4 font-bold">
-                {{ h.score|floatformat:2 }}
-              </td>
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Detailed Conditions</h2>
+      <div class="responsive-table">
+        <table class="w-full text-sm text-left text-gray-500 bg-white shadow rounded-lg">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <tr>
+              <th scope="col" class="px-3 sm:px-6 py-3">Time</th>
+              <th scope="col" class="px-3 sm:px-6 py-3 hidden sm:table-cell">Sunrise</th>
+              <th scope="col" class="px-3 sm:px-6 py-3 hidden sm:table-cell">Sunset</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Wave Height (m)</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Wind Speed (m/s)</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Sea Temp (°C)</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Score</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for h in hours %}
+              <tr class="border-b hover:bg-gray-50">
+                <th scope="row" class="px-3 sm:px-6 py-3 sm:py-4 font-medium text-gray-900 whitespace-nowrap text-xs sm:text-sm">
+                  {{ h.time|date:"D H:i" }}
+                </th>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm">{{ h.sunrise|date:"H:i" }}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm">{{ h.sunset|date:"H:i" }}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wave_ok %}text-red-600 font-bold{% endif %}">
+                  {{ h.wave_height|floatformat:2 }}
+                </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wind_ok %}text-red-600 font-bold{% endif %}">
+                  {{ h.wind_speed|floatformat:2 }}
+                </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
+                  {{ h.sea_surface_temperature|floatformat:2 }}
+                </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">
+                  {{ h.score|floatformat:2 }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </body>
 </html>

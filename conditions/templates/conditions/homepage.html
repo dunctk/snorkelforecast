@@ -11,37 +11,37 @@
   <body class="bg-sky-50 min-h-screen">
     <!-- Header -->
     <header class="bg-white shadow-sm">
-      <div class="max-w-6xl mx-auto px-4 py-6">
-        <h1 class="text-3xl font-bold text-blue-900">SnorkelForecast.com</h1>
-        <p class="text-gray-600 mt-2">Discover the best snorkeling conditions around the world</p>
+      <div class="max-w-6xl mx-auto px-4 py-4 sm:py-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-blue-900">SnorkelForecast.com</h1>
+        <p class="text-sm sm:text-base text-gray-600 mt-2">Discover the best snorkeling conditions around the world</p>
       </div>
     </header>
 
     <!-- Hero Section -->
     <section class="max-w-6xl mx-auto px-4 py-12">
-      <div class="text-center mb-12">
-        <h2 class="text-4xl font-bold text-gray-900 mb-4">Find Perfect Snorkeling Conditions</h2>
-        <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">Find Perfect Snorkeling Conditions</h2>
+        <p class="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-2">
           Get real-time and forecasted snorkeling conditions based on wave height, wind speed, and water temperature. 
           Plan your perfect underwater adventure with confidence.
         </p>
       </div>
 
       <!-- Popular Locations Grid -->
-      <div class="mb-16">
-        <h3 class="text-2xl font-bold text-gray-900 mb-8">Popular Snorkeling Destinations</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="mb-12 sm:mb-16">
+        <h3 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8">Popular Snorkeling Destinations</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {% for location in popular_locations %}
-          <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <div class="h-32 bg-gradient-to-br from-blue-400 to-blue-600"></div>
-            <div class="p-4">
+          <div class="card-enhanced">
+            <div class="h-24 sm:h-32 bg-gradient-to-br from-blue-400 to-blue-600"></div>
+            <div class="p-4 sm:p-5">
               <h4 class="text-lg font-semibold text-gray-900">{{ location.city }}</h4>
               <p class="text-sm text-gray-600 mb-2">{{ location.country }}</p>
               {% if location.description %}
               <p class="text-sm text-gray-500 mb-3">{{ location.description }}</p>
               {% endif %}
               <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" 
-                 class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm">
+                 class="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[44px] flex items-center justify-center">
                 View Forecast
               </a>
             </div>
@@ -51,43 +51,43 @@
       </div>
 
       <!-- Features Section -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16">
+        <div class="text-center px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
             </svg>
           </div>
-          <h4 class="text-lg font-semibold mb-2">Wave Height Analysis</h4>
-          <p class="text-gray-600">Monitor wave conditions to ensure calm, clear waters perfect for snorkeling.</p>
+          <h4 class="text-base sm:text-lg font-semibold mb-2">Wave Height Analysis</h4>
+          <p class="text-sm sm:text-base text-gray-600">Monitor wave conditions to ensure calm, clear waters perfect for snorkeling.</p>
         </div>
-        <div class="text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="text-center px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
-          <h4 class="text-lg font-semibold mb-2">Wind Speed Tracking</h4>
-          <p class="text-gray-600">Check wind conditions to find the calmest times for underwater exploration.</p>
+          <h4 class="text-base sm:text-lg font-semibold mb-2">Wind Speed Tracking</h4>
+          <p class="text-sm sm:text-base text-gray-600">Check wind conditions to find the calmest times for underwater exploration.</p>
         </div>
-        <div class="text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="text-center px-2">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
           </div>
-          <h4 class="text-lg font-semibold mb-2">Water Temperature</h4>
-          <p class="text-gray-600">Find comfortable water temperatures for the best snorkeling experience.</p>
+          <h4 class="text-base sm:text-lg font-semibold mb-2">Water Temperature</h4>
+          <p class="text-sm sm:text-base text-gray-600">Find comfortable water temperatures for the best snorkeling experience.</p>
         </div>
       </div>
 
       <!-- How It Works Section -->
-      <div class="bg-white p-8 rounded-lg shadow-sm">
-        <h3 class="text-2xl font-bold text-gray-900 mb-4">How We Calculate Snorkeling Conditions</h3>
-        <p class="text-gray-600 mb-4">
+      <div class="bg-white p-6 sm:p-8 rounded-lg shadow-sm">
+        <h3 class="text-xl sm:text-2xl font-bold text-gray-900 mb-4">How We Calculate Snorkeling Conditions</h3>
+        <p class="text-sm sm:text-base text-gray-600 mb-4">
           Our forecasts combine multiple weather factors to determine the best snorkeling conditions:
         </p>
-        <ul class="space-y-2 text-gray-600">
+        <ul class="space-y-2 text-sm sm:text-base text-gray-600">
           <li class="flex items-start">
             <span class="text-blue-600 font-bold mr-2">•</span>
             <span><strong>Wave Height:</strong> We look for calm conditions with waves under 0.3 meters</span>
