@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 from dateutil import tz
 from django.http import HttpRequest, HttpResponse, Http404
 from django.shortcuts import render
@@ -99,13 +100,58 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     ok_hours = [h for h in hours if h.get("ok")]
     ok_count = len(ok_hours)
     percent_ok = round(ok_count / total * 100) if total > 0 else 0
-    
+
     # determine earliest and latest suitable times
     if ok_hours:
         earliest_ok = ok_hours[0]["time"]
         latest_ok = ok_hours[-1]["time"]
     else:
         earliest_ok = latest_ok = None
+
+    # group hours by date to highlight best periods
+    days = defaultdict(list)
+    for h in hours:
+        days[h["time"].date()].append(h)
+
+    day_summaries = []
+    for day, day_hours in days.items():
+        ok_day = [h for h in day_hours if h.get("ok")]
+        if not ok_day:
+            continue
+        day_earliest = ok_day[0]["time"]
+        day_latest = ok_day[-1]["time"]
+        if day_latest.hour < 12:
+            period = "morning"
+        elif day_earliest.hour >= 12:
+            period = "afternoon"
+        else:
+            period = "morning and afternoon"
+        day_summaries.append(
+            {
+                "date": day,
+                "label": day_earliest.strftime("%A"),
+                "period": period,
+                "earliest": day_earliest,
+                "latest": day_latest,
+            }
+        )
+
+    # find next continuous block of suitable conditions
+    next_window = None
+    for idx, h in enumerate(hours):
+        if h.get("ok"):
+            start = h["time"]
+            end = start
+            j = idx + 1
+            while (
+                j < len(hours)
+                and hours[j].get("ok")
+                and hours[j]["time"] - hours[j - 1]["time"] == timedelta(hours=1)
+            ):
+                end = hours[j]["time"]
+                j += 1
+            next_window = {"start": start, "end": end}
+            break
     
     context = {
         "location": location_data,
@@ -118,6 +164,8 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             "latest_ok": latest_ok,
         },
         "timezone": local_tz.tzname(now),
+        "day_summaries": day_summaries,
+        "next_window": next_window,
     }
     return render(request, "conditions/location_forecast.html", context)
 

@@ -38,12 +38,32 @@
                 and last until {{ summary.latest_ok|date:"D H:i" }}.
               {% endif %}
             </p>
+            {% if day_summaries %}
+              <p class="text-sm sm:text-base mt-2">
+                Best conditions expected on
+                {% for d in day_summaries %}
+                  {{ d.label }} ({{ d.period }}{% if d.earliest and d.latest %} {{ d.earliest|date:"H:i" }}–{{ d.latest|date:"H:i" }}{% endif %}){% if not forloop.last %}, {% endif %}
+                {% endfor %}.
+              </p>
+            {% endif %}
           {% endif %}
         {% endwith %}
       </div>
     {% else %}
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">FAQs</h2>
+      <p class="font-medium text-sm sm:text-base mb-1">When is the next safe snorkel window?</p>
+      {% if next_window %}
+        <p class="text-sm sm:text-base">
+          The next suitable window starts {{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:"D H:i" }}{% endif %}.
+        </p>
+      {% else %}
+        <p class="text-sm sm:text-base">No safe snorkeling window is expected in the next 72 hours.</p>
+      {% endif %}
+    </div>
 
     <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
       <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 72h)</h2>
