@@ -51,7 +51,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'snorkelforecast.urls'
+ROOT_URLCONF = 'snorkelforecast.snorkelforecast.urls'
 
 TEMPLATES = [
     {
@@ -69,7 +69,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'snorkelforecast.wsgi.application'
+WSGI_APPLICATION = 'snorkelforecast.snorkelforecast.wsgi.application'
 
 
 # Database
