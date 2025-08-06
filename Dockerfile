@@ -1,16 +1,34 @@
-FROM python:3.13-slim-bookworm
+FROM ghcr.io/astral-sh/uv:debian-slim
 
+# Install curl for downloading Tailwind standalone binary
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
 
-ENV PYTHONUNBUFFERED 1
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
 
-COPY pyproject.toml uv.lock /app/
-RUN pip install uv && uv sync
+# Create a virtual environment and install Python dependencies
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN uv pip install --no-cache -r pyproject.toml
 
-COPY snorkelforecast/manage.py /app/
+# Copy the rest of the application code
+COPY . .
 
-# Run collectstatic
-RUN uv run python manage.py collectstatic --noinput
+# Download Tailwind CSS standalone binary and build CSS in one step
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && chmod +x tailwindcss-linux-x64 \
+    && ./tailwindcss-linux-x64 -i ./static/src/input.css -o ./static/css/output.css --minify \
+    && rm tailwindcss-linux-x64
 
-# Set the command to run the application
-CMD uv run gunicorn snorkelforecast.wsgi:application
+# Make startup script executable
+RUN chmod +x startup.sh
+
+# Expose port
+EXPOSE 8000
+
+# Run startup script
+CMD ["./startup.sh"]
+
