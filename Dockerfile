@@ -20,11 +20,15 @@ COPY . .
 # Download Tailwind CSS standalone binary and build CSS in one step
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
-    && ./tailwindcss-linux-x64 -i ./static/src/input.css -o ./static/css/output.css --minify \
+    && ./tailwindcss-linux-x64 -i ./snorkelforecast/static/src/input.css -o ./snorkelforecast/static/css/output.css --minify \
     && rm tailwindcss-linux-x64
+
+# Create logs directory for Django logging
+RUN mkdir -p logs
 
 # Make startup script executable
 RUN chmod +x startup.sh
+
 
 # Expose port
 EXPOSE 8000
