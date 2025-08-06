@@ -136,6 +136,7 @@
       const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const waveThreshold = Array(labels.length).fill(0.3);
+      const windThreshold = Array(labels.length).fill(4.5);
 
       const commonOptions = {
         responsive: true,
@@ -181,6 +182,14 @@
               backgroundColor: 'rgba(34,197,94,0.3)',
               fill: true,
               tension: 0.3
+            },
+            {
+              label: 'Ideal Threshold (4.5 m/s)',
+              data: windThreshold,
+              borderColor: 'rgb(239,68,68)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
             }
           ]
         },
