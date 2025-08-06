@@ -4,7 +4,7 @@
 set -e
 
 # Add project root to PYTHONPATH
-export PYTHONPATH=$PYTHONPATH:/app
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # Set Django settings module
 export DJANGO_SETTINGS_MODULE=snorkelforecast.settings
