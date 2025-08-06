@@ -7,8 +7,10 @@ ENV PYTHONUNBUFFERED 1
 COPY pyproject.toml uv.lock /app/
 RUN pip install uv && uv sync
 
-COPY . /app
+COPY snorkelforecast/manage.py /app/
 
-RUN PYTHONPATH=/app uv run python manage.py collectstatic --noinput
+# Run collectstatic
+RUN uv run python manage.py collectstatic --noinput
 
-CMD PYTHONPATH=/app uv run gunicorn snorkelforecast.wsgi:application
+# Set the command to run the application
+CMD uv run gunicorn snorkelforecast.wsgi:application

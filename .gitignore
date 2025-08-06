@@ -48,3 +48,6 @@ media/
 
 # Node.js specific
 package-lock.json
+
+# Large files
+tailwind

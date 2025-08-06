@@ -16,6 +16,38 @@ THRESHOLDS = {
 class Hour(TypedDict):
     time: datetime
     ok: bool
+    score: float
+    wave_height: float | None
+    wind_speed: float | None
+    sea_surface_temperature: float | None
+    wave_ok: bool
+    wind_ok: bool
+    sst_ok: bool
+    light_ok: bool
+    sunrise: datetime
+    sunset: datetime
+
+
+def _calculate_score(wave: float | None, wind: float | None, sst: float | None, light_ok: bool) -> float:
+    """Calculate a snorkel score from 0 to 1 based on conditions."""
+    if not light_ok or wave is None or wind is None or sst is None:
+        return 0.0
+
+    # Normalise each metric to a 0-1 score
+    wave_score = max(0.0, 1 - (wave / (THRESHOLDS["wave_height"] * 2)))
+    wind_score = max(0.0, 1 - (wind / (THRESHOLDS["wind_speed"] * 2)))
+
+    # SST score is 1 inside the ideal range, and drops off outside it
+    sst_min, sst_max = THRESHOLDS["sea_surface_temperature"]
+    if sst_min <= sst <= sst_max:
+        sst_score = 1.0
+    elif sst < sst_min:
+        sst_score = max(0.0, 1 - ((sst_min - sst) / 5))
+    else: # sst > sst_max
+        sst_score = max(0.0, 1 - ((sst - sst_max) / 5))
+
+    # Final score is the product of individual scores
+    return wave_score * wind_score * sst_score
 
 
 def fetch_forecast(hours: int = 72) -> list[Hour]:
@@ -30,11 +62,11 @@ def fetch_forecast(hours: int = 72) -> list[Hour]:
     wx_url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={CARBONERAS['lat']}&longitude={CARBONERAS['lon']}"
-        "&hourly=wind_speed_10m"
+        "&hourly=wind_speed_10m&daily=sunrise,sunset"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
-    
+
     try:
         with httpx.Client(timeout=10.0) as client:
             marine_response = client.get(marine_url)
@@ -46,9 +78,15 @@ def fetch_forecast(hours: int = 72) -> list[Hour]:
         # Return empty forecast on API failure
         return []
 
+    local = tz.gettz("Europe/Madrid")
+    # Process daily sunrise/sunset data
+    daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
+    sunrises = [datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local) for s in wx["daily"]["sunrise"]]
+    sunsets = [datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local) for s in wx["daily"]["sunset"]]
+    solar_map = {day: {"sunrise": sunrises[i], "sunset": sunsets[i]} for i, day in enumerate(daily_times_utc)}
+
     # Assume identical time arrays
     times_utc = [datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in marine["hourly"]["time"]]
-    local = tz.gettz("Europe/Madrid")
 
     result: list[Hour] = []
     for i, t in enumerate(times_utc):
@@ -56,10 +94,33 @@ def fetch_forecast(hours: int = 72) -> list[Hour]:
         sst = marine["hourly"]["sea_surface_temperature"][i]
         wind = wx["hourly"]["wind_speed_10m"][i]
 
-        ok = (
-            wave is not None and wave <= THRESHOLDS["wave_height"] and
-            wind is not None and wind <= THRESHOLDS["wind_speed"] and
-            sst is not None and THRESHOLDS["sea_surface_temperature"][0] <= sst <= THRESHOLDS["sea_surface_temperature"][1]
-        )
-        result.append({"time": t.astimezone(local), "ok": ok})
+        wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
+        wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
+        sst_ok = sst is not None and THRESHOLDS["sea_surface_temperature"][0] <= sst <= THRESHOLDS["sea_surface_temperature"][1]
+        
+        # Check light levels
+        day = t.date()
+        light_ok = False
+        sunrise, sunset = None, None
+        if day in solar_map:
+            sunrise, sunset = solar_map[day]["sunrise"], solar_map[day]["sunset"]
+            light_ok = sunrise <= t.astimezone(sunrise.tzinfo) <= sunset
+        
+        score = _calculate_score(wave, wind, sst, light_ok)
+        ok = score > 0.5  # Consider 'ok' if score is better than 50%
+
+        result.append({
+            "time": t.astimezone(local),
+            "ok": ok,
+            "score": score,
+            "wave_height": wave,
+            "wind_speed": wind,
+            "sea_surface_temperature": sst,
+            "wave_ok": wave_ok,
+            "wind_ok": wind_ok,
+            "sst_ok": sst_ok,
+            "light_ok": light_ok,
+            "sunrise": sunrise,
+            "sunset": sunset,
+        })
     return result
