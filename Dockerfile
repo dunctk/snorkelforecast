@@ -20,6 +20,7 @@ COPY . .
 # Download Tailwind CSS standalone binary and build CSS in one step
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
+    && rm -f ./snorkelforecast/static/css/output.css \
     && ./tailwindcss-linux-x64 -i ./snorkelforecast/static/src/input.css -o ./snorkelforecast/static/css/output.css --minify \
     && rm tailwindcss-linux-x64
 

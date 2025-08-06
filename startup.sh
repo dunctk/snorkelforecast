@@ -14,7 +14,6 @@ uv run python snorkelforecast/manage.py migrate
 
 # Collect static files
 uv run python snorkelforecast/manage.py collectstatic --noinput
-ls -l /app/staticfiles/css/
 
 # Start Gunicorn server
 gunicorn snorkelforecast.snorkelforecast.wsgi:application --bind 0.0.0.0:8000
