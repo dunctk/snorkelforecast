@@ -45,6 +45,17 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
+    {% if tide_times %}
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
+        <ul class="list-disc list-inside text-sm sm:text-base">
+          {% for t in tide_times %}
+            <li>{{ t|date:"D H:i" }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
     <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
       <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 72h)</h2>
       <div class="space-y-6">
@@ -88,6 +99,7 @@
             <li><strong>Wave height</strong> is less than 0.3 meters.</li>
             <li><strong>Wind speed</strong> is below 4.5 meters/second.</li>
             <li><strong>Sea surface temperature</strong> is between 22°C and 29°C.</li>
+            <li><strong>Tide</strong> is within ±60 minutes of high tide and currents are below 0.3 m/s.</li>
         </ul>
     </div>
 

@@ -87,7 +87,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     timezone_str = location_data["timezone"]
     
     # fetch hourly forecast data for this location
-    all_hours = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
+    all_hours, tide_times = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
     
     # filter out past hours
     local_tz = tz.gettz(timezone_str)
@@ -118,6 +118,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             "latest_ok": latest_ok,
         },
         "timezone": local_tz.tzname(now),
+        "tide_times": tide_times,
     }
     return render(request, "conditions/location_forecast.html", context)
 
