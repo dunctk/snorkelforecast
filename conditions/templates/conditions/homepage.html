@@ -44,6 +44,9 @@
               {% if location.description %}
               <p class="text-sm text-gray-500 mb-3">{{ location.description }}</p>
               {% endif %}
+              {% if location.current_sst %}
+              <p class="text-sm text-gray-600 mb-3">Sea temp: {{ location.current_sst|floatformat:1 }}°C</p>
+              {% endif %}
               <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
                  class="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[44px] flex items-center justify-center">
                 View Forecast
