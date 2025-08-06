@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import TypedDict
 
 import httpx
@@ -13,6 +13,11 @@ THRESHOLDS = {
     "sea_surface_temperature": (22, 29),  # °C
 }
 
+THRESHOLDS.update({
+    "current_velocity": 0.3,  # m/s
+    "slack_window_minutes": 60,
+})
+
 class Hour(TypedDict):
     time: datetime
     ok: bool
@@ -20,9 +25,13 @@ class Hour(TypedDict):
     wave_height: float | None
     wind_speed: float | None
     sea_surface_temperature: float | None
+    sea_level_height: float | None
+    current_velocity: float | None
     wave_ok: bool
     wind_ok: bool
     sst_ok: bool
+    slack_ok: bool
+    is_high_tide: bool
     light_ok: bool
     sunrise: datetime
     sunset: datetime
@@ -61,7 +70,7 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
     marine_url = (
         "https://marine-api.open-meteo.com/v1/marine"
         f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
-        "&hourly=wave_height,sea_surface_temperature"
+        "&hourly=wave_height,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
@@ -93,17 +102,36 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
 
     # Assume identical time arrays
     times_utc = [datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in marine["hourly"]["time"]]
+    sea = marine["hourly"].get("sea_level_height_msl", [])
+    curr = marine["hourly"].get("ocean_current_velocity", [])
+
+    # Identify high tides (local maxima)
+    high_ix: list[int] = []
+    for i in range(1, len(sea) - 1):
+        prev, now, nxt = sea[i - 1], sea[i], sea[i + 1]
+        if None not in (prev, now, nxt) and now > prev and now > nxt:
+            high_ix.append(i)
+
+    window = timedelta(minutes=THRESHOLDS["slack_window_minutes"])
+    slack_mask = [False] * len(times_utc)
+    for hi in high_ix:
+        center = times_utc[hi]
+        for j, t in enumerate(times_utc):
+            if abs(t - center) <= window:
+                slack_mask[j] = True
 
     result: list[Hour] = []
     for i, t in enumerate(times_utc):
         wave = marine["hourly"]["wave_height"][i]
         sst = marine["hourly"]["sea_surface_temperature"][i]
         wind = wx["hourly"]["wind_speed_10m"][i]
+        tide = sea[i] if i < len(sea) else None
+        current = curr[i] if i < len(curr) else None
 
         wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
         wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
         sst_ok = sst is not None and THRESHOLDS["sea_surface_temperature"][0] <= sst <= THRESHOLDS["sea_surface_temperature"][1]
-        
+
         # Check light levels
         day = t.date()
         light_ok = False
@@ -111,9 +139,16 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
         if day in solar_map:
             sunrise, sunset = solar_map[day]["sunrise"], solar_map[day]["sunset"]
             light_ok = sunrise <= t.astimezone(sunrise.tzinfo) <= sunset
-        
+
         score = _calculate_score(wave, wind, sst, light_ok)
-        ok = score > 0.5  # Consider 'ok' if score is better than 50%
+
+        slack_ok = (
+            slack_mask[i]
+            and current is not None
+            and current <= THRESHOLDS["current_velocity"]
+        )
+
+        ok = score > 0.5 and slack_ok
 
         result.append({
             "time": t.astimezone(local),
@@ -122,9 +157,13 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
             "wave_height": wave,
             "wind_speed": wind,
             "sea_surface_temperature": sst,
+            "sea_level_height": tide,
+            "current_velocity": current,
             "wave_ok": wave_ok,
             "wind_ok": wind_ok,
             "sst_ok": sst_ok,
+            "slack_ok": slack_ok,
+            "is_high_tide": i in high_ix,
             "light_ok": light_ok,
             "sunrise": sunrise,
             "sunset": sunset,

@@ -53,6 +53,17 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
+    {% if tide_times %}
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
+        <p class="text-sm sm:text-base">
+          {% for t in tide_times %}
+            {{ t|date:"D H:i" }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </p>
+      </div>
+    {% endif %}
+
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
       <h2 class="text-base sm:text-lg font-semibold mb-2">FAQs</h2>
       <p class="font-medium text-sm sm:text-base mb-1">When is the next safe snorkel window?</p>
@@ -108,6 +119,7 @@
             <li><strong>Wave height</strong> is less than 0.3 meters.</li>
             <li><strong>Wind speed</strong> is below 4.5 meters/second.</li>
             <li><strong>Sea surface temperature</strong> is between 22°C and 29°C.</li>
+            <li><strong>Within ±60&nbsp;min of high tide</strong> and currents ≤ 0.3&nbsp;m/s.</li>
         </ul>
     </div>
 
@@ -124,6 +136,8 @@
               <th scope="col" class="px-3 sm:px-6 py-3">Wave Height (m)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Wind Speed (m/s)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Sea Temp (°C)</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Tide Height (m)</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Current (m/s)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Score</th>
             </tr>
           </thead>
@@ -144,6 +158,8 @@
                 <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
                   {{ h.sea_surface_temperature|floatformat:2 }}
                 </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{{ h.sea_level_height|floatformat:2 }}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.slack_ok %}text-red-600 font-bold{% endif %}">{{ h.current_velocity|floatformat:2 }}</td>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">
                   {{ h.score|floatformat:2 }}
                 </td>
