@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./conditions/**/*.{html,py}",
     "./snorkelforecast/**/*.{html,py}",
@@ -7,7 +7,7 @@ module.exports = {
   ],
   safelist: [
     'bg-sky-50',
-    'min-h-screen', 
+    'min-h-screen',
     'flex',
     'flex-col',
     'items-center',
