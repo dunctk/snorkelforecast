@@ -18,17 +18,21 @@
     </header>
 
     <!-- Hero Section -->
-    <section class="max-w-6xl mx-auto px-4 py-12">
-      <div class="text-center mb-8 sm:mb-12">
+    <section class="bg-gradient-to-r from-sky-200 to-blue-100">
+      <div class="max-w-6xl mx-auto px-4 py-12 text-center">
         <h2 class="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">Find Perfect Snorkeling Conditions</h2>
         <p class="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-2">
-          Get real-time and forecasted snorkeling conditions based on wave height, wind speed, and water temperature. 
+          Get real-time and forecasted snorkeling conditions based on wave height, wind speed, and water temperature.
           Plan your perfect underwater adventure with confidence.
         </p>
+        <a href="#popular"
+           class="mt-6 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors text-base font-medium">Explore Popular Spots</a>
       </div>
+    </section>
 
+    <section class="max-w-6xl mx-auto px-4 py-12">
       <!-- Popular Locations Grid -->
-      <div class="mb-12 sm:mb-16">
+      <div id="popular" class="mb-12 sm:mb-16">
         <h3 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8">Popular Snorkeling Destinations</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {% for location in popular_locations %}
@@ -40,7 +44,7 @@
               {% if location.description %}
               <p class="text-sm text-gray-500 mb-3">{{ location.description }}</p>
               {% endif %}
-              <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" 
+              <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
                  class="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-h-[44px] flex items-center justify-center">
                 View Forecast
               </a>
