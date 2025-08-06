@@ -10,4 +10,4 @@ python snorkelforecast/manage.py migrate
 python snorkelforecast/manage.py collectstatic --noinput
 
 # Start Gunicorn server
-gunicorn snorkelforecast.wsgi:application --bind 0.0.0.0:8000
+gunicorn snorkelforecast.snorkelforecast.wsgi:application --bind 0.0.0.0:8000
