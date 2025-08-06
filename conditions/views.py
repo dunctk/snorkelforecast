@@ -69,6 +69,17 @@ def homepage(request: HttpRequest) -> HttpResponse:
         for city_slug, location_data in cities.items():
             location_data["country_slug"] = country_slug
             location_data["city_slug"] = city_slug
+
+            # Fetch current sea surface temperature for each location
+            forecast = fetch_forecast(
+                hours=1,
+                coordinates=location_data["coordinates"],
+                timezone_str=location_data["timezone"],
+            )
+            location_data["current_sst"] = (
+                forecast[0]["sea_surface_temperature"] if forecast else None
+            )
+
             popular_locations.append(location_data)
     
     context = {
