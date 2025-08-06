@@ -54,8 +54,12 @@
         <div class="h-48 sm:h-64">
           <canvas id="windChart" class="w-full h-full"></canvas>
         </div>
-        <div class="h-48 sm:h-64">
-          <canvas id="tempChart" class="w-full h-full"></canvas>
+        <div class="h-24 sm:h-32 flex flex-col justify-center">
+          <div id="tempBar" class="relative w-full h-8 bg-gray-200 rounded-full">
+            <div id="tempIdeal" class="absolute inset-y-0 bg-green-200"></div>
+            <div id="tempAvg" class="absolute inset-y-0 w-1 bg-orange-500"></div>
+          </div>
+          <p id="tempLabel" class="text-center mt-2 text-sm"></p>
         </div>
       </div>
     </div>
@@ -138,6 +142,23 @@
       const waveThreshold = Array(labels.length).fill(0.3);
       const windThreshold = Array(labels.length).fill(4.5);
 
+      const idealMin = 22;
+      const idealMax = 29;
+      const scaleMax = 35; // max temperature for scale
+      const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
+
+      // Position ideal range
+      const idealEl = document.getElementById('tempIdeal');
+      idealEl.style.left = `${(idealMin / scaleMax) * 100}%`;
+      idealEl.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
+
+      // Position average marker
+      const avgEl = document.getElementById('tempAvg');
+      avgEl.style.left = `${(avgTemp / scaleMax) * 100}%`;
+
+      // Label with average temperature
+      document.getElementById('tempLabel').textContent = `Average Sea Temp: ${avgTemp.toFixed(1)}°C`;
+
       const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -196,23 +217,7 @@
         options: commonOptions
       });
 
-      new Chart(document.getElementById('tempChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Sea Temp (°C)',
-              data: tempData,
-              borderColor: 'rgb(249,115,22)',
-              backgroundColor: 'rgba(249,115,22,0.3)',
-              fill: true,
-              tension: 0.3
-            }
-          ]
-        },
-        options: commonOptions
-      });
+      // No chart for temperature; display average bar instead
     </script>
   </body>
 </html>
