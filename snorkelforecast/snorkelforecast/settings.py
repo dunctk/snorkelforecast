@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-=g*_jf9q0)yg)b+ja75w=p_u6l%_&#y31*gg$k0qtj#vlk8vqo
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['snorkelforecast.com', 'www.snorkelforecast.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
