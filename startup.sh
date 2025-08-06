@@ -3,11 +3,14 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+# Set Django settings module
+export DJANGO_SETTINGS_MODULE=snorkelforecast.settings
+
 # Run Django migrations
-python snorkelforecast/manage.py migrate
+uv run python snorkelforecast/manage.py migrate
 
 # Collect static files
-python snorkelforecast/manage.py collectstatic --noinput
+uv run python snorkelforecast/manage.py collectstatic --noinput
 
 # Start Gunicorn server
 gunicorn snorkelforecast.snorkelforecast.wsgi:application --bind 0.0.0.0:8000
