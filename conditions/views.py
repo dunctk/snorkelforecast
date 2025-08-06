@@ -1,6 +1,4 @@
 from datetime import datetime
-from typing import Dict, List
-
 from dateutil import tz
 from django.http import HttpRequest, HttpResponse, Http404
 from django.shortcuts import render

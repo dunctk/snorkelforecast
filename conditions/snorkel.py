@@ -80,7 +80,7 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
             wx_response = client.get(wx_url)
             wx_response.raise_for_status()
             marine, wx = marine_response.json(), wx_response.json()
-    except (httpx.HTTPError, httpx.TimeoutException) as e:
+    except (httpx.HTTPError, httpx.TimeoutException):
         # Return empty forecast on API failure
         return []
 
