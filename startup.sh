@@ -7,7 +7,7 @@ set -e
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # Set Django settings module
-export DJANGO_SETTINGS_MODULE=snorkelforecast.settings
+export DJANGO_SETTINGS_MODULE=snorkelforecast.snorkelforecast.settings
 
 # Run Django migrations
 uv run python snorkelforecast/manage.py migrate
