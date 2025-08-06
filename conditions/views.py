@@ -94,7 +94,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     local_tz = tz.gettz(timezone_str)
     now = datetime.now(tz=local_tz)
     hours = [h for h in all_hours if h["time"] >= now]
-    
+
     # compute summary statistics
     total = len(hours)
     ok_hours = [h for h in hours if h.get("ok")]
@@ -152,7 +152,8 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
                 j += 1
             next_window = {"start": start, "end": end}
             break
-    
+    tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
+
     context = {
         "location": location_data,
         "hours": hours,
@@ -166,6 +167,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "timezone": local_tz.tzname(now),
         "day_summaries": day_summaries,
         "next_window": next_window,
+        "tide_times": tide_times,
     }
     return render(request, "conditions/location_forecast.html", context)
 
