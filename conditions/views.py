@@ -167,6 +167,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             next_window = {"start": start, "end": end}
             break
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
+    next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
     context = {
         "location": location_data,
@@ -183,6 +184,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "day_summaries": day_summaries,
         "next_window": next_window,
         "tide_times": tide_times,
+        "next_early_high_tide": next_early_high_tide,
     }
     return render(request, "conditions/location_forecast.html", context)
 

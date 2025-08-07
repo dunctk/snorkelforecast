@@ -71,6 +71,11 @@
     {% if tide_times %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
         <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
+        {% if next_early_high_tide %}
+          <p class="text-sm sm:text-base mb-2">
+            Next early morning high tide: {{ next_early_high_tide|date:"D H:i" }}
+          </p>
+        {% endif %}
         <p class="text-sm sm:text-base">
           {% for t in tide_times %}
             {{ t|date:"D H:i" }}{% if not forloop.last %}, {% endif %}
