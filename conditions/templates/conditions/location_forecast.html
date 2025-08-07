@@ -6,9 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com</title>
     <meta name="description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions.">
-    <meta property="og:image" content="{{ og_image_url }}">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="{{ og_image_url }}">
+    <meta property="og:title" content="{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
+    <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions." />
+    <meta property="og:image" content="{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
+    <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <script src="{% static 'js/theme.js' %}" defer></script>
   </head>

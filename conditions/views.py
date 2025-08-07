@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from collections import defaultdict
 from io import BytesIO
+import random
 
 from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse
@@ -172,10 +173,6 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
-    image_url = request.build_absolute_uri(
-        reverse("location_og_image", args=[country, city])
-    )
-
     context = {
         "location": location_data,
         "hours": hours,
@@ -192,7 +189,6 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,
-        "og_image_url": image_url,
     }
     return render(request, "conditions/location_forecast.html", context)
 
@@ -213,51 +209,66 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     wave = forecast[0]["wave_height"] if forecast else None
     wind = forecast[0]["wind_speed"] if forecast else None
 
-    WIDTH, HEIGHT = 2400, 1260
-    SAFE = 120
+    WIDTH, HEIGHT = 1200, 630
+    SAFE = 60
 
-    img = Image.new("RGBA", (WIDTH, HEIGHT), "#0e8de5")
+    # Create a more dynamic, water-like background
+    img = Image.new("RGB", (WIDTH, HEIGHT), "#003973")
+    draw = ImageDraw.Draw(img)
 
-    grad = Image.new("L", (1, HEIGHT))
-    for y in range(HEIGHT):
-        grad.putpixel((0, y), int(255 * (y / HEIGHT)))
-    grad = grad.resize((WIDTH, HEIGHT))
-    img.putalpha(grad)
+    # Draw some random circles to simulate light refractions
+    for _ in range(50):
+        x = random.randint(0, WIDTH)
+        y = random.randint(0, HEIGHT)
+        r = random.randint(10, 100)
+        draw.ellipse((x - r, y - r, x + r, y + r), fill=(255, 255, 255, 20))
 
+    # Apply a blur to create a softer, more blended look
+    img = img.filter(ImageFilter.GaussianBlur(radius=30))
+
+    # Add a subtle vignette to draw focus to the center
     vignette = Image.new("L", (WIDTH, HEIGHT), 0)
     draw_v = ImageDraw.Draw(vignette)
     draw_v.ellipse(
-        (-WIDTH * 0.25, -HEIGHT * 0.25, WIDTH * 1.25, HEIGHT * 1.25), fill=255
+        (-WIDTH * 0.1, -HEIGHT * 0.1, WIDTH * 1.1, HEIGHT * 1.1), fill=255
     )
-    vignette = vignette.filter(ImageFilter.GaussianBlur(200))
-    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.6), vignette)
+    vignette = vignette.filter(ImageFilter.GaussianBlur(100))
+    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.8), vignette)
 
     draw = ImageDraw.Draw(img)
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 180)
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 90)
-        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 70)
+        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 90)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 48)
+        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 36)
     except OSError:
-        font_huge = font_big = font_small = ImageFont.load_default()
+        font_huge = ImageFont.load_default()
+        font_big = ImageFont.load_default()
+        font_small = ImageFont.load_default()
 
     tagline = "SnorkelForecast.com"
     tagline_bbox = draw.textbbox((0, 0), tagline, font=font_small)
     w = tagline_bbox[2] - tagline_bbox[0]
-    draw.text((WIDTH - w - SAFE, SAFE), tagline, font=font_small, fill="white")
+    draw.text((WIDTH - w - SAFE, SAFE), tagline, font=font_small, fill="#FFFFFF")
 
     location_text = f"{location['city']}, {location['country']}"
     location_bbox = draw.textbbox((0, 0), location_text, font=font_huge)
     w = location_bbox[2] - location_bbox[0]
     h = location_bbox[3] - location_bbox[1]
+    
+    # Add a subtle drop shadow for better readability
     draw.text(
-        ((WIDTH - w) / 2, HEIGHT * 0.25 - h / 2),
+        ((WIDTH - w) / 2 + 5, HEIGHT * 0.3 - h / 2 + 5),
         location_text,
         font=font_huge,
-        fill="white",
-        stroke_width=3,
-        stroke_fill="black",
+        fill="#000000"
+    )
+    draw.text(
+        ((WIDTH - w) / 2, HEIGHT * 0.3 - h / 2),
+        location_text,
+        font=font_huge,
+        fill="#FFFFFF"
     )
 
     def metric_pill(label: str, value: float, unit: str, y_offset: int) -> int:
@@ -265,21 +276,21 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         bbox = draw.textbbox((0, 0), text, font=font_big)
         w = bbox[2] - bbox[0]
         h = bbox[3] - bbox[1]
-        padding = 40
+        padding = 20
         box = [
             ((WIDTH - w) / 2 - padding, y_offset),
             ((WIDTH + w) / 2 + padding, y_offset + h + padding),
         ]
-        draw.rounded_rectangle(box, radius=40, fill=(0, 0, 0, 96))
+        draw.rounded_rectangle(box, radius=30, fill=(255, 255, 255, 50))
         draw.text(
             (box[0][0] + padding, y_offset + padding / 2),
             text,
             font=font_big,
-            fill="white",
+            fill="#FFFFFF",
         )
-        return int(box[1][1] + 50)
+        return int(box[1][1] + 30)
 
-    metric_y = int(HEIGHT * 0.55)
+    metric_y = int(HEIGHT * 0.6)
     if sst is not None:
         metric_y = metric_pill("Sea Temp", sst, "°C", metric_y)
     if wave is not None:
@@ -287,21 +298,10 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     if wind is not None:
         metric_y = metric_pill("Wind", wind, "m/s", metric_y)
 
-    try:
-        logo = Image.open("assets/logo_white.png").convert("RGBA")
-        scale = 0.12
-        logo = logo.resize(
-            (int(WIDTH * scale), int(logo.height * WIDTH * scale / logo.width)),
-            Image.LANCZOS,
-        )
-        img.paste(logo, (SAFE, HEIGHT - logo.height - SAFE), logo)
-    except FileNotFoundError:
-        pass
-
-    img = img.resize((WIDTH // 2, HEIGHT // 2), Image.LANCZOS)
     output = BytesIO()
     img.save(output, "PNG", optimize=True)
     return HttpResponse(output.getvalue(), content_type="image/png")
+
 
 
 # Legacy view for backward compatibility (redirects to Carboneras)
