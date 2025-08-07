@@ -42,3 +42,28 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   transform: translateY(-4px);
 }
+
+/* UI mode theme classes */
+.ui-day {
+  @apply bg-sky-50 text-gray-900;
+}
+
+.ui-twilight {
+  @apply bg-indigo-100 text-gray-900;
+}
+
+.ui-night {
+  @apply bg-gray-900 text-gray-100;
+}
+
+.ui-day .card-enhanced {
+  @apply bg-white text-gray-900;
+}
+
+.ui-twilight .card-enhanced {
+  @apply bg-indigo-50 text-gray-900;
+}
+
+.ui-night .card-enhanced {
+  @apply bg-gray-800 text-gray-100;
+}
