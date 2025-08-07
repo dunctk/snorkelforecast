@@ -106,6 +106,9 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     now = datetime.now(tz=local_tz)
     hours = [h for h in all_hours if h["time"] >= now]
 
+    # first 24 hours for separate charts
+    hours_24 = hours[:24]
+
     # compute summary statistics
     total = len(hours)
     ok_hours = [h for h in hours if h.get("ok")]
@@ -168,6 +171,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     context = {
         "location": location_data,
         "hours": hours,
+        "hours_24": hours_24,
         "summary": {
             "total_hours": total,
             "ok_count": ok_count,

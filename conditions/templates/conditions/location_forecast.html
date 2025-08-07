@@ -55,7 +55,14 @@
     {% endif %}
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 24h)</h2>
+      <div class="h-48 sm:h-64">
+        <canvas id="scoreChart24" class="w-full h-full"></canvas>
+      </div>
+    </div>
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 72h)</h2>
       <div class="h-48 sm:h-64">
         <canvas id="scoreChart" class="w-full h-full"></canvas>
       </div>
@@ -85,6 +92,28 @@
     </div>
 
     <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
+      <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 24h)</h2>
+      <div class="space-y-6">
+        <div class="h-48 sm:h-64">
+          <canvas id="waveChart24" class="w-full h-full"></canvas>
+        </div>
+        <div class="h-48 sm:h-64">
+          <canvas id="windChart24" class="w-full h-full"></canvas>
+        </div>
+        <div class="h-48 sm:h-64">
+          <canvas id="tideChart24" class="w-full h-full"></canvas>
+        </div>
+        <div class="h-24 sm:h-32 flex flex-col justify-center">
+          <div id="tempBar24" class="relative w-full h-8 bg-gray-200 rounded-full">
+            <div id="tempIdeal24" class="absolute inset-y-0 bg-green-200"></div>
+            <div id="tempAvg24" class="absolute inset-y-0 w-1 bg-orange-500"></div>
+          </div>
+          <p id="tempLabel24" class="text-center mt-2 text-sm"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
       <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 72h)</h2>
       <div class="space-y-6">
         <div class="h-48 sm:h-64">
@@ -92,6 +121,9 @@
         </div>
         <div class="h-48 sm:h-64">
           <canvas id="windChart" class="w-full h-full"></canvas>
+        </div>
+        <div class="h-48 sm:h-64">
+          <canvas id="tideChart" class="w-full h-full"></canvas>
         </div>
         <div class="h-24 sm:h-32 flex flex-col justify-center">
           <div id="tempBar" class="relative w-full h-8 bg-gray-200 rounded-full">
@@ -184,28 +216,51 @@
       const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const tideData = [{% for h in hours %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+      const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const waveData24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const windData24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const tempData24 = [{% for h in hours_24 %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const scoreData24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const waveThreshold = Array(labels.length).fill(0.3);
       const windThreshold = Array(labels.length).fill(4.5);
       const perfectThreshold = Array(labels.length).fill(0.8);
       const okThreshold = Array(labels.length).fill(0.5);
       const notGoodThreshold = Array(labels.length).fill(0.3);
 
+      const waveThreshold24 = Array(labels24.length).fill(0.3);
+      const windThreshold24 = Array(labels24.length).fill(4.5);
+      const perfectThreshold24 = Array(labels24.length).fill(0.8);
+      const okThreshold24 = Array(labels24.length).fill(0.5);
+      const notGoodThreshold24 = Array(labels24.length).fill(0.3);
+
       const idealMin = 22;
       const idealMax = 29;
       const scaleMax = 35; // max temperature for scale
       const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
+      const avgTemp24 = tempData24.reduce((a, b) => a + b, 0) / tempData24.length;
 
       // Position ideal range
       const idealEl = document.getElementById('tempIdeal');
       idealEl.style.left = `${(idealMin / scaleMax) * 100}%`;
       idealEl.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
 
+      const idealEl24 = document.getElementById('tempIdeal24');
+      idealEl24.style.left = `${(idealMin / scaleMax) * 100}%`;
+      idealEl24.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
+
       // Position average marker
       const avgEl = document.getElementById('tempAvg');
       avgEl.style.left = `${(avgTemp / scaleMax) * 100}%`;
 
+      const avgEl24 = document.getElementById('tempAvg24');
+      avgEl24.style.left = `${(avgTemp24 / scaleMax) * 100}%`;
+
       // Label with average temperature
       document.getElementById('tempLabel').textContent = `Average Sea Temp: ${avgTemp.toFixed(1)}°C`;
+      document.getElementById('tempLabel24').textContent = `Average Sea Temp: ${avgTemp24.toFixed(1)}°C`;
 
       const commonOptions = {
         responsive: true,
@@ -217,6 +272,48 @@
         ...commonOptions,
         scales: { y: { beginAtZero: true, max: 1 } }
       };
+
+      new Chart(document.getElementById('scoreChart24'), {
+        type: 'line',
+        data: {
+          labels: labels24,
+          datasets: [
+            {
+              label: 'Snorkel Score',
+              data: scoreData24,
+              borderColor: 'rgb(107,33,168)',
+              backgroundColor: 'rgba(107,33,168,0.3)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Perfect (0.8)',
+              data: perfectThreshold24,
+              borderColor: 'rgb(34,197,94)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'OK (0.5)',
+              data: okThreshold24,
+              borderColor: 'rgb(234,179,8)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'Not Good (0.3)',
+              data: notGoodThreshold24,
+              borderColor: 'rgb(239,68,68)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: scoreOptions
+      });
 
       new Chart(document.getElementById('scoreChart'), {
         type: 'line',
@@ -260,6 +357,32 @@
         options: scoreOptions
       });
 
+      new Chart(document.getElementById('waveChart24'), {
+        type: 'line',
+        data: {
+          labels: labels24,
+          datasets: [
+            {
+              label: 'Wave Height (m)',
+              data: waveData24,
+              borderColor: 'rgb(59,130,246)',
+              backgroundColor: 'rgba(59,130,246,0.3)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Ideal Threshold (0.3 m)',
+              data: waveThreshold24,
+              borderColor: 'rgb(239,68,68)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: commonOptions
+      });
+
       new Chart(document.getElementById('waveChart'), {
         type: 'line',
         data: {
@@ -276,6 +399,32 @@
             {
               label: 'Ideal Threshold (0.3 m)',
               data: waveThreshold,
+              borderColor: 'rgb(239,68,68)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: commonOptions
+      });
+
+      new Chart(document.getElementById('windChart24'), {
+        type: 'line',
+        data: {
+          labels: labels24,
+          datasets: [
+            {
+              label: 'Wind Speed (m/s)',
+              data: windData24,
+              borderColor: 'rgb(34,197,94)',
+              backgroundColor: 'rgba(34,197,94,0.3)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Ideal Threshold (4.5 m/s)',
+              data: windThreshold24,
               borderColor: 'rgb(239,68,68)',
               borderDash: [6,6],
               pointRadius: 0,
@@ -306,6 +455,42 @@
               borderDash: [6,6],
               pointRadius: 0,
               fill: false
+            }
+          ]
+        },
+        options: commonOptions
+      });
+
+      new Chart(document.getElementById('tideChart24'), {
+        type: 'line',
+        data: {
+          labels: labels24,
+          datasets: [
+            {
+              label: 'Tide Height (m)',
+              data: tideData24,
+              borderColor: 'rgb(56,189,248)',
+              backgroundColor: 'rgba(56,189,248,0.3)',
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        },
+        options: commonOptions
+      });
+
+      new Chart(document.getElementById('tideChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Tide Height (m)',
+              data: tideData,
+              borderColor: 'rgb(56,189,248)',
+              backgroundColor: 'rgba(56,189,248,0.3)',
+              fill: true,
+              tension: 0.4
             }
           ]
         },
