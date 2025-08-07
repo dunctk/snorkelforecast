@@ -99,6 +99,8 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         raise Http404("Location not found")
 
     location_data = LOCATIONS[country][city]
+    location_data['country_slug'] = country
+    location_data['city_slug'] = city
     coordinates = location_data["coordinates"]
     timezone_str = location_data["timezone"]
 
