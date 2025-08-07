@@ -1,8 +1,12 @@
 from datetime import datetime, timedelta
 from collections import defaultdict
+from io import BytesIO
+
 from dateutil import tz
-from django.http import HttpRequest, HttpResponse, Http404
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
+from PIL import Image, ImageDraw, ImageFont
 
 from .snorkel import fetch_forecast
 
@@ -169,6 +173,10 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
+    image_url = request.build_absolute_uri(
+        reverse("location_og_image", args=[country, city])
+    )
+
     context = {
         "location": location_data,
         "hours": hours,
@@ -185,8 +193,76 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,
+        "og_image_url": image_url,
     }
     return render(request, "conditions/location_forecast.html", context)
+
+
+def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Generate a simple social sharing image for a location."""
+    if country not in LOCATIONS or city not in LOCATIONS[country]:
+        raise Http404("Location not found")
+
+    location = LOCATIONS[country][city]
+
+    forecast = fetch_forecast(
+        hours=1,
+        coordinates=location["coordinates"],
+        timezone_str=location["timezone"],
+    )
+    sst = forecast[0]["sea_surface_temperature"] if forecast else None
+    wave = forecast[0]["wave_height"] if forecast else None
+    wind = forecast[0]["wind_speed"] if forecast else None
+
+    width, height = 1200, 630
+    img = Image.new("RGB", (width, height))
+    draw = ImageDraw.Draw(img)
+
+    top = (3, 105, 161)
+    bottom = (14, 165, 233)
+    for y in range(height):
+        ratio = y / height
+        r = int(top[0] + (bottom[0] - top[0]) * ratio)
+        g = int(top[1] + (bottom[1] - top[1]) * ratio)
+        b = int(top[2] + (bottom[2] - top[2]) * ratio)
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
+
+    try:
+        font_large = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80
+        )
+        font_medium = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40
+        )
+        font_small = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30
+        )
+    except OSError:
+        font_large = font_medium = font_small = ImageFont.load_default()
+
+    draw.text((60, 40), "SnorkelForecast.com", font=font_small, fill="white")
+    draw.text(
+        (60, 180),
+        f"{location['city']}, {location['country']}",
+        font=font_large,
+        fill="white",
+    )
+
+    y_info = 300
+    if sst is not None:
+        draw.text((60, y_info), f"Sea Temp: {sst:.1f}°C", font=font_medium, fill="white")
+        y_info += 60
+    if wave is not None:
+        draw.text((60, y_info), f"Wave: {wave:.1f} m", font=font_medium, fill="white")
+        y_info += 60
+    if wind is not None:
+        draw.text((60, y_info), f"Wind: {wind:.1f} m/s", font=font_medium, fill="white")
+
+    draw.rectangle([(0, 0), (width - 1, height - 1)], outline="white", width=8)
+
+    output = BytesIO()
+    img.save(output, format="PNG")
+    return HttpResponse(output.getvalue(), content_type="image/png")
 
 
 # Legacy view for backward compatibility (redirects to Carboneras)
