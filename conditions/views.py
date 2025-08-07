@@ -6,7 +6,7 @@ from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 from .snorkel import fetch_forecast
 
@@ -199,7 +199,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
 
 
 def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResponse:
-    """Generate a simple social sharing image for a location."""
+    """Generate a social sharing image for a location."""
     if country not in LOCATIONS or city not in LOCATIONS[country]:
         raise Http404("Location not found")
 
@@ -214,54 +214,87 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     wave = forecast[0]["wave_height"] if forecast else None
     wind = forecast[0]["wind_speed"] if forecast else None
 
-    width, height = 1200, 630
-    img = Image.new("RGB", (width, height))
+    WIDTH, HEIGHT = 2400, 1260
+    SAFE = 120
+
+    img = Image.new("RGBA", (WIDTH, HEIGHT), "#0e8de5")
+
+    grad = Image.new("L", (1, HEIGHT))
+    for y in range(HEIGHT):
+        grad.putpixel((0, y), int(255 * (y / HEIGHT)))
+    grad = grad.resize((WIDTH, HEIGHT))
+    img.putalpha(grad)
+
+    vignette = Image.new("L", (WIDTH, HEIGHT), 0)
+    draw_v = ImageDraw.Draw(vignette)
+    draw_v.ellipse((-WIDTH * 0.25, -HEIGHT * 0.25, WIDTH * 1.25, HEIGHT * 1.25), fill=255)
+    vignette = vignette.filter(ImageFilter.GaussianBlur(200))
+    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.6), vignette)
+
     draw = ImageDraw.Draw(img)
 
-    top = (3, 105, 161)
-    bottom = (14, 165, 233)
-    for y in range(height):
-        ratio = y / height
-        r = int(top[0] + (bottom[0] - top[0]) * ratio)
-        g = int(top[1] + (bottom[1] - top[1]) * ratio)
-        b = int(top[2] + (bottom[2] - top[2]) * ratio)
-        draw.line([(0, y), (width, y)], fill=(r, g, b))
-
+    FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_large = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80
-        )
-        font_medium = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40
-        )
-        font_small = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30
-        )
+        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 180)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 90)
+        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 70)
     except OSError:
-        font_large = font_medium = font_small = ImageFont.load_default()
+        font_huge = font_big = font_small = ImageFont.load_default()
 
-    draw.text((60, 40), "SnorkelForecast.com", font=font_small, fill="white")
+    tagline = "SnorkelForecast.com"
+    w, _ = draw.textsize(tagline, font=font_small)
+    draw.text((WIDTH - w - SAFE, SAFE), tagline, font=font_small, fill="white")
+
+    location_text = f"{location['city']}, {location['country']}"
+    w, h = draw.textsize(location_text, font=font_huge)
     draw.text(
-        (60, 180),
-        f"{location['city']}, {location['country']}",
-        font=font_large,
+        ((WIDTH - w) / 2, HEIGHT * 0.25 - h / 2),
+        location_text,
+        font=font_huge,
         fill="white",
+        stroke_width=3,
+        stroke_fill="black",
     )
 
-    y_info = 300
+    def metric_pill(label: str, value: float, unit: str, y_offset: int) -> int:
+        text = f"{label}: {value:.1f} {unit}"
+        w, h = draw.textsize(text, font=font_big)
+        padding = 40
+        box = [
+            ((WIDTH - w) / 2 - padding, y_offset),
+            ((WIDTH + w) / 2 + padding, y_offset + h + padding),
+        ]
+        draw.rounded_rectangle(box, radius=40, fill=(0, 0, 0, 96))
+        draw.text(
+            (box[0][0] + padding, y_offset + padding / 2),
+            text,
+            font=font_big,
+            fill="white",
+        )
+        return int(box[1][1] + 50)
+
+    metric_y = int(HEIGHT * 0.55)
     if sst is not None:
-        draw.text((60, y_info), f"Sea Temp: {sst:.1f}°C", font=font_medium, fill="white")
-        y_info += 60
+        metric_y = metric_pill("Sea Temp", sst, "°C", metric_y)
     if wave is not None:
-        draw.text((60, y_info), f"Wave: {wave:.1f} m", font=font_medium, fill="white")
-        y_info += 60
+        metric_y = metric_pill("Wave", wave, "m", metric_y)
     if wind is not None:
-        draw.text((60, y_info), f"Wind: {wind:.1f} m/s", font=font_medium, fill="white")
+        metric_y = metric_pill("Wind", wind, "m/s", metric_y)
 
-    draw.rectangle([(0, 0), (width - 1, height - 1)], outline="white", width=8)
+    try:
+        logo = Image.open("assets/logo_white.png").convert("RGBA")
+        scale = 0.12
+        logo = logo.resize(
+            (int(WIDTH * scale), int(logo.height * WIDTH * scale / logo.width)),
+            Image.LANCZOS,
+        )
+        img.paste(logo, (SAFE, HEIGHT - logo.height - SAFE), logo)
+    except FileNotFoundError:
+        pass
 
+    img = img.resize((WIDTH // 2, HEIGHT // 2), Image.LANCZOS)
     output = BytesIO()
-    img.save(output, format="PNG")
+    img.save(output, "PNG", optimize=True)
     return HttpResponse(output.getvalue(), content_type="image/png")
 
 
