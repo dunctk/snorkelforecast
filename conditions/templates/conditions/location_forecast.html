@@ -54,6 +54,13 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score</h2>
+      <div class="h-48 sm:h-64">
+        <canvas id="scoreChart" class="w-full h-full"></canvas>
+      </div>
+    </div>
+
     {% if tide_times %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
         <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
@@ -176,8 +183,12 @@
       const waveData = [{% for h in hours %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const waveThreshold = Array(labels.length).fill(0.3);
       const windThreshold = Array(labels.length).fill(4.5);
+      const perfectThreshold = Array(labels.length).fill(0.8);
+      const okThreshold = Array(labels.length).fill(0.5);
+      const notGoodThreshold = Array(labels.length).fill(0.3);
 
       const idealMin = 22;
       const idealMax = 29;
@@ -201,6 +212,53 @@
         maintainAspectRatio: false,
         scales: { y: { beginAtZero: true } }
       };
+
+      const scoreOptions = {
+        ...commonOptions,
+        scales: { y: { beginAtZero: true, max: 1 } }
+      };
+
+      new Chart(document.getElementById('scoreChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Snorkel Score',
+              data: scoreData,
+              borderColor: 'rgb(107,33,168)',
+              backgroundColor: 'rgba(107,33,168,0.3)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Perfect (0.8)',
+              data: perfectThreshold,
+              borderColor: 'rgb(34,197,94)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'OK (0.5)',
+              data: okThreshold,
+              borderColor: 'rgb(234,179,8)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: 'Not Good (0.3)',
+              data: notGoodThreshold,
+              borderColor: 'rgb(239,68,68)',
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: scoreOptions
+      });
 
       new Chart(document.getElementById('waveChart'), {
         type: 'line',
