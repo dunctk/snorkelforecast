@@ -15,10 +15,10 @@ LOCATIONS = {
     "spain": {
         "carboneras": {
             "city": "Carboneras",
-            "country": "Spain", 
+            "country": "Spain",
             "coordinates": {"lat": 36.997, "lon": -1.896},
             "description": "Pristine Mediterranean waters in Andalusia",
-            "timezone": "Europe/Madrid"
+            "timezone": "Europe/Madrid",
         }
     },
     "greece": {
@@ -27,15 +27,15 @@ LOCATIONS = {
             "country": "Greece",
             "coordinates": {"lat": 37.7900, "lon": 20.7334},
             "description": "Crystal clear Ionian Sea waters",
-            "timezone": "Europe/Athens"
+            "timezone": "Europe/Athens",
         },
         "santorini": {
-            "city": "Santorini", 
+            "city": "Santorini",
             "country": "Greece",
             "coordinates": {"lat": 36.3932, "lon": 25.4615},
             "description": "Volcanic island with unique underwater landscapes",
-            "timezone": "Europe/Athens"
-        }
+            "timezone": "Europe/Athens",
+        },
     },
     "turkey": {
         "kas": {
@@ -43,16 +43,16 @@ LOCATIONS = {
             "country": "Turkey",
             "coordinates": {"lat": 36.2025, "lon": 29.6367},
             "description": "Turquoise coast with excellent visibility",
-            "timezone": "Europe/Istanbul"
+            "timezone": "Europe/Istanbul",
         }
     },
     "croatia": {
         "dubrovnik": {
             "city": "Dubrovnik",
-            "country": "Croatia", 
+            "country": "Croatia",
             "coordinates": {"lat": 42.6507, "lon": 18.0944},
             "description": "Historic Adriatic coastal city",
-            "timezone": "Europe/Zagreb"
+            "timezone": "Europe/Zagreb",
         }
     },
     "usa": {
@@ -61,10 +61,11 @@ LOCATIONS = {
             "country": "USA",
             "coordinates": {"lat": 20.7984, "lon": -156.3319},
             "description": "Tropical Pacific paradise with coral reefs",
-            "timezone": "Pacific/Honolulu"
+            "timezone": "Pacific/Honolulu",
         }
-    }
+    },
 }
+
 
 def homepage(request: HttpRequest) -> HttpResponse:
     """Homepage showing popular snorkeling locations."""
@@ -85,10 +86,8 @@ def homepage(request: HttpRequest) -> HttpResponse:
             )
 
             popular_locations.append(location_data)
-    
-    context = {
-        "popular_locations": popular_locations
-    }
+
+    context = {"popular_locations": popular_locations}
     return render(request, "conditions/homepage.html", context)
 
 
@@ -97,14 +96,14 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     # Find the location data
     if country not in LOCATIONS or city not in LOCATIONS[country]:
         raise Http404("Location not found")
-    
+
     location_data = LOCATIONS[country][city]
     coordinates = location_data["coordinates"]
     timezone_str = location_data["timezone"]
-    
+
     # fetch hourly forecast data for this location
     all_hours = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
-    
+
     # filter out past hours
     local_tz = tz.gettz(timezone_str)
     now = datetime.now(tz=local_tz)
@@ -227,7 +226,9 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     vignette = Image.new("L", (WIDTH, HEIGHT), 0)
     draw_v = ImageDraw.Draw(vignette)
-    draw_v.ellipse((-WIDTH * 0.25, -HEIGHT * 0.25, WIDTH * 1.25, HEIGHT * 1.25), fill=255)
+    draw_v.ellipse(
+        (-WIDTH * 0.25, -HEIGHT * 0.25, WIDTH * 1.25, HEIGHT * 1.25), fill=255
+    )
     vignette = vignette.filter(ImageFilter.GaussianBlur(200))
     img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.6), vignette)
 
@@ -242,11 +243,14 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         font_huge = font_big = font_small = ImageFont.load_default()
 
     tagline = "SnorkelForecast.com"
-    w, _ = draw.textsize(tagline, font=font_small)
+    tagline_bbox = draw.textbbox((0, 0), tagline, font=font_small)
+    w = tagline_bbox[2] - tagline_bbox[0]
     draw.text((WIDTH - w - SAFE, SAFE), tagline, font=font_small, fill="white")
 
     location_text = f"{location['city']}, {location['country']}"
-    w, h = draw.textsize(location_text, font=font_huge)
+    location_bbox = draw.textbbox((0, 0), location_text, font=font_huge)
+    w = location_bbox[2] - location_bbox[0]
+    h = location_bbox[3] - location_bbox[1]
     draw.text(
         ((WIDTH - w) / 2, HEIGHT * 0.25 - h / 2),
         location_text,
@@ -258,7 +262,9 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     def metric_pill(label: str, value: float, unit: str, y_offset: int) -> int:
         text = f"{label}: {value:.1f} {unit}"
-        w, h = draw.textsize(text, font=font_big)
+        bbox = draw.textbbox((0, 0), text, font=font_big)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
         padding = 40
         box = [
             ((WIDTH - w) / 2 - padding, y_offset),
@@ -302,4 +308,5 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 def home(request: HttpRequest) -> HttpResponse:
     """Legacy home view - redirects to Carboneras forecast."""
     from django.shortcuts import redirect
-    return redirect('location_forecast', country='spain', city='carboneras')
+
+    return redirect("location_forecast", country="spain", city="carboneras")
