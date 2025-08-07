@@ -6,7 +6,6 @@ import random
 from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
-from django.urls import reverse
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 from .snorkel import fetch_forecast
@@ -193,6 +192,60 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "next_early_high_tide": next_early_high_tide,
     }
     return render(request, "conditions/location_forecast.html", context)
+
+
+def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Render a simple 24-hour tide chart image for the given location."""
+    if country not in LOCATIONS or city not in LOCATIONS[country]:
+        raise Http404("Location not found")
+
+    location = LOCATIONS[country][city]
+
+    hours = fetch_forecast(
+        hours=24,
+        coordinates=location["coordinates"],
+        timezone_str=location["timezone"],
+    )
+
+    if not hours:
+        raise Http404("No tide data")
+
+    heights = [h["sea_level_height"] for h in hours]
+    if all(h is None for h in heights):
+        raise Http404("No tide data")
+
+    heights = [h if h is not None else 0 for h in heights]
+
+    width, height_img = 600, 200
+    margin = 10
+    y_min, y_max = min(heights), max(heights)
+    if y_min == y_max:
+        y_max = y_min + 1
+
+    x_step = (width - 2 * margin) / (len(heights) - 1)
+    y_scale = (height_img - 2 * margin) / (y_max - y_min)
+
+    points = [
+        (
+            margin + i * x_step,
+            height_img - margin - (h - y_min) * y_scale,
+        )
+        for i, h in enumerate(heights)
+    ]
+
+    img = Image.new("RGB", (width, height_img), "#EFF6FF")
+    draw = ImageDraw.Draw(img)
+
+    polygon = points + [
+        (points[-1][0], height_img - margin),
+        (points[0][0], height_img - margin),
+    ]
+    draw.polygon(polygon, fill="#BFDBFE")
+    draw.line(points, fill="#2563EB", width=4)
+
+    output = BytesIO()
+    img.save(output, "PNG")
+    return HttpResponse(output.getvalue(), content_type="image/png")
 
 
 def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResponse:
