@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Carboneras Snorkel Forecast</title>
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <script src="{% static 'js/theme.js' %}" defer></script>
   </head>
-  <body class="bg-sky-50 min-h-screen flex flex-col items-center p-4">
+  <body class="ui-day min-h-screen flex flex-col items-center p-4">
     <h1 class="text-2xl font-bold mb-4">Snorkel Forecast – Carboneras</h1>
     <p class="text-sm text-gray-600 mb-4">All times are in {{ timezone }}</p>
     {# Detailed text summary of snorkel forecast #}

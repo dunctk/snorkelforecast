@@ -7,8 +7,9 @@
     <title>{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com</title>
     <meta name="description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions.">
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    <script src="{% static 'js/theme.js' %}" defer></script>
   </head>
-  <body class="bg-sky-50 min-h-screen flex flex-col items-center p-4 sm:p-6">
+  <body class="ui-day min-h-screen flex flex-col items-center p-4 sm:p-6">
     <!-- Header with navigation -->
     <header class="w-full max-w-6xl mb-4 sm:mb-6">
       <nav class="flex justify-between items-center py-4">
