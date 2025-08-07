@@ -8,7 +8,7 @@
     <meta name="description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions.">
     <meta property="og:title" content="{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
     <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions." />
-    <meta property="og:image" content="{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
+    <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
     <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
     <meta name="twitter:card" content="summary_large_image" />
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
