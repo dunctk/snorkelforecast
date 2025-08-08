@@ -13,12 +13,31 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
+        id: py
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v3
+
+      - name: Cache uv wheels
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-cache-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
+      - name: Cache virtualenv (.venv)
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.py.outputs.python-version }}-${{ hashFiles('uv.lock') }}
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: precommit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Install dependencies (app + dev)
         run: |
@@ -38,4 +57,3 @@ jobs:
           DJANGO_SETTINGS_MODULE: snorkelforecast.snorkelforecast.settings
         run: |
           uv run python snorkelforecast/manage.py test -v 2
-
