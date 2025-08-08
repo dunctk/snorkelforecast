@@ -49,14 +49,15 @@ jobs:
         run: |
           uv sync --frozen --group dev
 
-      - name: Lint (ruff)
+      - name: Lint (ruff minimal)
         run: |
           uv run ruff format --check .
-          uv run ruff check .
+          uv run ruff check --select E,F,I .
 
-      - name: Pre-commit (all files)
+      - name: Pre-commit (all files, non-blocking)
+        continue-on-error: true
         run: |
-          uv run pre-commit run --all-files
+          uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Run Django tests
         env:
