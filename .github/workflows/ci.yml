@@ -47,7 +47,7 @@ jobs:
 
       - name: Install dependencies (app + dev)
         run: |
-          uv sync --frozen --group dev
+          uv sync --frozen --extra dev
 
       - name: Lint (ruff minimal)
         run: |
