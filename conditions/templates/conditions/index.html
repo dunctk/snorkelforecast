@@ -1,24 +1,22 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Carboneras Snorkel Forecast</title>
-    <meta property="og:title" content="SnorkelForecast.com - Snorkeling Conditions Worldwide" />
-    <meta property="og:description" content="Get accurate snorkeling forecasts for the best underwater conditions around the world. Check wave height, wind speed, and water temperature for your next snorkeling adventure." />
-    <meta property="og:image" content="https://snorkelforecast.com{% static 'images/og-image.png' %}" />
-    <meta property="og:url" content="https://snorkelforecast.com" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link href="{% static 'css/output.css' %}" rel="stylesheet">
-    <script src="{% static 'js/theme.js' %}" defer></script>
-  </head>
-  <body class="ui-day min-h-screen flex flex-col items-center p-4">
-    <h1 class="text-2xl font-bold mb-4">Snorkel Forecast – Carboneras</h1>
-    <p class="text-sm text-gray-600 mb-4">All times are in {{ timezone }}</p>
+{% extends 'conditions/base.html' %}
+
+{% block title %}Carboneras – Snorkel Forecast{% endblock %}
+
+{% block meta %}
+  <meta property="og:title" content="SnorkelForecast.com - Snorkeling Conditions Worldwide" />
+  <meta property="og:description" content="Get accurate snorkeling forecasts for the best underwater conditions around the world." />
+  <meta property="og:image" content="https://snorkelforecast.com{% static 'images/og-image.png' %}" />
+  <meta property="og:url" content="https://snorkelforecast.com" />
+  <meta name="twitter:card" content="summary_large_image" />
+{% endblock %}
+
+{% block content %}
+  <section class="max-w-4xl mx-auto px-4 py-6">
+    <h1 class="text-2xl font-bold mb-2 text-center">Snorkel Forecast – Carboneras</h1>
+    <p class="text-sm mb-6 text-center">All times are in {{ timezone }}</p>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
-      <div class="bg-white p-4 rounded shadow mb-6 w-full max-w-2xl">
+      <div class="card-enhanced p-4 mb-6 w-full max-w-2xl mx-auto">
         <h2 class="text-lg font-semibold mb-2">Forecast Summary</h2>
         {% with first=hours.0 last=hours|last %}
           <p class="mb-2">
@@ -42,7 +40,7 @@
       <p class="text-red-600 mb-6">Forecast data is currently unavailable.</p>
     {% endif %}
 
-    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
+    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs mt-6">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
         <div class="p-2 rounded" style="background-color: rgba(74, 222, 128, {{ alpha }});">
@@ -55,7 +53,7 @@
     </div>
 
     {# Explanation of conditions #}
-    <div class="mt-8 w-full max-w-4xl bg-white p-4 rounded shadow">
+    <div class="mt-8 w-full max-w-4xl card-enhanced p-4">
         <h2 class="text-lg font-semibold mb-2">How We Calculate Conditions</h2>
         <p>
             We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
@@ -68,9 +66,9 @@
     </div>
 
     {# Detailed table of snorkel conditions #}
-    <div class="mt-8 w-full max-w-4xl">
+    <div class="mt-8 w-full max-w-4xl mx-auto">
       <h2 class="text-lg font-semibold mb-2">Detailed Conditions</h2>
-      <table class="w-full text-sm text-left text-gray-500 bg-white shadow rounded">
+      <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded text-night-muted bg-night-surface">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
           <tr>
             <th scope="col" class="px-6 py-3">Time</th>
@@ -107,5 +105,5 @@
         </tbody>
       </table>
     </div>
-  </body>
-</html>
+  </section>
+{% endblock %}

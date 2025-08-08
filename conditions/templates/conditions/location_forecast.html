@@ -1,30 +1,22 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com</title>
-    <meta name="description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions.">
-    <meta property="og:title" content="{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
-    <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}. Check wave height, wind speed, and water temperature for the best snorkeling conditions." />
-    <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
-    <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link href="{% static 'css/output.css' %}" rel="stylesheet">
-    <script src="{% static 'js/theme.js' %}" defer></script>
-  </head>
-  <body class="ui-day min-h-screen flex flex-col items-center p-4 sm:p-6">
-    <!-- Header with navigation -->
-    <header class="w-full max-w-6xl mb-4 sm:mb-6">
-      <nav class="flex justify-between items-center py-4">
-        <a href="{% url 'homepage' %}" class="text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base min-h-[44px] flex items-center">← Back to all locations</a>
-        <a href="/" class="text-base sm:text-lg font-semibold text-blue-900">SnorkelForecast.com</a>
-      </nav>
-    </header>
-    
-    <h1 class="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-center px-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
-    <p class="text-xs sm:text-sm text-gray-600 mb-4 text-center">All times are in {{ timezone }}</p>
+{% extends 'conditions/base.html' %}
+
+{% block title %}{{ location.city }}, {{ location.country }} – Snorkel Forecast{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Snorkeling forecast for {{ location.city }}, {{ location.country }}. Wave height, wind speed, tides and sea temperature.">
+  <meta property="og:title" content="{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
+  <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}." />
+  <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
+  <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
+  <meta name="twitter:card" content="summary_large_image" />
+{% endblock %}
+
+{% block content %}
+  <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
+    <div class="text-center">
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
+      <p class="text-xs sm:text-sm">All times are in {{ timezone }}</p>
+    </div>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
@@ -59,14 +51,14 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 24h)</h2>
       <div class="h-48 sm:h-64">
         <canvas id="scoreChart24" class="w-full h-full"></canvas>
       </div>
     </div>
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 72h)</h2>
       <div class="h-48 sm:h-64">
         <canvas id="scoreChart" class="w-full h-full"></canvas>
@@ -74,7 +66,7 @@
     </div>
 
     {% if tide_times %}
-      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
         <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
         {% if next_early_high_tide %}
           <p class="text-sm sm:text-base mb-2">
@@ -89,7 +81,7 @@
       </div>
     {% endif %}
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">FAQs</h2>
       <p class="font-medium text-sm sm:text-base mb-1">When is the next safe snorkel window?</p>
       {% if next_window %}
@@ -101,7 +93,7 @@
       {% endif %}
     </div>
 
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
       <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 24h)</h2>
       <div class="space-y-6">
         <div class="h-48 sm:h-64">
@@ -123,7 +115,7 @@
       </div>
     </div>
 
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
       <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 72h)</h2>
       <div class="space-y-6">
         <div class="h-48 sm:h-64">
@@ -145,11 +137,11 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
+    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto mt-6">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
-        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});"
-          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium">
+        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
+          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} score {{ h.score|floatformat:2 }}">
             <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
             <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
             <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
@@ -160,7 +152,7 @@
     </div>
 
     {# Explanation of conditions #}
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl card-enhanced p-4 sm:p-6">
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
         <h2 class="text-base sm:text-lg font-semibold mb-2">How We Calculate Conditions</h2>
         <p class="text-sm sm:text-base">
             We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
@@ -174,10 +166,10 @@
     </div>
 
     {# Detailed table of snorkel conditions #}
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl">
+    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Detailed Conditions</h2>
       <div class="responsive-table">
-        <table class="w-full text-sm text-left text-gray-500 bg-white shadow rounded-lg">
+        <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
               <th scope="col" class="px-3 sm:px-6 py-3">Time</th>
@@ -221,6 +213,10 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+      // Theme-aware chart colors
+      const isNight = document.body.classList.contains('ui-night');
+      const axisColor = isNight ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
+      const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
       const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
       const waveData = [{% for h in hours %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
       const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
@@ -275,12 +271,16 @@
       const commonOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true } }
+        scales: {
+          x: { ticks: { color: axisColor }, grid: { color: gridColor } },
+          y: { beginAtZero: true, ticks: { color: axisColor }, grid: { color: gridColor } }
+        },
+        plugins: { legend: { labels: { color: axisColor } } }
       };
 
       const scoreOptions = {
         ...commonOptions,
-        scales: { y: { beginAtZero: true, max: 1 } }
+        scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, max: 1 } }
       };
 
       new Chart(document.getElementById('scoreChart24'), {
@@ -509,5 +509,5 @@
 
       // No chart for temperature; display average bar instead
     </script>
-  </body>
-</html>
+  </section>
+{% endblock %}
