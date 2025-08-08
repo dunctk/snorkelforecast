@@ -43,23 +43,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Cache Tailwind output
-        id: twcache
-        uses: actions/cache@v4
-        with:
-          path: static/css/output.css
-          key: tailwind-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tailwind.config.mjs', 'static/src/input.css') }}
-          restore-keys: |
-            tailwind-${{ runner.os }}-
-
-      - name: Build Tailwind CSS
-        if: steps.twcache.outputs.cache-hit != 'true'
-        run: npm run tailwind:build
+          cache: ''
 
       - name: Install dependencies (app + dev)
         run: |
