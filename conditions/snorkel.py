@@ -22,6 +22,7 @@ class Hour(TypedDict):
     time: datetime
     ok: bool
     score: float
+    rating: str
     wave_height: float | None
     wind_speed: float | None
     sea_surface_temperature: float | None
@@ -57,6 +58,31 @@ def _calculate_score(wave: float | None, wind: float | None, sst: float | None, 
 
     # Final score is the product of individual scores
     return wave_score * wind_score * sst_score
+
+
+def _rating_from_score(score: float, slack_ok: bool) -> str:
+    """Map a numeric score and slack-tide state to a rating tier.
+
+    Tiers:
+    - excellent: score >= 0.8
+    - good:      score >= 0.6
+    - fair:      score >= 0.4
+    - poor:      otherwise
+
+    If not within the slack tide/current window, cap at 'fair'.
+    """
+    if score >= 0.8:
+        rating = "excellent"
+    elif score >= 0.6:
+        rating = "good"
+    elif score >= 0.4:
+        rating = "fair"
+    else:
+        rating = "poor"
+
+    if not slack_ok and rating in {"excellent", "good"}:
+        rating = "fair"
+    return rating
 
 
 def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str = None) -> list[Hour]:
@@ -148,12 +174,14 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
             and current <= THRESHOLDS["current_velocity"]
         )
 
-        ok = score > 0.5 and slack_ok
+        rating = _rating_from_score(score, slack_ok)
+        ok = rating in {"excellent", "good"}
 
         result.append({
             "time": t.astimezone(local),
             "ok": ok,
             "score": score,
+            "rating": rating,
             "wave_height": wave,
             "wind_speed": wind,
             "sea_surface_temperature": sst,

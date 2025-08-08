@@ -120,6 +120,13 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     ok_count = len(ok_hours)
     percent_ok = round(ok_count / total * 100) if total > 0 else 0
 
+    # rating breakdown
+    rating_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+    for h in hours:
+        rating = h.get("rating") or "poor"
+        if rating in rating_counts:
+            rating_counts[rating] += 1
+
     # determine earliest and latest suitable times
     if ok_hours:
         earliest_ok = ok_hours[0]["time"]
@@ -185,6 +192,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             "earliest_ok": earliest_ok,
             "latest_ok": latest_ok,
         },
+        "rating_counts": rating_counts,
         "timezone": local_tz.tzname(now),
         "day_summaries": day_summaries,
         "next_window": next_window,

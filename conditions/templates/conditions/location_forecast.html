@@ -20,7 +20,7 @@
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
-        <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
         {% with first=hours.0 last=hours|last %}
           <p class="mb-2 text-sm sm:text-base">
             Over the next {{ summary.total_hours }} hours (from
@@ -36,6 +36,12 @@
                 and last until {{ summary.latest_ok|date:"D H:i" }}.
               {% endif %}
             </p>
+            <div class="mt-2 text-xs sm:text-sm text-gray-700">
+              <span class="mr-3"><span class="font-medium">Excellent:</span> {{ rating_counts.excellent }}</span>
+              <span class="mr-3"><span class="font-medium">Good:</span> {{ rating_counts.good }}</span>
+              <span class="mr-3"><span class="font-medium">Fair:</span> {{ rating_counts.fair }}</span>
+              <span><span class="font-medium">Poor:</span> {{ rating_counts.poor }}</span>
+            </div>
             {% if day_summaries %}
               <p class="text-sm sm:text-base mt-2">
                 Best conditions expected on
@@ -140,12 +146,13 @@
     <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto mt-6">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
-        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
-          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} score {{ h.score|floatformat:2 }}">
+        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
+          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} rating {{ h.rating }} score {{ h.score|floatformat:2 }}">
             <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
             <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
             <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
           </time>
+          <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
         </div>
         {% endwith %}
       {% endfor %}
@@ -181,6 +188,7 @@
               <th scope="col" class="px-3 sm:px-6 py-3">Tide Height (m)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Current (m/s)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Score</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Rating</th>
             </tr>
           </thead>
           <tbody>
@@ -202,9 +210,8 @@
                 </td>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{{ h.sea_level_height|floatformat:2 }}</td>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.slack_ok %}text-red-600 font-bold{% endif %}">{{ h.current_velocity|floatformat:2 }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">
-                  {{ h.score|floatformat:2 }}
-                </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">{{ h.score|floatformat:2 }}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm capitalize">{{ h.rating }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -233,14 +240,14 @@
       const waveThreshold = Array(labels.length).fill(0.3);
       const windThreshold = Array(labels.length).fill(4.5);
       const perfectThreshold = Array(labels.length).fill(0.8);
-      const okThreshold = Array(labels.length).fill(0.5);
-      const notGoodThreshold = Array(labels.length).fill(0.3);
+      const okThreshold = Array(labels.length).fill(0.6);
+      const notGoodThreshold = Array(labels.length).fill(0.4);
 
       const waveThreshold24 = Array(labels24.length).fill(0.3);
       const windThreshold24 = Array(labels24.length).fill(4.5);
       const perfectThreshold24 = Array(labels24.length).fill(0.8);
-      const okThreshold24 = Array(labels24.length).fill(0.5);
-      const notGoodThreshold24 = Array(labels24.length).fill(0.3);
+      const okThreshold24 = Array(labels24.length).fill(0.6);
+      const notGoodThreshold24 = Array(labels24.length).fill(0.4);
 
       const idealMin = 22;
       const idealMax = 29;
@@ -297,7 +304,7 @@
               tension: 0.3
             },
             {
-              label: 'Perfect (0.8)',
+              label: 'Excellent (0.8)',
               data: perfectThreshold24,
               borderColor: 'rgb(34,197,94)',
               borderDash: [6,6],
@@ -305,7 +312,7 @@
               fill: false
             },
             {
-              label: 'OK (0.5)',
+              label: 'Good (0.6)',
               data: okThreshold24,
               borderColor: 'rgb(234,179,8)',
               borderDash: [6,6],
@@ -313,7 +320,7 @@
               fill: false
             },
             {
-              label: 'Not Good (0.3)',
+              label: 'Fair (0.4)',
               data: notGoodThreshold24,
               borderColor: 'rgb(239,68,68)',
               borderDash: [6,6],
@@ -339,7 +346,7 @@
               tension: 0.3
             },
             {
-              label: 'Perfect (0.8)',
+              label: 'Excellent (0.8)',
               data: perfectThreshold,
               borderColor: 'rgb(34,197,94)',
               borderDash: [6,6],
@@ -347,7 +354,7 @@
               fill: false
             },
             {
-              label: 'OK (0.5)',
+              label: 'Good (0.6)',
               data: okThreshold,
               borderColor: 'rgb(234,179,8)',
               borderDash: [6,6],
@@ -355,7 +362,7 @@
               fill: false
             },
             {
-              label: 'Not Good (0.3)',
+              label: 'Fair (0.4)',
               data: notGoodThreshold,
               borderColor: 'rgb(239,68,68)',
               borderDash: [6,6],
