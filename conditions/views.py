@@ -87,8 +87,86 @@ def homepage(request: HttpRequest) -> HttpResponse:
 
             popular_locations.append(location_data)
 
-    context = {"popular_locations": popular_locations}
+    country_list = [
+        {
+            "slug": slug,
+            "name": next(iter(cities.values())).get("country", slug.title()) if cities else slug.title(),
+        }
+        for slug, cities in LOCATIONS.items()
+    ]
+    country_list.sort(key=lambda c: c["name"].lower())
+
+    context = {
+        "popular_locations": popular_locations,
+        "country_count": len(LOCATIONS),
+        "countries": country_list,
+    }
     return render(request, "conditions/homepage.html", context)
+
+
+def country_directory(request: HttpRequest, country: str) -> HttpResponse:
+    """Country directory page listing supported locations in the country.
+
+    Shows all cities we have presets for within the given country slug.
+    """
+    if country not in LOCATIONS:
+        raise Http404("Country not found")
+
+    # Prepare city list with optional current SST for quick glance
+    cities = []
+    for city_slug, location_data in LOCATIONS[country].items():
+        data = dict(location_data)
+        data["country_slug"] = country
+        data["city_slug"] = city_slug
+
+        forecast = fetch_forecast(
+            hours=1,
+            coordinates=data["coordinates"],
+            timezone_str=data["timezone"],
+        )
+        data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
+
+        cities.append(data)
+
+    # Derive nice country label from first entry (they all share same country name)
+    country_name = next(iter(LOCATIONS[country].values())).get("country", country.title())
+
+    context = {
+        "country_slug": country,
+        "country_name": country_name,
+        "cities": cities,
+    }
+    return render(request, "conditions/country.html", context)
+
+
+def countries_index(request: HttpRequest) -> HttpResponse:
+    """Index page listing all available countries with counts and sample cities."""
+    countries = []
+    for country_slug, cities in LOCATIONS.items():
+        # Derive display name from any city's country field
+        country_name = next(iter(cities.values())).get("country", country_slug.title()) if cities else country_slug.title()
+        city_list = [
+            {
+                "city": data.get("city", city_slug.title()),
+                "city_slug": city_slug,
+                "country_slug": country_slug,
+                "description": data.get("description"),
+            }
+            for city_slug, data in cities.items()
+        ]
+        countries.append(
+            {
+                "slug": country_slug,
+                "name": country_name,
+                "city_count": len(city_list),
+                "sample_cities": city_list[:3],
+            }
+        )
+
+    # Sort alphabetically by display name
+    countries.sort(key=lambda c: c["name"].lower())
+
+    return render(request, "conditions/countries.html", {"countries": countries})
 
 
 def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResponse:

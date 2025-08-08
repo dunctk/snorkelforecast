@@ -12,6 +12,17 @@
 {% endblock %}
 
 {% block content %}
+  <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
+    <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
+      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li>/</li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li>/</li>
+      <li><a href="/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li>/</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ location.city }}</li>
+    </ol>
+  </nav>
   <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
       <h1 class="text-xl sm:text-2xl font-bold mb-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
