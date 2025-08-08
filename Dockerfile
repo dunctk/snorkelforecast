@@ -9,10 +9,9 @@ WORKDIR /app
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Create a virtual environment and install Python dependencies
-RUN uv venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN uv pip install --no-cache -r pyproject.toml
+# Install Python dependencies using uv (creates .venv)
+RUN uv sync --frozen
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy the rest of the application code
 COPY . .
@@ -36,4 +35,3 @@ EXPOSE 8000
 
 # Run startup script
 CMD ["./startup.sh"]
-
