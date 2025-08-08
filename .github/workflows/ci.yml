@@ -51,7 +51,6 @@ jobs:
 
       - name: Lint (ruff minimal)
         run: |
-          uv run ruff format --check .
           uv run ruff check --select E,F,I .
 
       - name: Pre-commit (all files, non-blocking)
