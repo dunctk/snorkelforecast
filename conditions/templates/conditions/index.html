@@ -69,7 +69,7 @@
     <div class="mt-8 w-full max-w-4xl mx-auto">
       <h2 class="text-lg font-semibold mb-2">Detailed Conditions</h2>
       <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded text-night-muted bg-night-surface">
-        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 ui-night:text-gray-200 ui-night:bg-gray-800">
           <tr>
             <th scope="col" class="px-6 py-3">Time</th>
             <th scope="col" class="px-6 py-3">Sunrise</th>
@@ -82,8 +82,8 @@
         </thead>
         <tbody>
           {% for h in hours %}
-            <tr class="border-b">
-              <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+            <tr class="border-b ui-night:border-gray-700">
+              <th scope="row" class="px-6 py-4 font-medium text-gray-900 ui-night:text-gray-100 whitespace-nowrap">
                 {{ h.time|date:"D H:i" }}
               </th>
               <td class="px-6 py-4">{{ h.sunrise|date:"H:i" }}</td>

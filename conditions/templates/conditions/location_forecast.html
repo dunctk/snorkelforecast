@@ -169,8 +169,8 @@
     <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Detailed Conditions</h2>
       <div class="responsive-table">
-        <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+          <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 ui-night:text-gray-200 ui-night:bg-gray-800">
             <tr>
               <th scope="col" class="px-3 sm:px-6 py-3">Time</th>
               <th scope="col" class="px-3 sm:px-6 py-3 hidden sm:table-cell">Sunrise</th>
@@ -184,9 +184,9 @@
             </tr>
           </thead>
           <tbody>
-            {% for h in hours %}
-              <tr class="border-b hover:bg-gray-50">
-                <th scope="row" class="px-3 sm:px-6 py-3 sm:py-4 font-medium text-gray-900 whitespace-nowrap text-xs sm:text-sm">
+              {% for h in hours %}
+                <tr class="border-b hover:bg-gray-50 ui-night:border-gray-700 ui-night:hover:bg-gray-800">
+                  <th scope="row" class="px-3 sm:px-6 py-3 sm:py-4 font-medium text-gray-900 ui-night:text-gray-100 whitespace-nowrap text-xs sm:text-sm">
                   {{ h.time|date:"D H:i" }}
                 </th>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm">{{ h.sunrise|date:"H:i" }}</td>
