@@ -3,7 +3,7 @@ target-version = "py312"
 
 [lint]
 select = ["E", "F"]
-ignore = []
+ignore = ["E501"]
 
 exclude = [
   ".venv",
