@@ -31,6 +31,11 @@
 - PRs should include: clear description, linked issue (if any), screenshots for UI changes, and a brief testing checklist.
 - Keep PRs small and cohesive; avoid unrelated refactors.
 
+## Git Hooks (Pre-commit)
+- Install tooling: `uv add --dev pre-commit` then `uv run pre-commit install` and `uv run pre-commit install --hook-type pre-push`.
+- Hooks run Ruff lint/format, basic checks, Conventional Commit message lint, and run Django tests on pre-push.
+- Run locally: `uv run pre-commit run --all-files`.
+
 ## Security & Configuration Tips
 - For production, set `DEBUG=false`, configure `ALLOWED_HOSTS`, and provide a secure `SECRET_KEY` via environment.
 - Static files are served by WhiteNoise; run `collectstatic` in builds.
