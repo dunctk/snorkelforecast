@@ -26,7 +26,7 @@
   <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
       <h1 class="text-xl sm:text-2xl font-bold mb-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
-      <p class="text-xs sm:text-sm">All times are in {{ timezone }}</p>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">All times are in {{ timezone }}</p>
     </div>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}

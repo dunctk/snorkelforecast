@@ -4,26 +4,26 @@
 {% block content %}
 <section class="max-w-5xl mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold mb-2">Historical Trends</h1>
-  <p class="text-slate-600 mb-6">{{ location.city }}, {{ location.country }} — last 7 days</p>
+  <p class="text-slate-600 ui-night:text-gray-300 mb-6">{{ location.city }}, {{ location.country }} — last 7 days</p>
 
   <div id="chart" class="w-full h-64 bg-slate-100 rounded-md"></div>
   <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 text-sm">Sea Surface Temperature</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Sea Surface Temperature</div>
       <div id="sst-latest" class="text-xl font-semibold">–</div>
     </div>
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 text-sm">Wave Height</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wave Height</div>
       <div id="wave-latest" class="text-xl font-semibold">–</div>
     </div>
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 text-sm">Wind Speed</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wind Speed</div>
       <div id="wind-latest" class="text-xl font-semibold">–</div>
     </div>
   </div>
 
   <div class="mt-8">
-    <a class="text-blue-600 hover:underline" href="{% url 'location_history_api' country_slug city_slug %}">History API (JSON)</a>
+    <a class="text-blue-600 ui-night:text-blue-300 hover:underline" href="{% url 'location_history_api' country_slug city_slug %}">History API (JSON)</a>
   </div>
 </section>
 
@@ -58,4 +58,3 @@
   })();
 </script>
 {% endblock %}
-

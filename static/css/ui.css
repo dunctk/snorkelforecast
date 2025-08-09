@@ -1,0 +1,15 @@
+/* Dark-mode legibility tweaks without rebuilding Tailwind */
+
+/* Improve text contrast inside forecast cells on dark background
+   Cells use semi-transparent green backgrounds; white text can fail WCAG.
+   Force dark text in night mode for better contrast. */
+.ui-night .forecast-cell {
+  color: #111827; /* Tailwind gray-900 */
+}
+
+/* Ensure small text elements inside cells also inherit strong contrast */
+.ui-night .forecast-cell .text-[10px],
+.ui-night .forecast-cell .text-xs {
+  color: #111827; /* Tailwind gray-900 */
+}
+
