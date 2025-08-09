@@ -6,8 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
-    <link href="{% static 'css/output.css' %}" rel="stylesheet">
-    <link href="{% static 'css/ui.css' %}" rel="stylesheet">
+    <link href="{% static 'css/output.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="{% static 'css/output.css' %}" rel="stylesheet"></noscript>
+    <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
     <meta name="theme-color" content="#0ea5e9" />
     <script src="{% static 'js/theme.js' %}" defer></script>
   </head>

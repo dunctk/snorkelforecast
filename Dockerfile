@@ -20,6 +20,10 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/downlo
     && ./tailwindcss-linux-x64 -i ./snorkelforecast/static/src/input.css -o ./snorkelforecast/static/css/output.css --minify \
     && rm tailwindcss-linux-x64
 
+# Fetch and vendor Chart.js locally for self-hosting (place in root static/ so collectstatic picks it up)
+RUN mkdir -p ./static/js \
+    && curl -fSL https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js -o ./static/js/chart.umd.min.js
+
 # Create logs directory for Django logging
 RUN mkdir -p logs
 
