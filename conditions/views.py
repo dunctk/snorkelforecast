@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
+import logging
 from collections import defaultdict
 from io import BytesIO
-import random
 
 from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse
@@ -16,6 +16,9 @@ from .history import save_forecast_history
 from .locations import LOCATIONS
 
 # Popular locations moved to conditions/locations.py
+
+
+logger = logging.getLogger(__name__)
 
 
 @cache_page(getattr(settings, "CACHE_TTL", 300))
@@ -33,6 +36,12 @@ def homepage(request: HttpRequest) -> HttpResponse:
                 coordinates=location_data["coordinates"],
                 timezone_str=location_data["timezone"],
             )
+            if not forecast:
+                logger.warning(
+                    "No forecast returned for homepage location: %s, %s",
+                    location_data.get("country"),
+                    location_data.get("city"),
+                )
             location_data["current_sst"] = (
                 forecast[0]["sea_surface_temperature"] if forecast else None
             )
@@ -79,6 +88,12 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
             coordinates=data["coordinates"],
             timezone_str=data["timezone"],
         )
+        if not forecast:
+            logger.warning(
+                "No forecast returned for country page location: %s/%s",
+                country,
+                city_slug,
+            )
         data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
 
         cities.append(data)
@@ -172,6 +187,14 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
 
     # fetch hourly forecast data for this location
     all_hours = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
+    if not all_hours:
+        logger.warning(
+            "Empty forecast for %s/%s at coords=%s tz=%s",
+            country,
+            city,
+            coordinates,
+            timezone_str,
+        )
 
     # Persist for historical analysis
     save_forecast_history(country, city, all_hours)
@@ -180,6 +203,14 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     local_tz = tz.gettz(timezone_str)
     now = datetime.now(tz=local_tz)
     hours = [h for h in all_hours if h["time"] >= now]
+    if not hours and all_hours:
+        logger.info(
+            "All forecast hours are in the past for %s/%s (now=%s, last=%s)",
+            country,
+            city,
+            now,
+            all_hours[-1]["time"] if all_hours else None,
+        )
 
     # first 24 hours for separate charts
     hours_24 = hours[:24]
@@ -240,7 +271,11 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         daily_outlook.append(
             {
                 "date": day,
-                "label": (ok_day[0]["time"].strftime("%A") if ok_day else day_hours[0]["time"].strftime("%A")),
+                "label": (
+                    ok_day[0]["time"].strftime("%A")
+                    if ok_day
+                    else day_hours[0]["time"].strftime("%A")
+                ),
                 "counts": counts,
                 "top_rating": top_rating,
                 "top_start": top_start,
@@ -368,7 +403,12 @@ def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpRe
 
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResponse:
-    """Generate a social sharing image for a location."""
+    """Generate a high-contrast social sharing image for a location.
+
+    Focus on large, readable typography and strong contrast. Avoid
+    semi-transparent light-on-light elements to keep text legible in
+    previews across platforms.
+    """
     if country not in LOCATIONS or city not in LOCATIONS[country]:
         raise Http404("Location not found")
 
@@ -384,88 +424,165 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     wind = forecast[0]["wind_speed"] if forecast else None
 
     WIDTH, HEIGHT = 1200, 630
-    SAFE = 60
+    SAFE = 64
 
-    # Create a more dynamic, water-like background
-    img = Image.new("RGB", (WIDTH, HEIGHT), "#003973")
-    draw = ImageDraw.Draw(img)
+    # Background: deep ocean gradient for consistent contrast
+    # (legacy bg kept via gradient below)
+    grad = Image.new("RGB", (1, HEIGHT))
+    top = (3, 105, 161)  # #0369A1
+    bottom = (12, 74, 110)  # #0C4A6E
+    for y in range(HEIGHT):
+        t = y / (HEIGHT - 1)
+        r = int(top[0] * (1 - t) + bottom[0] * t)
+        g = int(top[1] * (1 - t) + bottom[1] * t)
+        b = int(top[2] * (1 - t) + bottom[2] * t)
+        grad.putpixel((0, y), (r, g, b))
+    img = grad.resize((WIDTH, HEIGHT))
 
-    # Draw some random circles to simulate light refractions
-    for _ in range(50):
-        x = random.randint(0, WIDTH)
-        y = random.randint(0, HEIGHT)
-        r = random.randint(10, 100)
-        draw.ellipse((x - r, y - r, x + r, y + r), fill=(255, 255, 255, 20))
-
-    # Apply a blur to create a softer, more blended look
-    img = img.filter(ImageFilter.GaussianBlur(radius=30))
-
-    # Add a subtle vignette to draw focus to the center
+    # Subtle vignette for focus
     vignette = Image.new("L", (WIDTH, HEIGHT), 0)
     draw_v = ImageDraw.Draw(vignette)
-    draw_v.ellipse((-WIDTH * 0.1, -HEIGHT * 0.1, WIDTH * 1.1, HEIGHT * 1.1), fill=255)
-    vignette = vignette.filter(ImageFilter.GaussianBlur(100))
-    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.8), vignette)
+    draw_v.ellipse(
+        (-int(WIDTH * 0.2), -int(HEIGHT * 0.3), int(WIDTH * 1.2), int(HEIGHT * 1.3)), fill=255
+    )
+    vignette = vignette.filter(ImageFilter.GaussianBlur(120))
+    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.85), vignette)
 
     draw = ImageDraw.Draw(img)
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 90)
         font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 48)
         font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 36)
     except OSError:
-        font_huge = ImageFont.load_default()
         font_big = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
-    tagline = "SnorkelForecast.com"
-    tagline_bbox = draw.textbbox((0, 0), tagline, font=font_small)
-    w = tagline_bbox[2] - tagline_bbox[0]
-    draw.text((WIDTH - w - SAFE, SAFE), tagline, font=font_small, fill="#FFFFFF")
+    # Brand tag top-left
+    brand = "SnorkelForecast.com"
+    draw.text((SAFE, SAFE), brand, font=font_small, fill="#E0F2FE")
 
+    # Location title with automatic fit
+    base_font_size = 118
     location_text = f"{location['city']}, {location['country']}"
-    location_bbox = draw.textbbox((0, 0), location_text, font=font_huge)
-    w = location_bbox[2] - location_bbox[0]
-    h = location_bbox[3] - location_bbox[1]
 
-    # Add a subtle drop shadow for better readability
-    draw.text(
-        ((WIDTH - w) / 2 + 5, HEIGHT * 0.3 - h / 2 + 5),
-        location_text,
-        font=font_huge,
-        fill="#000000",
-    )
-    draw.text(
-        ((WIDTH - w) / 2, HEIGHT * 0.3 - h / 2), location_text, font=font_huge, fill="#FFFFFF"
-    )
+    def fit_font(size: int) -> ImageFont.FreeTypeFont:
+        try:
+            return ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", size)
+        except OSError:
+            return ImageFont.load_default()
 
-    def metric_pill(label: str, value: float, unit: str, y_offset: int) -> int:
-        text = f"{label}: {value:.1f} {unit}"
-        bbox = draw.textbbox((0, 0), text, font=font_big)
+    font_title = fit_font(base_font_size)
+    max_width = WIDTH - SAFE * 2
+    while True:
+        bbox = draw.textbbox((0, 0), location_text, font=font_title)
         w = bbox[2] - bbox[0]
-        h = bbox[3] - bbox[1]
-        padding = 20
-        box = [
-            ((WIDTH - w) / 2 - padding, y_offset),
-            ((WIDTH + w) / 2 + padding, y_offset + h + padding),
-        ]
-        draw.rounded_rectangle(box, radius=30, fill=(255, 255, 255, 50))
-        draw.text(
-            (box[0][0] + padding, y_offset + padding / 2),
-            text,
-            font=font_big,
-            fill="#FFFFFF",
-        )
-        return int(box[1][1] + 30)
+        if w <= max_width or (
+            hasattr(font_title, "size") and getattr(font_title, "size", 20) <= 60
+        ):
+            break
+        # reduce and retry
+        new_size = max(60, int((getattr(font_title, "size", base_font_size)) * 0.9))
+        font_title = fit_font(new_size)
 
-    metric_y = int(HEIGHT * 0.6)
-    if sst is not None:
-        metric_y = metric_pill("Sea Temp", sst, "°C", metric_y)
-    if wave is not None:
-        metric_y = metric_pill("Wave", wave, "m", metric_y)
-    if wind is not None:
-        metric_y = metric_pill("Wind", wind, "m/s", metric_y)
+    # Dark plate behind title for readability
+    bbox = draw.textbbox((0, 0), location_text, font=font_title)
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+    tx = SAFE
+    ty = int(HEIGHT * 0.28) - h // 2
+    plate_pad = 24
+    plate = [
+        (tx - plate_pad, ty - int(plate_pad * 0.6)),
+        (tx + w + plate_pad, ty + h + int(plate_pad * 0.6)),
+    ]
+    draw.rounded_rectangle(plate, radius=24, fill="#06243A")
+    draw.text((tx, ty), location_text, font=font_title, fill="#F8FAFC")
+
+    # Metric cards: strong contrast dark plates, big numbers
+    def metric_card(label: str, value: float | None, unit: str, x: int, y: int, width: int) -> None:
+        if value is None:
+            return
+        label_upper = label.upper()
+        # card background
+        card_h = 150
+        draw.rounded_rectangle([(x, y), (x + width, y + card_h)], radius=20, fill="#083247")
+        # label small
+        draw.text((x + 20, y + 18), label_upper, font=font_small, fill="#7DD3FC")
+        # value big
+        val_text = f"{value:.1f} {unit}"
+        vb = draw.textbbox((0, 0), val_text, font=font_big)
+        vh = vb[3] - vb[1]
+        draw.text((x + 20, y + card_h - vh - 24), val_text, font=font_big, fill="#F0F9FF")
+
+    grid_margin = SAFE
+    grid_gap = 24
+    cols = 3
+    col_w = int((WIDTH - grid_margin * 2 - grid_gap * (cols - 1)) / cols)
+    y_cards = int(HEIGHT * 0.55)
+    metric_card("Sea Temp", sst, "°C", grid_margin + 0 * (col_w + grid_gap), y_cards, col_w)
+    metric_card("Wave", wave, "m", grid_margin + 1 * (col_w + grid_gap), y_cards, col_w)
+    metric_card("Wind", wind, "m/s", grid_margin + 2 * (col_w + grid_gap), y_cards, col_w)
+
+    output = BytesIO()
+    img.save(output, "PNG", optimize=True)
+    return HttpResponse(output.getvalue(), content_type="image/png")
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def site_og_image(request: HttpRequest) -> HttpResponse:
+    """Generate a site-wide OG image with strong, readable branding."""
+    WIDTH, HEIGHT = 1200, 630
+    SAFE = 64
+
+    # Gradient background
+    top = (14, 165, 233)  # #0EA5E9
+    bottom = (3, 105, 161)  # #0369A1
+    grad = Image.new("RGB", (1, HEIGHT))
+    for y in range(HEIGHT):
+        t = y / (HEIGHT - 1)
+        r = int(top[0] * (1 - t) + bottom[0] * t)
+        g = int(top[1] * (1 - t) + bottom[1] * t)
+        b = int(top[2] * (1 - t) + bottom[2] * t)
+        grad.putpixel((0, y), (r, g, b))
+    img = grad.resize((WIDTH, HEIGHT))
+
+    # Vignette
+    vignette = Image.new("L", (WIDTH, HEIGHT), 0)
+    draw_v = ImageDraw.Draw(vignette)
+    draw_v.ellipse(
+        (-int(WIDTH * 0.2), -int(HEIGHT * 0.3), int(WIDTH * 1.2), int(HEIGHT * 1.3)), fill=255
+    )
+    vignette = vignette.filter(ImageFilter.GaussianBlur(120))
+    img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.85), vignette)
+
+    draw = ImageDraw.Draw(img)
+
+    FONT_DIR = "/usr/share/fonts/truetype/dejavu"
+    try:
+        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 124)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 42)
+    except OSError:
+        font_huge = ImageFont.load_default()
+        font_big = ImageFont.load_default()
+
+    # Title
+    title = "SnorkelForecast"
+    tb = draw.textbbox((0, 0), title, font=font_huge)
+    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    draw.rounded_rectangle(
+        [
+            (SAFE - 24, int(HEIGHT * 0.32) - int(th * 0.6)),
+            (SAFE + tw + 24, int(HEIGHT * 0.32) + int(th * 0.9)),
+        ],
+        radius=24,
+        fill="#06243A",
+    )
+    draw.text((SAFE, int(HEIGHT * 0.32)), title, font=font_huge, fill="#F8FAFC")
+
+    # Tagline
+    tagline = "Snorkeling conditions and forecasts worldwide"
+    draw.text((SAFE, int(HEIGHT * 0.32) + th + 28), tagline, font=font_big, fill="#E0F2FE")
 
     output = BytesIO()
     img.save(output, "PNG", optimize=True)

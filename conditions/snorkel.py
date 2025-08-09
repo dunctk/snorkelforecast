@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 from typing import TypedDict
+import logging
 
 import httpx
 from dateutil import tz
@@ -19,6 +20,8 @@ THRESHOLDS.update(
         "slack_window_minutes": 60,
     }
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Hour(TypedDict):
@@ -118,17 +121,61 @@ def fetch_forecast(
     try:
         with httpx.Client(timeout=10.0) as client:
             marine_response = client.get(marine_url)
-            marine_response.raise_for_status()
+            try:
+                marine_response.raise_for_status()
+            except httpx.HTTPError as e:
+                # Log which endpoint failed and any response detail
+                body = None
+                try:
+                    body = marine_response.text[:500]
+                except Exception:
+                    pass
+                logger.warning(
+                    "Marine API request failed: url=%s status=%s error=%r body_preview=%r",
+                    marine_url,
+                    getattr(marine_response, "status_code", "unknown"),
+                    e,
+                    body,
+                )
+                return []
+
             wx_response = client.get(wx_url)
-            wx_response.raise_for_status()
-            marine, wx = marine_response.json(), wx_response.json()
-    except (httpx.HTTPError, httpx.TimeoutException):
-        # Return empty forecast on API failure
+            try:
+                wx_response.raise_for_status()
+            except httpx.HTTPError as e:
+                body = None
+                try:
+                    body = wx_response.text[:500]
+                except Exception:
+                    pass
+                logger.warning(
+                    "Weather API request failed: url=%s status=%s error=%r body_preview=%r",
+                    wx_url,
+                    getattr(wx_response, "status_code", "unknown"),
+                    e,
+                    body,
+                )
+                return []
+
+            try:
+                marine, wx = marine_response.json(), wx_response.json()
+            except ValueError as e:
+                logger.warning("Failed to decode API JSON: error=%r", e)
+                return []
+    except httpx.TimeoutException as e:
+        logger.warning("Forecast fetch timed out: error=%r", e)
+        return []
+    except httpx.HTTPError as e:
+        logger.warning("HTTP error during forecast fetch: error=%r", e)
         return []
 
     local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
-    daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
+    try:
+        daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
+    except Exception as e:
+        logger.warning("Malformed daily times from weather API: error=%r", e)
+        return []
     sunrises = [
         datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local)
         for s in wx["daily"]["sunrise"]
@@ -142,9 +189,15 @@ def fetch_forecast(
     }
 
     # Assume identical time arrays
-    times_utc = [
-        datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in marine["hourly"]["time"]
-    ]
+    try:
+        times_raw = marine["hourly"]["time"]
+        if not times_raw:
+            logger.warning("Marine API returned no hourly times: url=%s", marine_url)
+            return []
+        times_utc = [datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in times_raw]
+    except Exception as e:
+        logger.warning("Malformed hourly times from marine API: error=%r", e)
+        return []
     sea = marine["hourly"].get("sea_level_height_msl", [])
     curr = marine["hourly"].get("ocean_current_velocity", [])
 

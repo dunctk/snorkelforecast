@@ -3,6 +3,8 @@ from . import views
 
 urlpatterns = [
     path("", views.homepage, name="homepage"),
+    # Site-wide OG image
+    path("og.png", views.site_og_image, name="site_og_image"),
     # Countries index must be above the generic country slug route
     path("countries/", views.countries_index, name="countries_index"),
     path(
