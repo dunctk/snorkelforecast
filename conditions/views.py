@@ -35,6 +35,8 @@ def homepage(request: HttpRequest) -> HttpResponse:
                 hours=1,
                 coordinates=location_data["coordinates"],
                 timezone_str=location_data["timezone"],
+                country_slug=country_slug,
+                city_slug=city_slug,
             )
             if not forecast:
                 logger.warning(
@@ -87,6 +89,8 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
             hours=1,
             coordinates=data["coordinates"],
             timezone_str=data["timezone"],
+            country_slug=country,
+            city_slug=city_slug,
         )
         if not forecast:
             logger.warning(
@@ -186,7 +190,12 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     timezone_str = location_data["timezone"]
 
     # fetch hourly forecast data for this location
-    all_hours = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
+    all_hours = fetch_forecast(
+        coordinates=coordinates,
+        timezone_str=timezone_str,
+        country_slug=country,
+        city_slug=city,
+    )
     if not all_hours:
         logger.warning(
             "Empty forecast for %s/%s at coords=%s tz=%s",
@@ -358,6 +367,8 @@ def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpRe
         hours=24,
         coordinates=location["coordinates"],
         timezone_str=location["timezone"],
+        country_slug=country,
+        city_slug=city,
     )
 
     if not hours:
@@ -418,6 +429,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         hours=1,
         coordinates=location["coordinates"],
         timezone_str=location["timezone"],
+        country_slug=country,
+        city_slug=city,
     )
     sst = forecast[0]["sea_surface_temperature"] if forecast else None
     wave = forecast[0]["wave_height"] if forecast else None

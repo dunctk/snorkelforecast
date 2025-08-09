@@ -8,6 +8,7 @@ import httpx
 from dateutil import tz
 from django.core.cache import cache
 from django.conf import settings
+from .models import ForecastHour
 
 CARBONERAS = {"lat": 36.997, "lon": -1.896}
 THRESHOLDS = {
@@ -101,8 +102,96 @@ def _rating_from_score(score: float, slack_ok: bool) -> str:
     return rating
 
 
+def _fallback_from_db(
+    *, country_slug: str | None, city_slug: str | None, timezone_str: str, hours: int
+) -> list[Hour]:
+    """Return upcoming forecast from DB history if available.
+
+    Uses stored values for score/rating; sunrise/sunset not included.
+    Also flags high tides and slack windows based on stored tide/current.
+    """
+    if not country_slug or not city_slug:
+        return []
+    try:
+        from django.utils import timezone as dj_tz
+
+        qs = ForecastHour.objects.filter(
+            country_slug=country_slug,
+            city_slug=city_slug,
+            time__gte=dj_tz.now(),
+        ).order_by("time")
+        rows = list(qs[: hours or 72])
+        if not rows:
+            return []
+        # Build arrays to detect high tides and slack windows
+        times = [r.time for r in rows]
+        sea = [r.sea_level_height for r in rows]
+        high_ix: list[int] = []
+        for i in range(1, len(sea) - 1):
+            prev, now, nxt = sea[i - 1], sea[i], sea[i + 1]
+            if None not in (prev, now, nxt) and now is not None and now > prev and now > nxt:
+                high_ix.append(i)
+
+        window = timedelta(minutes=THRESHOLDS["slack_window_minutes"])
+        slack_mask = [False] * len(times)
+        for hi in high_ix:
+            center = times[hi]
+            for j, t in enumerate(times):
+                if abs(t - center) <= window:
+                    slack_mask[j] = True
+
+        local = tz.gettz(timezone_str)
+        result: list[Hour] = []
+        for i, r in enumerate(rows):
+            wave = r.wave_height
+            wind = r.wind_speed
+            sst = r.sea_surface_temperature
+            current = r.current_velocity
+            wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
+            wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
+            sst_ok = (
+                sst is not None
+                and THRESHOLDS["sea_surface_temperature"][0]
+                <= sst
+                <= THRESHOLDS["sea_surface_temperature"][1]
+            )
+            slack_ok = (
+                slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
+            )
+            result.append(
+                {
+                    "time": r.time.astimezone(local),
+                    "ok": r.ok,
+                    "score": float(r.score),
+                    "rating": r.rating,
+                    "wave_height": wave,
+                    "wind_speed": wind,
+                    "sea_surface_temperature": sst,
+                    "sea_level_height": r.sea_level_height,
+                    "current_velocity": current,
+                    "wave_ok": wave_ok,
+                    "wind_ok": wind_ok,
+                    "sst_ok": sst_ok,
+                    "slack_ok": slack_ok,
+                    "is_high_tide": i in high_ix,
+                    "light_ok": True,
+                    "sunrise": None,
+                    "sunset": None,
+                }
+            )
+        return result
+    except Exception as e:  # pragma: no cover - defensive
+        logger.warning("DB fallback failed for %s/%s: %r", country_slug, city_slug, e)
+        return []
+
+
 def fetch_forecast(
-    hours: int = 72, coordinates: dict = None, timezone_str: str = None
+    hours: int = 72,
+    coordinates: dict | None = None,
+    timezone_str: str | None = None,
+    *,
+    country_slug: str | None = None,
+    city_slug: str | None = None,
 ) -> list[Hour]:
     """Return list of hours with snorkel suitability flag for any location."""
     # Use provided coordinates or default to Carboneras
@@ -141,7 +230,16 @@ def fetch_forecast(
         stale = cache.get(stale_key)
         if stale is not None:
             return stale
-        # No stale available: short-circuit to avoid hammering
+        # No stale available: try DB fallback
+        db = _fallback_from_db(
+            country_slug=country_slug,
+            city_slug=city_slug,
+            timezone_str=timezone_str,
+            hours=hours,
+        )
+        if db:
+            return db
+        # Otherwise short-circuit to avoid hammering
         return []
 
     cached = cache.get(cache_key)
@@ -178,7 +276,15 @@ def fetch_forecast(
                 except Exception:
                     pass
                 stale = cache.get(stale_key)
-                return stale if stale is not None else []
+                if stale is not None:
+                    return stale
+                db = _fallback_from_db(
+                    country_slug=country_slug,
+                    city_slug=city_slug,
+                    timezone_str=timezone_str,
+                    hours=hours,
+                )
+                return db if db else []
 
             wx_response = client.get(wx_url)
             try:
@@ -206,7 +312,15 @@ def fetch_forecast(
                 except Exception:
                     pass
                 stale = cache.get(stale_key)
-                return stale if stale is not None else []
+                if stale is not None:
+                    return stale
+                db = _fallback_from_db(
+                    country_slug=country_slug,
+                    city_slug=city_slug,
+                    timezone_str=timezone_str,
+                    hours=hours,
+                )
+                return db if db else []
 
             try:
                 marine, wx = marine_response.json(), wx_response.json()
@@ -222,7 +336,15 @@ def fetch_forecast(
                 except Exception:
                     pass
                 stale = cache.get(stale_key)
-                return stale if stale is not None else []
+                if stale is not None:
+                    return stale
+                db = _fallback_from_db(
+                    country_slug=country_slug,
+                    city_slug=city_slug,
+                    timezone_str=timezone_str,
+                    hours=hours,
+                )
+                return db if db else []
     except httpx.TimeoutException as e:
         logger.warning("Forecast fetch timed out: error=%r", e)
         try:
@@ -233,7 +355,15 @@ def fetch_forecast(
         except Exception:
             pass
         stale = cache.get(stale_key)
-        return stale if stale is not None else []
+        if stale is not None:
+            return stale
+        db = _fallback_from_db(
+            country_slug=country_slug,
+            city_slug=city_slug,
+            timezone_str=timezone_str,
+            hours=hours,
+        )
+        return db if db else []
     except httpx.HTTPError as e:
         logger.warning("HTTP error during forecast fetch: error=%r", e)
         try:
@@ -244,7 +374,15 @@ def fetch_forecast(
         except Exception:
             pass
         stale = cache.get(stale_key)
-        return stale if stale is not None else []
+        if stale is not None:
+            return stale
+        db = _fallback_from_db(
+            country_slug=country_slug,
+            city_slug=city_slug,
+            timezone_str=timezone_str,
+            hours=hours,
+        )
+        return db if db else []
 
     local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
