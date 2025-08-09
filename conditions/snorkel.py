@@ -6,6 +6,8 @@ import logging
 
 import httpx
 from dateutil import tz
+from django.core.cache import cache
+from django.conf import settings
 
 CARBONERAS = {"lat": 36.997, "lon": -1.896}
 THRESHOLDS = {
@@ -22,6 +24,10 @@ THRESHOLDS.update(
 )
 
 logger = logging.getLogger(__name__)
+
+# Cache settings
+DEFAULT_FORECAST_CACHE_TTL = 600  # seconds
+FORECAST_CACHE_VERSION = 1
 
 
 class Hour(TypedDict):
@@ -117,6 +123,16 @@ def fetch_forecast(
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
+
+    # Cache key includes location, horizon, timezone, and a version for busting
+    cache_key = (
+        f"forecast:v{FORECAST_CACHE_VERSION}:lat={coordinates['lat']:.5f}:lon={coordinates['lon']:.5f}:"
+        f"h={hours}:tz={timezone_str}"
+    )
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     try:
         with httpx.Client(timeout=10.0) as client:
@@ -271,4 +287,10 @@ def fetch_forecast(
                 "sunset": sunset,
             }
         )
+    # Store in cache before returning
+    try:
+        ttl = int(getattr(settings, "FORECAST_CACHE_TTL", DEFAULT_FORECAST_CACHE_TTL))
+        cache.set(cache_key, result, timeout=ttl)
+    except Exception as e:
+        logger.debug("Failed to set forecast cache: key=%s error=%r", cache_key, e)
     return result
