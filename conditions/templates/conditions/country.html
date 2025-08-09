@@ -1,0 +1,60 @@
+{% extends 'conditions/base.html' %}
+{% load static %}
+
+{% block title %}Snorkeling in {{ country_name }} – SnorkelForecast.com{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Snorkeling spots and forecast locations in {{ country_name }}. Browse cities and check wave, wind, tide and sea temperature.">
+  <meta property="og:title" content="Snorkeling in {{ country_name }} – SnorkelForecast.com" />
+  <meta property="og:description" content="Browse snorkeling locations in {{ country_name }} and view detailed forecasts." />
+  <meta property="og:image" content="https://snorkelforecast.com{% static 'images/og-image.png' %}" />
+  <meta property="og:url" content="https://snorkelforecast.com/{{ country_slug }}/" />
+  <meta name="twitter:card" content="summary_large_image" />
+{% endblock %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
+    <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
+      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li>/</li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li>/</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ country_name }}</li>
+    </ol>
+  </nav>
+  <section class="bg-gradient-to-r from-sky-200 to-blue-100">
+    <div class="max-w-6xl mx-auto px-4 py-10 text-center">
+      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling in {{ country_name }}</h1>
+      <p class="text-sm sm:text-base mt-2">Browse supported locations and open detailed forecasts.</p>
+    </div>
+  </section>
+
+  <section class="max-w-6xl mx-auto px-4 py-10">
+    <h2 class="text-xl sm:text-2xl font-bold mb-6">Locations in {{ country_name }}</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      {% for location in cities %}
+      <div class="card-enhanced transition-transform hover:-translate-y-0.5">
+        <img src="{% url 'location_tide_chart' country=location.country_slug city=location.city_slug %}"
+             alt="24-hour tide chart for {{ location.city }}"
+             class="w-full h-24 sm:h-32 object-cover" />
+        <div class="p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h3 class="text-lg font-semibold">{{ location.city }}</h3>
+              <p class="text-sm">{{ country_name }}</p>
+            </div>
+            {% if location.current_sst %}
+            <span class="badge badge-ok" title="Current sea surface temperature">{{ location.current_sst|floatformat:1 }}°C</span>
+            {% endif %}
+          </div>
+          {% if location.description %}
+          <p class="text-sm mt-3">{{ location.description }}</p>
+          {% endif %}
+          <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
+             class="btn btn-ghost w-full mt-4">View Forecast</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

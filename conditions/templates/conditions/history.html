@@ -1,0 +1,60 @@
+{% extends "conditions/base.html" %}
+{% block title %}History • {{ location.city }}, {{ location.country }}{% endblock %}
+
+{% block content %}
+<section class="max-w-5xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold mb-2">Historical Trends</h1>
+  <p class="text-slate-600 ui-night:text-gray-300 mb-6">{{ location.city }}, {{ location.country }} — last 7 days</p>
+
+  <div id="chart" class="w-full h-64 bg-slate-100 rounded-md"></div>
+  <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="p-4 bg-white rounded shadow">
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Sea Surface Temperature</div>
+      <div id="sst-latest" class="text-xl font-semibold">–</div>
+    </div>
+    <div class="p-4 bg-white rounded shadow">
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wave Height</div>
+      <div id="wave-latest" class="text-xl font-semibold">–</div>
+    </div>
+    <div class="p-4 bg-white rounded shadow">
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wind Speed</div>
+      <div id="wind-latest" class="text-xl font-semibold">–</div>
+    </div>
+  </div>
+
+  <div class="mt-8">
+    <a class="text-blue-600 ui-night:text-blue-300 hover:underline" href="{% url 'location_history_api' country_slug city_slug %}">History API (JSON)</a>
+  </div>
+</section>
+
+<script>
+  (async function() {
+    const resp = await fetch("{% url 'location_history_api' country_slug city_slug %}");
+    const payload = await resp.json();
+    const data = payload.data || [];
+    const sst = data.map(d => d.sea_surface_temperature);
+    const wave = data.map(d => d.wave_height);
+    const wind = data.map(d => d.wind_speed);
+    if (sst.length) document.getElementById('sst-latest').textContent = `${sst[sst.length-1] ?? '–'} °C`;
+    if (wave.length) document.getElementById('wave-latest').textContent = `${wave[wave.length-1] ?? '–'} m`;
+    if (wind.length) document.getElementById('wind-latest').textContent = `${wind[wind.length-1] ?? '–'} m/s`;
+
+    // Basic inline SVG line chart for SST
+    const w = document.getElementById('chart').clientWidth;
+    const h = document.getElementById('chart').clientHeight;
+    const min = Math.min(...sst.filter(v => v != null));
+    const max = Math.max(...sst.filter(v => v != null));
+    const pad = 10;
+    const points = sst.map((v, i) => {
+      if (v == null) return null;
+      const x = pad + i * (w - 2*pad) / Math.max(1, sst.length - 1);
+      const y = h - pad - ( (v - min) / Math.max(0.0001, (max - min)) ) * (h - 2*pad);
+      return `${x},${y}`;
+    }).filter(Boolean);
+    const svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <polyline fill="none" stroke="#2563EB" stroke-width="2" points="${points.join(' ')}" />
+    </svg>`;
+    document.getElementById('chart').innerHTML = svg;
+  })();
+</script>
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends 'conditions/base.html' %}
+{% load static %}
 
 {% block title %}Carboneras – Snorkel Forecast{% endblock %}
 
@@ -97,9 +98,7 @@
               <td class="px-6 py-4 {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
                 {{ h.sea_surface_temperature|floatformat:2 }}
               </td>
-              <td class="px-6 py-4 font-bold">
-                {{ h.score|floatformat:2 }}
-              </td>
+              <td class="px-6 py-4 font-bold">{{ h.score|floatformat:2 }}</td>
             </tr>
           {% endfor %}
         </tbody>

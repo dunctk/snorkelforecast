@@ -6,67 +6,19 @@ import random
 from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.conf import settings
+from django.views.decorators.cache import cache_page
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 from .snorkel import fetch_forecast
+from .models import ForecastHour
+from .history import save_forecast_history
+from .locations import LOCATIONS
 
-# Popular locations data - this could be moved to a database later
-LOCATIONS = {
-    "spain": {
-        "carboneras": {
-            "city": "Carboneras",
-            "country": "Spain",
-            "coordinates": {"lat": 36.997, "lon": -1.896},
-            "description": "Pristine Mediterranean waters in Andalusia",
-            "timezone": "Europe/Madrid",
-        }
-    },
-    "greece": {
-        "zakynthos": {
-            "city": "Zakynthos",
-            "country": "Greece",
-            "coordinates": {"lat": 37.7900, "lon": 20.7334},
-            "description": "Crystal clear Ionian Sea waters",
-            "timezone": "Europe/Athens",
-        },
-        "santorini": {
-            "city": "Santorini",
-            "country": "Greece",
-            "coordinates": {"lat": 36.3932, "lon": 25.4615},
-            "description": "Volcanic island with unique underwater landscapes",
-            "timezone": "Europe/Athens",
-        },
-    },
-    "turkey": {
-        "kas": {
-            "city": "Kas",
-            "country": "Turkey",
-            "coordinates": {"lat": 36.2025, "lon": 29.6367},
-            "description": "Turquoise coast with excellent visibility",
-            "timezone": "Europe/Istanbul",
-        }
-    },
-    "croatia": {
-        "dubrovnik": {
-            "city": "Dubrovnik",
-            "country": "Croatia",
-            "coordinates": {"lat": 42.6507, "lon": 18.0944},
-            "description": "Historic Adriatic coastal city",
-            "timezone": "Europe/Zagreb",
-        }
-    },
-    "usa": {
-        "maui": {
-            "city": "Maui",
-            "country": "USA",
-            "coordinates": {"lat": 20.7984, "lon": -156.3319},
-            "description": "Tropical Pacific paradise with coral reefs",
-            "timezone": "Pacific/Honolulu",
-        }
-    },
-}
+# Popular locations moved to conditions/locations.py
 
 
+@cache_page(getattr(settings, "CACHE_TTL", 300))
 def homepage(request: HttpRequest) -> HttpResponse:
     """Homepage showing popular snorkeling locations."""
     popular_locations = []
@@ -87,10 +39,125 @@ def homepage(request: HttpRequest) -> HttpResponse:
 
             popular_locations.append(location_data)
 
-    context = {"popular_locations": popular_locations}
+    country_list = [
+        {
+            "slug": slug,
+            "name": next(iter(cities.values())).get("country", slug.title())
+            if cities
+            else slug.title(),
+        }
+        for slug, cities in LOCATIONS.items()
+    ]
+    country_list.sort(key=lambda c: c["name"].lower())
+
+    context = {
+        "popular_locations": popular_locations,
+        "country_count": len(LOCATIONS),
+        "countries": country_list,
+    }
     return render(request, "conditions/homepage.html", context)
 
 
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def country_directory(request: HttpRequest, country: str) -> HttpResponse:
+    """Country directory page listing supported locations in the country.
+
+    Shows all cities we have presets for within the given country slug.
+    """
+    if country not in LOCATIONS:
+        raise Http404("Country not found")
+
+    # Prepare city list with optional current SST for quick glance
+    cities = []
+    for city_slug, location_data in LOCATIONS[country].items():
+        data = dict(location_data)
+        data["country_slug"] = country
+        data["city_slug"] = city_slug
+
+        forecast = fetch_forecast(
+            hours=1,
+            coordinates=data["coordinates"],
+            timezone_str=data["timezone"],
+        )
+        data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
+
+        cities.append(data)
+
+    # Derive nice country label from first entry (they all share same country name)
+    country_name = next(iter(LOCATIONS[country].values())).get("country", country.title())
+
+    context = {
+        "country_slug": country,
+        "country_name": country_name,
+        "cities": cities,
+    }
+    return render(request, "conditions/country.html", context)
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def countries_index(request: HttpRequest) -> HttpResponse:
+    """Index page listing all available countries with counts and sample cities."""
+    countries = []
+    for country_slug, cities in LOCATIONS.items():
+        # Derive display name from any city's country field
+        country_name = (
+            next(iter(cities.values())).get("country", country_slug.title())
+            if cities
+            else country_slug.title()
+        )
+        city_list = [
+            {
+                "city": data.get("city", city_slug.title()),
+                "city_slug": city_slug,
+                "country_slug": country_slug,
+                "description": data.get("description"),
+            }
+            for city_slug, data in cities.items()
+        ]
+        countries.append(
+            {
+                "slug": country_slug,
+                "name": country_name,
+                "city_count": len(city_list),
+                "sample_cities": city_list[:3],
+            }
+        )
+
+    # Sort alphabetically by display name
+    countries.sort(key=lambda c: c["name"].lower())
+
+    return render(request, "conditions/countries.html", {"countries": countries})
+
+
+def _save_forecast_history(country_slug: str, city_slug: str, hours: list[dict]) -> None:
+    """Persist forecast hours to DB for historical analysis.
+
+    Uses bulk_create with ignore_conflicts to avoid duplicate rows for the
+    same (country, city, time).
+    """
+    if not hours:
+        return
+    rows = []
+    for h in hours:
+        rows.append(
+            ForecastHour(
+                country_slug=country_slug,
+                city_slug=city_slug,
+                time=h.get("time"),
+                ok=bool(h.get("ok")),
+                score=float(h.get("score", 0.0)),
+                rating=str(h.get("rating", "unknown")),
+                wave_height=h.get("wave_height"),
+                wind_speed=h.get("wind_speed"),
+                sea_surface_temperature=h.get("sea_surface_temperature"),
+                sea_level_height=h.get("sea_level_height"),
+                current_velocity=h.get("current_velocity"),
+            )
+        )
+    ForecastHour.objects.bulk_create(rows, ignore_conflicts=True)
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Display forecast for a specific location."""
     # Find the location data
@@ -98,13 +165,16 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         raise Http404("Location not found")
 
     location_data = LOCATIONS[country][city]
-    location_data['country_slug'] = country
-    location_data['city_slug'] = city
+    location_data["country_slug"] = country
+    location_data["city_slug"] = city
     coordinates = location_data["coordinates"]
     timezone_str = location_data["timezone"]
 
     # fetch hourly forecast data for this location
     all_hours = fetch_forecast(coordinates=coordinates, timezone_str=timezone_str)
+
+    # Persist for historical analysis
+    save_forecast_history(country, city, all_hours)
 
     # filter out past hours
     local_tz = tz.gettz(timezone_str)
@@ -120,6 +190,13 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     ok_count = len(ok_hours)
     percent_ok = round(ok_count / total * 100) if total > 0 else 0
 
+    # rating breakdown
+    rating_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+    for h in hours:
+        rating = h.get("rating") or "poor"
+        if rating in rating_counts:
+            rating_counts[rating] += 1
+
     # determine earliest and latest suitable times
     if ok_hours:
         earliest_ok = ok_hours[0]["time"]
@@ -133,7 +210,45 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         days[h["time"].date()].append(h)
 
     day_summaries = []
+    daily_outlook = []
     for day, day_hours in days.items():
+        ok_day = [h for h in day_hours if h.get("ok")]
+        # Build per-day rating breakdown and top-tier window (always shown)
+        counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+        for h in day_hours:
+            r = h.get("rating") or "poor"
+            if r in counts:
+                counts[r] += 1
+
+        # Determine the best available rating for the day
+        order = ["excellent", "good", "fair", "poor"]
+        top_rating = next((r for r in order if counts[r] > 0), "poor")
+
+        # Find earliest and latest continuous block for the top rating
+        top_times = [h["time"] for h in day_hours if h.get("rating") == top_rating]
+        top_start = top_end = None
+        if top_times:
+            top_start = top_times[0]
+            top_end = top_times[0]
+            # Walk through consecutive hours to extend the initial block
+            for i in range(1, len(top_times)):
+                if top_times[i] - top_times[i - 1] == timedelta(hours=1):
+                    top_end = top_times[i]
+                else:
+                    break
+
+        daily_outlook.append(
+            {
+                "date": day,
+                "label": (ok_day[0]["time"].strftime("%A") if ok_day else day_hours[0]["time"].strftime("%A")),
+                "counts": counts,
+                "top_rating": top_rating,
+                "top_start": top_start,
+                "top_end": top_end,
+            }
+        )
+
+        # Compute only when there are suitable 'ok' hours for best-period blurb
         ok_day = [h for h in day_hours if h.get("ok")]
         if not ok_day:
             continue
@@ -185,8 +300,10 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             "earliest_ok": earliest_ok,
             "latest_ok": latest_ok,
         },
+        "rating_counts": rating_counts,
         "timezone": local_tz.tzname(now),
         "day_summaries": day_summaries,
+        "daily_outlook": sorted(daily_outlook, key=lambda d: d["date"]),
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,
@@ -194,6 +311,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     return render(request, "conditions/location_forecast.html", context)
 
 
+@cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Render a simple 24-hour tide chart image for the given location."""
     if country not in LOCATIONS or city not in LOCATIONS[country]:
@@ -248,6 +366,7 @@ def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpRe
     return HttpResponse(output.getvalue(), content_type="image/png")
 
 
+@cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Generate a social sharing image for a location."""
     if country not in LOCATIONS or city not in LOCATIONS[country]:
@@ -284,9 +403,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     # Add a subtle vignette to draw focus to the center
     vignette = Image.new("L", (WIDTH, HEIGHT), 0)
     draw_v = ImageDraw.Draw(vignette)
-    draw_v.ellipse(
-        (-WIDTH * 0.1, -HEIGHT * 0.1, WIDTH * 1.1, HEIGHT * 1.1), fill=255
-    )
+    draw_v.ellipse((-WIDTH * 0.1, -HEIGHT * 0.1, WIDTH * 1.1, HEIGHT * 1.1), fill=255)
     vignette = vignette.filter(ImageFilter.GaussianBlur(100))
     img = Image.composite(img, ImageEnhance.Brightness(img).enhance(0.8), vignette)
 
@@ -311,19 +428,16 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     location_bbox = draw.textbbox((0, 0), location_text, font=font_huge)
     w = location_bbox[2] - location_bbox[0]
     h = location_bbox[3] - location_bbox[1]
-    
+
     # Add a subtle drop shadow for better readability
     draw.text(
         ((WIDTH - w) / 2 + 5, HEIGHT * 0.3 - h / 2 + 5),
         location_text,
         font=font_huge,
-        fill="#000000"
+        fill="#000000",
     )
     draw.text(
-        ((WIDTH - w) / 2, HEIGHT * 0.3 - h / 2),
-        location_text,
-        font=font_huge,
-        fill="#FFFFFF"
+        ((WIDTH - w) / 2, HEIGHT * 0.3 - h / 2), location_text, font=font_huge, fill="#FFFFFF"
     )
 
     def metric_pill(label: str, value: float, unit: str, y_offset: int) -> int:
@@ -358,10 +472,66 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     return HttpResponse(output.getvalue(), content_type="image/png")
 
 
-
 # Legacy view for backward compatibility (redirects to Carboneras)
 def home(request: HttpRequest) -> HttpResponse:
     """Legacy home view - redirects to Carboneras forecast."""
     from django.shortcuts import redirect
 
     return redirect("location_forecast", country="spain", city="carboneras")
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def location_history_api(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Return recent historical data for a location as JSON (last 7 days)."""
+    import json
+    from datetime import timedelta
+    from django.utils import timezone as djtz
+
+    if country not in LOCATIONS or city not in LOCATIONS[country]:
+        raise Http404("Location not found")
+
+    since = djtz.now() - timedelta(days=7)
+    qs = (
+        ForecastHour.objects.filter(country_slug=country, city_slug=city, time__gte=since)
+        .order_by("time")
+        .values(
+            "time",
+            "ok",
+            "rating",
+            "score",
+            "wave_height",
+            "wind_speed",
+            "sea_surface_temperature",
+            "sea_level_height",
+            "current_velocity",
+        )
+    )
+    data = []
+    for r in qs:
+        r = dict(r)
+        t = r.get("time")
+        if hasattr(t, "isoformat"):
+            r["time"] = t.isoformat()
+        data.append(r)
+    return HttpResponse(
+        json.dumps({"country": country, "city": city, "data": data}),
+        content_type="application/json",
+    )
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def location_history(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Simple page showing historical trend for the last 7 days."""
+    if country not in LOCATIONS or city not in LOCATIONS[country]:
+        raise Http404("Location not found")
+
+    location = LOCATIONS[country][city]
+    return render(
+        request,
+        "conditions/history.html",
+        {
+            "country_slug": country,
+            "city_slug": city,
+            "location": location,
+        },
+    )

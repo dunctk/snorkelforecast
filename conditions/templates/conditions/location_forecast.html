@@ -1,4 +1,5 @@
 {% extends 'conditions/base.html' %}
+{% load static %}
 
 {% block title %}{{ location.city }}, {{ location.country }} – Snorkel Forecast{% endblock %}
 
@@ -12,38 +13,66 @@
 {% endblock %}
 
 {% block content %}
+  <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
+    <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
+      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li>/</li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li>/</li>
+      <li><a href="/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li>/</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ location.city }}</li>
+    </ol>
+  </nav>
   <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
       <h1 class="text-xl sm:text-2xl font-bold mb-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
-      <p class="text-xs sm:text-sm">All times are in {{ timezone }}</p>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">All times are in {{ timezone }}</p>
     </div>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
-        <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
         {% with first=hours.0 last=hours|last %}
           <p class="mb-2 text-sm sm:text-base">
             Over the next {{ summary.total_hours }} hours (from
             {{ first.time|date:"D H:i" }} to {{ last.time|date:"D H:i" }}),
-            snorkeling conditions are expected to be suitable for
-            {{ summary.ok_count }} hours ({{ summary.percent_ok }}%).
+            snorkeling conditions will vary across excellent, good, fair and poor periods.
+            Overall, there are
+            <span class="font-medium">{{ rating_counts.excellent }}</span> excellent,
+            <span class="font-medium">{{ rating_counts.good }}</span> good,
+            <span class="font-medium">{{ rating_counts.fair }}</span> fair,
+            and <span class="font-medium">{{ rating_counts.poor }}</span> poor hours.
           </p>
           {% if summary.ok_count > 0 %}
             <p class="text-sm sm:text-base">
-              Suitable conditions start at
-              {{ summary.earliest_ok|date:"D H:i" }}
-              {% if summary.earliest_ok != summary.latest_ok %}
-                and last until {{ summary.latest_ok|date:"D H:i" }}.
-              {% endif %}
+              First suitable period begins {{ summary.earliest_ok|date:"D H:i" }}{% if summary.earliest_ok and summary.latest_ok and summary.earliest_ok != summary.latest_ok %} and lasts until {{ summary.latest_ok|date:"D H:i" }}{% endif %}.
             </p>
-            {% if day_summaries %}
-              <p class="text-sm sm:text-base mt-2">
-                Best conditions expected on
-                {% for d in day_summaries %}
-                  {{ d.label }} ({{ d.period }}{% if d.earliest and d.latest %} {{ d.earliest|date:"H:i" }}–{{ d.latest|date:"H:i" }}{% endif %}){% if not forloop.last %}, {% endif %}
-                {% endfor %}.
-              </p>
-            {% endif %}
+          {% endif %}
+
+          {% if daily_outlook %}
+            <div class="mt-3">
+              <h3 class="text-sm sm:text-base font-semibold mb-1">Daily outlook</h3>
+              <ul class="text-sm sm:text-base space-y-1">
+                {% for o in daily_outlook %}
+                  <li>
+                    <span class="font-medium">{{ o.label }}:</span>
+                    {% if o.counts.excellent %}
+                      {{ o.counts.excellent }}× excellent{% if o.top_rating == 'excellent' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.good or o.counts.fair or o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.good %}
+                      {{ o.counts.good }}× good{% if o.top_rating == 'good' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.fair or o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.fair %}
+                      {{ o.counts.fair }}× fair{% if o.top_rating == 'fair' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.poor %}
+                      {{ o.counts.poor }}× poor
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
           {% endif %}
         {% endwith %}
       </div>
@@ -140,12 +169,13 @@
     <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto mt-6">
       {% for h in hours %}
         {% with alpha=h.score|floatformat:2 %}
-        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[60px] sm:min-h-[50px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
-          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} score {{ h.score|floatformat:2 }}">
+        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
+          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} rating {{ h.rating }} score {{ h.score|floatformat:2 }}">
             <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
             <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
             <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
           </time>
+          <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
         </div>
         {% endwith %}
       {% endfor %}
@@ -181,6 +211,7 @@
               <th scope="col" class="px-3 sm:px-6 py-3">Tide Height (m)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Current (m/s)</th>
               <th scope="col" class="px-3 sm:px-6 py-3">Score</th>
+              <th scope="col" class="px-3 sm:px-6 py-3">Rating</th>
             </tr>
           </thead>
           <tbody>
@@ -202,312 +233,336 @@
                 </td>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{{ h.sea_level_height|floatformat:2 }}</td>
                 <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.slack_ok %}text-red-600 font-bold{% endif %}">{{ h.current_velocity|floatformat:2 }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">
-                  {{ h.score|floatformat:2 }}
-                </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">{{ h.score|floatformat:2 }}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm capitalize">{{ h.rating }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-      // Theme-aware chart colors
-      const isNight = document.body.classList.contains('ui-night');
-      const axisColor = isNight ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
-      const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-      const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const waveData = [{% for h in hours %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const tideData = [{% for h in hours %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+      (function () {
+        function initCharts() {
+          // Theme-aware chart colors
+          const isNight = document.body.classList.contains('ui-night');
+          const axisColor = isNight ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
+          const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+          const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const waveData = [{% for h in hours %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const tideData = [{% for h in hours %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
 
-      const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const waveData24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const windData24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const tempData24 = [{% for h in hours_24 %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const scoreData24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-      const waveThreshold = Array(labels.length).fill(0.3);
-      const windThreshold = Array(labels.length).fill(4.5);
-      const perfectThreshold = Array(labels.length).fill(0.8);
-      const okThreshold = Array(labels.length).fill(0.5);
-      const notGoodThreshold = Array(labels.length).fill(0.3);
+          const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const waveData24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const windData24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const tempData24 = [{% for h in hours_24 %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const scoreData24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const waveThreshold = Array(labels.length).fill(0.3);
+          const windThreshold = Array(labels.length).fill(4.5);
+          const perfectThreshold = Array(labels.length).fill(0.8);
+          const okThreshold = Array(labels.length).fill(0.6);
+          const notGoodThreshold = Array(labels.length).fill(0.4);
 
-      const waveThreshold24 = Array(labels24.length).fill(0.3);
-      const windThreshold24 = Array(labels24.length).fill(4.5);
-      const perfectThreshold24 = Array(labels24.length).fill(0.8);
-      const okThreshold24 = Array(labels24.length).fill(0.5);
-      const notGoodThreshold24 = Array(labels24.length).fill(0.3);
+          const waveThreshold24 = Array(labels24.length).fill(0.3);
+          const windThreshold24 = Array(labels24.length).fill(4.5);
+          const perfectThreshold24 = Array(labels24.length).fill(0.8);
+          const okThreshold24 = Array(labels24.length).fill(0.6);
+          const notGoodThreshold24 = Array(labels24.length).fill(0.4);
 
-      const idealMin = 22;
-      const idealMax = 29;
-      const scaleMax = 35; // max temperature for scale
-      const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
-      const avgTemp24 = tempData24.reduce((a, b) => a + b, 0) / tempData24.length;
+          const idealMin = 22;
+          const idealMax = 29;
+          const scaleMax = 35; // max temperature for scale
+          const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
+          const avgTemp24 = tempData24.reduce((a, b) => a + b, 0) / tempData24.length;
 
-      // Position ideal range
-      const idealEl = document.getElementById('tempIdeal');
-      idealEl.style.left = `${(idealMin / scaleMax) * 100}%`;
-      idealEl.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
+          // Position ideal range
+          const idealEl = document.getElementById('tempIdeal');
+          idealEl.style.left = `${(idealMin / scaleMax) * 100}%`;
+          idealEl.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
 
-      const idealEl24 = document.getElementById('tempIdeal24');
-      idealEl24.style.left = `${(idealMin / scaleMax) * 100}%`;
-      idealEl24.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
+          const idealEl24 = document.getElementById('tempIdeal24');
+          idealEl24.style.left = `${(idealMin / scaleMax) * 100}%`;
+          idealEl24.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
 
-      // Position average marker
-      const avgEl = document.getElementById('tempAvg');
-      avgEl.style.left = `${(avgTemp / scaleMax) * 100}%`;
+          // Position average marker
+          const avgEl = document.getElementById('tempAvg');
+          avgEl.style.left = `${(avgTemp / scaleMax) * 100}%`;
 
-      const avgEl24 = document.getElementById('tempAvg24');
-      avgEl24.style.left = `${(avgTemp24 / scaleMax) * 100}%`;
+          const avgEl24 = document.getElementById('tempAvg24');
+          avgEl24.style.left = `${(avgTemp24 / scaleMax) * 100}%`;
 
-      // Label with average temperature
-      document.getElementById('tempLabel').textContent = `Average Sea Temp: ${avgTemp.toFixed(1)}°C`;
-      document.getElementById('tempLabel24').textContent = `Average Sea Temp: ${avgTemp24.toFixed(1)}°C`;
+          // Label with average temperature
+          document.getElementById('tempLabel').textContent = `Average Sea Temp: ${avgTemp.toFixed(1)}°C`;
+          document.getElementById('tempLabel24').textContent = `Average Sea Temp: ${avgTemp24.toFixed(1)}°C`;
 
-      const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { ticks: { color: axisColor }, grid: { color: gridColor } },
-          y: { beginAtZero: true, ticks: { color: axisColor }, grid: { color: gridColor } }
-        },
-        plugins: { legend: { labels: { color: axisColor } } }
-      };
-
-      const scoreOptions = {
-        ...commonOptions,
-        scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, max: 1 } }
-      };
-
-      new Chart(document.getElementById('scoreChart24'), {
-        type: 'line',
-        data: {
-          labels: labels24,
-          datasets: [
-            {
-              label: 'Snorkel Score',
-              data: scoreData24,
-              borderColor: 'rgb(107,33,168)',
-              backgroundColor: 'rgba(107,33,168,0.3)',
-              fill: true,
-              tension: 0.3
+          const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: axisColor }, grid: { color: gridColor } },
+              y: { beginAtZero: true, ticks: { color: axisColor }, grid: { color: gridColor } }
             },
-            {
-              label: 'Perfect (0.8)',
-              data: perfectThreshold24,
-              borderColor: 'rgb(34,197,94)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: 'OK (0.5)',
-              data: okThreshold24,
-              borderColor: 'rgb(234,179,8)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: 'Not Good (0.3)',
-              data: notGoodThreshold24,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: scoreOptions
-      });
+            plugins: { legend: { labels: { color: axisColor } } }
+          };
 
-      new Chart(document.getElementById('scoreChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Snorkel Score',
-              data: scoreData,
-              borderColor: 'rgb(107,33,168)',
-              backgroundColor: 'rgba(107,33,168,0.3)',
-              fill: true,
-              tension: 0.3
-            },
-            {
-              label: 'Perfect (0.8)',
-              data: perfectThreshold,
-              borderColor: 'rgb(34,197,94)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: 'OK (0.5)',
-              data: okThreshold,
-              borderColor: 'rgb(234,179,8)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            },
-            {
-              label: 'Not Good (0.3)',
-              data: notGoodThreshold,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: scoreOptions
-      });
+          const scoreOptions = {
+            ...commonOptions,
+            scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, max: 1 } }
+          };
 
-      new Chart(document.getElementById('waveChart24'), {
-        type: 'line',
-        data: {
-          labels: labels24,
-          datasets: [
-            {
-              label: 'Wave Height (m)',
-              data: waveData24,
-              borderColor: 'rgb(59,130,246)',
-              backgroundColor: 'rgba(59,130,246,0.3)',
-              fill: true,
-              tension: 0.3
+          new Chart(document.getElementById('scoreChart24'), {
+            type: 'line',
+            data: {
+              labels: labels24,
+              datasets: [
+                {
+                  label: 'Snorkel Score',
+                  data: scoreData24,
+                  borderColor: 'rgb(107,33,168)',
+                  backgroundColor: 'rgba(107,33,168,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Excellent (0.8)',
+                  data: perfectThreshold24,
+                  borderColor: 'rgb(34,197,94)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Good (0.6)',
+                  data: okThreshold24,
+                  borderColor: 'rgb(234,179,8)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Fair (0.4)',
+                  data: notGoodThreshold24,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
             },
-            {
-              label: 'Ideal Threshold (0.3 m)',
-              data: waveThreshold24,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: commonOptions
-      });
+            options: scoreOptions
+          });
 
-      new Chart(document.getElementById('waveChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Wave Height (m)',
-              data: waveData,
-              borderColor: 'rgb(59,130,246)',
-              backgroundColor: 'rgba(59,130,246,0.3)',
-              fill: true,
-              tension: 0.3
+          new Chart(document.getElementById('scoreChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Snorkel Score',
+                  data: scoreData,
+                  borderColor: 'rgb(107,33,168)',
+                  backgroundColor: 'rgba(107,33,168,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Excellent (0.8)',
+                  data: perfectThreshold,
+                  borderColor: 'rgb(34,197,94)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Good (0.6)',
+                  data: okThreshold,
+                  borderColor: 'rgb(234,179,8)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Fair (0.4)',
+                  data: notGoodThreshold,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
             },
-            {
-              label: 'Ideal Threshold (0.3 m)',
-              data: waveThreshold,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: commonOptions
-      });
+            options: scoreOptions
+          });
 
-      new Chart(document.getElementById('windChart24'), {
-        type: 'line',
-        data: {
-          labels: labels24,
-          datasets: [
-            {
-              label: 'Wind Speed (m/s)',
-              data: windData24,
-              borderColor: 'rgb(34,197,94)',
-              backgroundColor: 'rgba(34,197,94,0.3)',
-              fill: true,
-              tension: 0.3
+          new Chart(document.getElementById('waveChart24'), {
+            type: 'line',
+            data: {
+              labels: labels24,
+              datasets: [
+                {
+                  label: 'Wave Height (m)',
+                  data: waveData24,
+                  borderColor: 'rgb(59,130,246)',
+                  backgroundColor: 'rgba(59,130,246,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Ideal Threshold (0.3 m)',
+                  data: waveThreshold24,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
             },
-            {
-              label: 'Ideal Threshold (4.5 m/s)',
-              data: windThreshold24,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: commonOptions
-      });
+            options: commonOptions
+          });
 
-      new Chart(document.getElementById('windChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Wind Speed (m/s)',
-              data: windData,
-              borderColor: 'rgb(34,197,94)',
-              backgroundColor: 'rgba(34,197,94,0.3)',
-              fill: true,
-              tension: 0.3
+          new Chart(document.getElementById('waveChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Wave Height (m)',
+                  data: waveData,
+                  borderColor: 'rgb(59,130,246)',
+                  backgroundColor: 'rgba(59,130,246,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Ideal Threshold (0.3 m)',
+                  data: waveThreshold,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
             },
-            {
-              label: 'Ideal Threshold (4.5 m/s)',
-              data: windThreshold,
-              borderColor: 'rgb(239,68,68)',
-              borderDash: [6,6],
-              pointRadius: 0,
-              fill: false
-            }
-          ]
-        },
-        options: commonOptions
-      });
+            options: commonOptions
+          });
 
-      new Chart(document.getElementById('tideChart24'), {
-        type: 'line',
-        data: {
-          labels: labels24,
-          datasets: [
-            {
-              label: 'Tide Height (m)',
-              data: tideData24,
-              borderColor: 'rgb(56,189,248)',
-              backgroundColor: 'rgba(56,189,248,0.3)',
-              fill: true,
-              tension: 0.4
-            }
-          ]
-        },
-        options: commonOptions
-      });
+          new Chart(document.getElementById('windChart24'), {
+            type: 'line',
+            data: {
+              labels: labels24,
+              datasets: [
+                {
+                  label: 'Wind Speed (m/s)',
+                  data: windData24,
+                  borderColor: 'rgb(34,197,94)',
+                  backgroundColor: 'rgba(34,197,94,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Ideal Threshold (4.5 m/s)',
+                  data: windThreshold24,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
+            },
+            options: commonOptions
+          });
 
-      new Chart(document.getElementById('tideChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Tide Height (m)',
-              data: tideData,
-              borderColor: 'rgb(56,189,248)',
-              backgroundColor: 'rgba(56,189,248,0.3)',
-              fill: true,
-              tension: 0.4
-            }
-          ]
-        },
-        options: commonOptions
-      });
+          new Chart(document.getElementById('windChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Wind Speed (m/s)',
+                  data: windData,
+                  borderColor: 'rgb(34,197,94)',
+                  backgroundColor: 'rgba(34,197,94,0.3)',
+                  fill: true,
+                  tension: 0.3
+                },
+                {
+                  label: 'Ideal Threshold (4.5 m/s)',
+                  data: windThreshold,
+                  borderColor: 'rgb(239,68,68)',
+                  borderDash: [6,6],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
+            },
+            options: commonOptions
+          });
 
-      // No chart for temperature; display average bar instead
+          new Chart(document.getElementById('tideChart24'), {
+            type: 'line',
+            data: {
+              labels: labels24,
+              datasets: [
+                {
+                  label: 'Tide Height (m)',
+                  data: tideData24,
+                  borderColor: 'rgb(56,189,248)',
+                  backgroundColor: 'rgba(56,189,248,0.3)',
+                  fill: true,
+                  tension: 0.4
+                }
+              ]
+            },
+            options: commonOptions
+          });
+
+          new Chart(document.getElementById('tideChart'), {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Tide Height (m)',
+                  data: tideData,
+                  borderColor: 'rgb(56,189,248)',
+                  backgroundColor: 'rgba(56,189,248,0.3)',
+                  fill: true,
+                  tension: 0.4
+                }
+              ]
+            },
+            options: commonOptions
+          });
+
+          // No chart for temperature; display average bar instead
+        }
+
+        function loadAndInit() {
+          const s = document.createElement('script');
+          s.src = '{% static "js/chart.umd.min.js" %}';
+          s.async = true;
+          s.onload = initCharts;
+          s.onerror = function () {
+            // Fallback to CDN if local asset missing (e.g., in dev)
+            const cdn = document.createElement('script');
+            cdn.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+            cdn.async = true;
+            cdn.onload = initCharts;
+            document.head.appendChild(cdn);
+          };
+          document.head.appendChild(s);
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', loadAndInit);
+        } else {
+          loadAndInit();
+        }
+      })();
     </script>
   </section>
 {% endblock %}
