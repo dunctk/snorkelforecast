@@ -18,4 +18,3 @@ def test_rating_capped_without_slack():
     # fair and poor remain as-is
     assert _rating_from_score(0.45, False) == "fair"
     assert _rating_from_score(0.2, False) == "poor"
-

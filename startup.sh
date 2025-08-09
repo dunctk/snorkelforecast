@@ -14,7 +14,12 @@ uv run python snorkelforecast/manage.py migrate
 
 # Collect static files
 uv run python snorkelforecast/manage.py collectstatic --noinput
-cat /app/staticfiles/css/output.css
+
+# Start background scheduler (optional)
+if [ -z "$ENABLE_SCHEDULER" ] || [[ "$ENABLE_SCHEDULER" =~ ^([Tt]rue|[Yy]es|1|on)$ ]]; then
+  echo "Starting in-process scheduler..."
+  uv run python -m conditions.scheduler &
+fi
 
 # Start Gunicorn server
 gunicorn snorkelforecast.snorkelforecast.wsgi:application --bind 0.0.0.0:8000

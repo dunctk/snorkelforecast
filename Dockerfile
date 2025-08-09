@@ -6,15 +6,12 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
+# Copy the full application code (required since project is installable)
+COPY . .
 
-# Install Python dependencies using uv (creates .venv)
+# Install Python dependencies using uv (creates .venv) after code is present
 RUN uv sync --frozen
 ENV PATH="/app/.venv/bin:$PATH"
-
-# Copy the rest of the application code
-COPY . .
 
 # Download Tailwind CSS standalone binary and build CSS in one step
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \

@@ -8,15 +8,18 @@ from dateutil import tz
 
 CARBONERAS = {"lat": 36.997, "lon": -1.896}
 THRESHOLDS = {
-    "wave_height": 0.3,        # m
-    "wind_speed": 4.5,         # m/s (~10 mph)
+    "wave_height": 0.3,  # m
+    "wind_speed": 4.5,  # m/s (~10 mph)
     "sea_surface_temperature": (22, 29),  # °C
 }
 
-THRESHOLDS.update({
-    "current_velocity": 0.3,  # m/s
-    "slack_window_minutes": 60,
-})
+THRESHOLDS.update(
+    {
+        "current_velocity": 0.3,  # m/s
+        "slack_window_minutes": 60,
+    }
+)
+
 
 class Hour(TypedDict):
     time: datetime
@@ -38,7 +41,9 @@ class Hour(TypedDict):
     sunset: datetime
 
 
-def _calculate_score(wave: float | None, wind: float | None, sst: float | None, light_ok: bool) -> float:
+def _calculate_score(
+    wave: float | None, wind: float | None, sst: float | None, light_ok: bool
+) -> float:
     """Calculate a snorkel score from 0 to 1 based on conditions."""
     if not light_ok or wave is None or wind is None or sst is None:
         return 0.0
@@ -53,7 +58,7 @@ def _calculate_score(wave: float | None, wind: float | None, sst: float | None, 
         sst_score = 1.0
     elif sst < sst_min:
         sst_score = max(0.0, 1 - ((sst_min - sst) / 5))
-    else: # sst > sst_max
+    else:  # sst > sst_max
         sst_score = max(0.0, 1 - ((sst - sst_max) / 5))
 
     # Final score is the product of individual scores
@@ -85,14 +90,16 @@ def _rating_from_score(score: float, slack_ok: bool) -> str:
     return rating
 
 
-def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str = None) -> list[Hour]:
+def fetch_forecast(
+    hours: int = 72, coordinates: dict = None, timezone_str: str = None
+) -> list[Hour]:
     """Return list of hours with snorkel suitability flag for any location."""
     # Use provided coordinates or default to Carboneras
     if coordinates is None:
         coordinates = CARBONERAS
     if timezone_str is None:
         timezone_str = "Europe/Madrid"
-        
+
     marine_url = (
         "https://marine-api.open-meteo.com/v1/marine"
         f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
@@ -122,12 +129,22 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
     local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
     daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
-    sunrises = [datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local) for s in wx["daily"]["sunrise"]]
-    sunsets = [datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local) for s in wx["daily"]["sunset"]]
-    solar_map = {day: {"sunrise": sunrises[i], "sunset": sunsets[i]} for i, day in enumerate(daily_times_utc)}
+    sunrises = [
+        datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local)
+        for s in wx["daily"]["sunrise"]
+    ]
+    sunsets = [
+        datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local)
+        for s in wx["daily"]["sunset"]
+    ]
+    solar_map = {
+        day: {"sunrise": sunrises[i], "sunset": sunsets[i]} for i, day in enumerate(daily_times_utc)
+    }
 
     # Assume identical time arrays
-    times_utc = [datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in marine["hourly"]["time"]]
+    times_utc = [
+        datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in marine["hourly"]["time"]
+    ]
     sea = marine["hourly"].get("sea_level_height_msl", [])
     curr = marine["hourly"].get("ocean_current_velocity", [])
 
@@ -156,7 +173,12 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
 
         wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
         wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
-        sst_ok = sst is not None and THRESHOLDS["sea_surface_temperature"][0] <= sst <= THRESHOLDS["sea_surface_temperature"][1]
+        sst_ok = (
+            sst is not None
+            and THRESHOLDS["sea_surface_temperature"][0]
+            <= sst
+            <= THRESHOLDS["sea_surface_temperature"][1]
+        )
 
         # Check light levels
         day = t.date()
@@ -169,31 +191,31 @@ def fetch_forecast(hours: int = 72, coordinates: dict = None, timezone_str: str 
         score = _calculate_score(wave, wind, sst, light_ok)
 
         slack_ok = (
-            slack_mask[i]
-            and current is not None
-            and current <= THRESHOLDS["current_velocity"]
+            slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
         )
 
         rating = _rating_from_score(score, slack_ok)
         ok = rating in {"excellent", "good"}
 
-        result.append({
-            "time": t.astimezone(local),
-            "ok": ok,
-            "score": score,
-            "rating": rating,
-            "wave_height": wave,
-            "wind_speed": wind,
-            "sea_surface_temperature": sst,
-            "sea_level_height": tide,
-            "current_velocity": current,
-            "wave_ok": wave_ok,
-            "wind_ok": wind_ok,
-            "sst_ok": sst_ok,
-            "slack_ok": slack_ok,
-            "is_high_tide": i in high_ix,
-            "light_ok": light_ok,
-            "sunrise": sunrise,
-            "sunset": sunset,
-        })
+        result.append(
+            {
+                "time": t.astimezone(local),
+                "ok": ok,
+                "score": score,
+                "rating": rating,
+                "wave_height": wave,
+                "wind_speed": wind,
+                "sea_surface_temperature": sst,
+                "sea_level_height": tide,
+                "current_velocity": current,
+                "wave_ok": wave_ok,
+                "wind_ok": wind_ok,
+                "sst_ok": sst_ok,
+                "slack_ok": slack_ok,
+                "is_high_tide": i in high_ix,
+                "light_ok": light_ok,
+                "sunrise": sunrise,
+                "sunset": sunset,
+            }
+        )
     return result
