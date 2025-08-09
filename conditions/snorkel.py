@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 # Cache settings
 DEFAULT_FORECAST_CACHE_TTL = 600  # seconds
+DEFAULT_FORECAST_STALE_TTL = 43200  # 12 hours for stale-if-error
+DEFAULT_FORECAST_NEGATIVE_TTL = 120  # seconds to back off after API errors
 FORECAST_CACHE_VERSION = 1
 
 
@@ -125,10 +127,22 @@ def fetch_forecast(
     )
 
     # Cache key includes location, horizon, timezone, and a version for busting
-    cache_key = (
+    base_key = (
         f"forecast:v{FORECAST_CACHE_VERSION}:lat={coordinates['lat']:.5f}:lon={coordinates['lon']:.5f}:"
         f"h={hours}:tz={timezone_str}"
     )
+
+    cache_key = base_key
+    stale_key = base_key + ":stale"
+    neg_key = base_key + ":neg"
+
+    # Backoff if we recently saw an error; prefer stale if available
+    if cache.get(neg_key):
+        stale = cache.get(stale_key)
+        if stale is not None:
+            return stale
+        # No stale available: short-circuit to avoid hammering
+        return []
 
     cached = cache.get(cache_key)
     if cached is not None:
@@ -153,7 +167,18 @@ def fetch_forecast(
                     e,
                     body,
                 )
-                return []
+                # Set negative cache/backoff and return stale if present
+                try:
+                    neg_ttl = int(
+                        getattr(
+                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
+                        )
+                    )
+                    cache.set(neg_key, True, timeout=neg_ttl)
+                except Exception:
+                    pass
+                stale = cache.get(stale_key)
+                return stale if stale is not None else []
 
             wx_response = client.get(wx_url)
             try:
@@ -171,19 +196,55 @@ def fetch_forecast(
                     e,
                     body,
                 )
-                return []
+                try:
+                    neg_ttl = int(
+                        getattr(
+                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
+                        )
+                    )
+                    cache.set(neg_key, True, timeout=neg_ttl)
+                except Exception:
+                    pass
+                stale = cache.get(stale_key)
+                return stale if stale is not None else []
 
             try:
                 marine, wx = marine_response.json(), wx_response.json()
             except ValueError as e:
                 logger.warning("Failed to decode API JSON: error=%r", e)
-                return []
+                try:
+                    neg_ttl = int(
+                        getattr(
+                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
+                        )
+                    )
+                    cache.set(neg_key, True, timeout=neg_ttl)
+                except Exception:
+                    pass
+                stale = cache.get(stale_key)
+                return stale if stale is not None else []
     except httpx.TimeoutException as e:
         logger.warning("Forecast fetch timed out: error=%r", e)
-        return []
+        try:
+            neg_ttl = int(
+                getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL)
+            )
+            cache.set(neg_key, True, timeout=neg_ttl)
+        except Exception:
+            pass
+        stale = cache.get(stale_key)
+        return stale if stale is not None else []
     except httpx.HTTPError as e:
         logger.warning("HTTP error during forecast fetch: error=%r", e)
-        return []
+        try:
+            neg_ttl = int(
+                getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL)
+            )
+            cache.set(neg_key, True, timeout=neg_ttl)
+        except Exception:
+            pass
+        stale = cache.get(stale_key)
+        return stale if stale is not None else []
 
     local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
@@ -287,10 +348,12 @@ def fetch_forecast(
                 "sunset": sunset,
             }
         )
-    # Store in cache before returning
+    # Store in cache (fresh and stale) before returning
     try:
         ttl = int(getattr(settings, "FORECAST_CACHE_TTL", DEFAULT_FORECAST_CACHE_TTL))
+        stale_ttl = int(getattr(settings, "FORECAST_CACHE_STALE_TTL", DEFAULT_FORECAST_STALE_TTL))
         cache.set(cache_key, result, timeout=ttl)
+        cache.set(stale_key, result, timeout=stale_ttl)
     except Exception as e:
         logger.debug("Failed to set forecast cache: key=%s error=%r", cache_key, e)
     return result
