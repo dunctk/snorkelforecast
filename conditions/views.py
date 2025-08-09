@@ -210,7 +210,45 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         days[h["time"].date()].append(h)
 
     day_summaries = []
+    daily_outlook = []
     for day, day_hours in days.items():
+        ok_day = [h for h in day_hours if h.get("ok")]
+        # Build per-day rating breakdown and top-tier window (always shown)
+        counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+        for h in day_hours:
+            r = h.get("rating") or "poor"
+            if r in counts:
+                counts[r] += 1
+
+        # Determine the best available rating for the day
+        order = ["excellent", "good", "fair", "poor"]
+        top_rating = next((r for r in order if counts[r] > 0), "poor")
+
+        # Find earliest and latest continuous block for the top rating
+        top_times = [h["time"] for h in day_hours if h.get("rating") == top_rating]
+        top_start = top_end = None
+        if top_times:
+            top_start = top_times[0]
+            top_end = top_times[0]
+            # Walk through consecutive hours to extend the initial block
+            for i in range(1, len(top_times)):
+                if top_times[i] - top_times[i - 1] == timedelta(hours=1):
+                    top_end = top_times[i]
+                else:
+                    break
+
+        daily_outlook.append(
+            {
+                "date": day,
+                "label": (ok_day[0]["time"].strftime("%A") if ok_day else day_hours[0]["time"].strftime("%A")),
+                "counts": counts,
+                "top_rating": top_rating,
+                "top_start": top_start,
+                "top_end": top_end,
+            }
+        )
+
+        # Compute only when there are suitable 'ok' hours for best-period blurb
         ok_day = [h for h in day_hours if h.get("ok")]
         if not ok_day:
             continue
@@ -265,6 +303,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "rating_counts": rating_counts,
         "timezone": local_tz.tzname(now),
         "day_summaries": day_summaries,
+        "daily_outlook": sorted(daily_outlook, key=lambda d: d["date"]),
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,

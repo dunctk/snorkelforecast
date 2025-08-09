@@ -36,31 +36,42 @@
           <p class="mb-2 text-sm sm:text-base">
             Over the next {{ summary.total_hours }} hours (from
             {{ first.time|date:"D H:i" }} to {{ last.time|date:"D H:i" }}),
-            snorkeling conditions are expected to be suitable for
-            {{ summary.ok_count }} hours ({{ summary.percent_ok }}%).
+            snorkeling conditions will vary across excellent, good, fair and poor periods.
+            Overall, there are
+            <span class="font-medium">{{ rating_counts.excellent }}</span> excellent,
+            <span class="font-medium">{{ rating_counts.good }}</span> good,
+            <span class="font-medium">{{ rating_counts.fair }}</span> fair,
+            and <span class="font-medium">{{ rating_counts.poor }}</span> poor hours.
           </p>
           {% if summary.ok_count > 0 %}
             <p class="text-sm sm:text-base">
-              Suitable conditions start at
-              {{ summary.earliest_ok|date:"D H:i" }}
-              {% if summary.earliest_ok != summary.latest_ok %}
-                and last until {{ summary.latest_ok|date:"D H:i" }}.
-              {% endif %}
+              First suitable period begins {{ summary.earliest_ok|date:"D H:i" }}{% if summary.earliest_ok and summary.latest_ok and summary.earliest_ok != summary.latest_ok %} and lasts until {{ summary.latest_ok|date:"D H:i" }}{% endif %}.
             </p>
-            <div class="mt-2 text-xs sm:text-sm text-gray-700">
-              <span class="mr-3"><span class="font-medium">Excellent:</span> {{ rating_counts.excellent }}</span>
-              <span class="mr-3"><span class="font-medium">Good:</span> {{ rating_counts.good }}</span>
-              <span class="mr-3"><span class="font-medium">Fair:</span> {{ rating_counts.fair }}</span>
-              <span><span class="font-medium">Poor:</span> {{ rating_counts.poor }}</span>
+          {% endif %}
+
+          {% if daily_outlook %}
+            <div class="mt-3">
+              <h3 class="text-sm sm:text-base font-semibold mb-1">Daily outlook</h3>
+              <ul class="text-sm sm:text-base space-y-1">
+                {% for o in daily_outlook %}
+                  <li>
+                    <span class="font-medium">{{ o.label }}:</span>
+                    {% if o.counts.excellent %}
+                      {{ o.counts.excellent }}× excellent{% if o.top_rating == 'excellent' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.good or o.counts.fair or o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.good %}
+                      {{ o.counts.good }}× good{% if o.top_rating == 'good' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.fair or o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.fair %}
+                      {{ o.counts.fair }}× fair{% if o.top_rating == 'fair' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.poor %}, {% endif %}
+                    {% endif %}
+                    {% if o.counts.poor %}
+                      {{ o.counts.poor }}× poor
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
             </div>
-            {% if day_summaries %}
-              <p class="text-sm sm:text-base mt-2">
-                Best conditions expected on
-                {% for d in day_summaries %}
-                  {{ d.label }} ({{ d.period }}{% if d.earliest and d.latest %} {{ d.earliest|date:"H:i" }}–{{ d.latest|date:"H:i" }}{% endif %}){% if not forloop.last %}, {% endif %}
-                {% endfor %}.
-              </p>
-            {% endif %}
           {% endif %}
         {% endwith %}
       </div>
