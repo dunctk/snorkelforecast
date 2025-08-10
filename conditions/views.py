@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.cache import cache_page
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+import math
 
 from .snorkel import fetch_forecast
 from .models import ForecastHour
@@ -431,11 +432,10 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     WIDTH, HEIGHT = 1200, 630
     SAFE = 64
 
-    # Background: deep ocean gradient for consistent contrast
-    # (legacy bg kept via gradient below)
+    # Background: deep ocean gradient
     grad = Image.new("RGB", (1, HEIGHT))
-    top = (3, 105, 161)  # #0369A1
-    bottom = (12, 74, 110)  # #0C4A6E
+    top = (6, 78, 118)  # darker teal
+    bottom = (2, 44, 67)
     for y in range(HEIGHT):
         t = y / (HEIGHT - 1)
         r = int(top[0] * (1 - t) + bottom[0] * t)
@@ -443,6 +443,19 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         b = int(top[2] * (1 - t) + bottom[2] * t)
         grad.putpixel((0, y), (r, g, b))
     img = grad.resize((WIDTH, HEIGHT))
+
+    # Add subtle wave texture as focal background
+    texture = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    tdraw = ImageDraw.Draw(texture)
+    amplitude = 10
+    spacing = 26
+    for y0 in range(int(HEIGHT * 0.25), int(HEIGHT * 0.9), spacing):
+        points = []
+        for x in range(0, WIDTH + 1, 8):
+            y = y0 + amplitude * math.sin((x / 80.0) + (y0 / 50.0))
+            points.append((x, y))
+        tdraw.line(points, fill=(173, 216, 230, 55), width=2)
+    img = Image.alpha_composite(img.convert("RGBA"), texture).convert("RGB")
 
     # Subtle vignette for focus
     vignette = Image.new("L", (WIDTH, HEIGHT), 0)
@@ -457,8 +470,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 56)
-        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 42)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 64)
+        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 44)
     except OSError:
         font_big = ImageFont.load_default()
         font_small = ImageFont.load_default()
@@ -468,7 +481,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     draw.text((SAFE, SAFE), brand, font=font_small, fill="#E0F2FE")
 
     # Location title with automatic fit
-    base_font_size = 160
+    base_font_size = 180
     location_text = f"{location['city']}, {location['country']}"
 
     def fit_font(size: int) -> ImageFont.FreeTypeFont:
@@ -490,34 +503,59 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         new_size = max(80, int((getattr(font_title, "size", base_font_size)) * 0.9))
         font_title = fit_font(new_size)
 
-    # Dark plate behind title for readability
+    # Dark plate behind title for readability (centered)
     bbox = draw.textbbox((0, 0), location_text, font=font_title)
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
-    tx = SAFE
-    ty = int(HEIGHT * 0.28) - h // 2
-    plate_pad = 24
+    tx = (WIDTH - w) // 2
+    ty = int(HEIGHT * 0.38) - h // 2
+    plate_pad_x, plate_pad_y = 40, 26
     plate = [
-        (tx - plate_pad, ty - int(plate_pad * 0.6)),
-        (tx + w + plate_pad, ty + h + int(plate_pad * 0.6)),
+        (tx - plate_pad_x, ty - plate_pad_y),
+        (tx + w + plate_pad_x, ty + h + plate_pad_y),
     ]
-    draw.rounded_rectangle(plate, radius=24, fill="#06243A")
+    draw.rounded_rectangle(plate, radius=28, fill="#06243A")
     draw.text((tx, ty), location_text, font=font_title, fill="#F8FAFC")
 
-    # Descriptive blurb instead of live metrics
+    # Descriptive blurb with simple icons (centered)
     desc_lines = [
-        "Snorkeling forecast overview",
-        "Hours are rated excellent, good, fair, or poor",
-        "based on wave height, wind, water temperature,",
-        "and daylight for visibility and safety.",
+        ("Waves", "height"),
+        ("Wind", "speed"),
+        ("Water temp", "comfort"),
+        ("Daylight", "visibility"),
     ]
-    y0 = int(HEIGHT * 0.58)
-    x0 = SAFE
-    gap = 10
-    for i, line in enumerate(desc_lines):
-        bbox = draw.textbbox((0, 0), line, font=font_small)
-        lh = bbox[3] - bbox[1]
-        draw.text((x0, y0 + i * (lh + gap)), line, font=font_small, fill="#E0F2FE")
+    # Compute block height
+    line_h = draw.textbbox((0, 0), "Ag", font=font_small)[3]
+    block_h = len(desc_lines) * (line_h + 10) - 10
+    y0 = int(HEIGHT * 0.62) - block_h // 2
+    icon_size = 14
+    for i, (k, v) in enumerate(desc_lines):
+        text = f"{k} · {v}"
+        tb = draw.textbbox((0, 0), text, font=font_small)
+        tw = tb[2] - tb[0]
+        x_text = (WIDTH - tw) // 2 + 24
+        y_line = y0 + i * (line_h + 10)
+        # simple circle icon to the left
+        draw.ellipse(
+            [
+                (x_text - 24, y_line + line_h // 2 - icon_size // 2),
+                (x_text - 24 + icon_size, y_line + line_h // 2 + icon_size // 2),
+            ],
+            fill="#7DD3FC",
+        )
+        draw.text((x_text, y_line), text, font=font_small, fill="#E0F2FE")
+
+    # Brand small at top-right
+    brand = "SnorkelForecast.com"
+    bb = draw.textbbox((0, 0), brand, font=font_small)
+    bx = WIDTH - SAFE - (bb[2] - bb[0])
+    by = SAFE
+    draw.rounded_rectangle(
+        [(bx - 14, by - 8), (WIDTH - SAFE + 14, by + (bb[3] - bb[1]) + 8)],
+        radius=14,
+        fill="#063245",
+    )
+    draw.text((bx, by), brand, font=font_small, fill="#E0F2FE")
 
     output = BytesIO()
     img.save(output, "PNG", optimize=True)
@@ -530,9 +568,9 @@ def site_og_image(request: HttpRequest) -> HttpResponse:
     WIDTH, HEIGHT = 1200, 630
     SAFE = 64
 
-    # Gradient background
-    top = (14, 165, 233)  # #0EA5E9
-    bottom = (3, 105, 161)  # #0369A1
+    # Gradient background (darker for contrast)
+    top = (8, 122, 175)
+    bottom = (2, 44, 67)
     grad = Image.new("RGB", (1, HEIGHT))
     for y in range(HEIGHT):
         t = y / (HEIGHT - 1)
@@ -555,29 +593,54 @@ def site_og_image(request: HttpRequest) -> HttpResponse:
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 148)
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 48)
+        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 164)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 52)
     except OSError:
         font_huge = ImageFont.load_default()
         font_big = ImageFont.load_default()
 
-    # Title
+    # Centered title
     title = "SnorkelForecast"
     tb = draw.textbbox((0, 0), title, font=font_huge)
     tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    tx = (WIDTH - tw) // 2
+    ty = int(HEIGHT * 0.38) - th // 2
     draw.rounded_rectangle(
-        [
-            (SAFE - 24, int(HEIGHT * 0.32) - int(th * 0.6)),
-            (SAFE + tw + 24, int(HEIGHT * 0.32) + int(th * 0.9)),
-        ],
-        radius=24,
-        fill="#06243A",
+        [(tx - 36, ty - 24), (tx + tw + 36, ty + th + 24)], radius=30, fill="#06243A"
     )
-    draw.text((SAFE, int(HEIGHT * 0.32)), title, font=font_huge, fill="#F8FAFC")
+    draw.text((tx, ty), title, font=font_huge, fill="#F8FAFC")
 
-    # Tagline
-    tagline = "Snorkeling conditions and forecasts worldwide"
-    draw.text((SAFE, int(HEIGHT * 0.32) + th + 28), tagline, font=font_big, fill="#E0F2FE")
+    # Tagline centered
+    tagline = "Snorkeling forecasts worldwide"
+    tbb = draw.textbbox((0, 0), tagline, font=font_big)
+    draw.text(
+        ((WIDTH - (tbb[2] - tbb[0])) // 2, ty + th + 36), tagline, font=font_big, fill="#E0F2FE"
+    )
+
+    # Add subtle wave texture
+    texture = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    tdraw = ImageDraw.Draw(texture)
+    amplitude = 10
+    spacing = 26
+    for y0 in range(int(HEIGHT * 0.25), int(HEIGHT * 0.9), spacing):
+        points = []
+        for x in range(0, WIDTH + 1, 8):
+            y = y0 + amplitude * math.sin((x / 80.0) + (y0 / 50.0))
+            points.append((x, y))
+        tdraw.line(points, fill=(173, 216, 230, 55), width=2)
+    img = Image.alpha_composite(img.convert("RGBA"), texture).convert("RGB")
+
+    # Brand small bottom-right
+    brand = "SnorkelForecast.com"
+    bb = draw.textbbox((0, 0), brand, font=font_big)
+    bx = WIDTH - SAFE - (bb[2] - bb[0])
+    by = HEIGHT - SAFE - (bb[3] - bb[1])
+    draw.rounded_rectangle(
+        [(bx - 14, by - 8), (WIDTH - SAFE + 14, by + (bb[3] - bb[1]) + 8)],
+        radius=14,
+        fill="#063245",
+    )
+    draw.text((bx, by), brand, font=font_big, fill="#E0F2FE")
 
     output = BytesIO()
     img.save(output, "PNG", optimize=True)
