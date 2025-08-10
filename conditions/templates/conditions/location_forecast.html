@@ -34,7 +34,7 @@
     </div>
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
-      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl">
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
         {% with first=hours.0 last=hours|last %}
           <p class="mb-2 text-sm sm:text-base">
