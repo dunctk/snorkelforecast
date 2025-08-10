@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.cache import cache_page
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+import os
 import math
 
 from .snorkel import fetch_forecast
@@ -454,7 +455,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         for x in range(0, WIDTH + 1, 8):
             y = y0 + amplitude * math.sin((x / 80.0) + (y0 / 50.0))
             points.append((x, y))
-        tdraw.line(points, fill=(173, 216, 230, 55), width=2)
+        tdraw.line(points, fill=(173, 216, 230, 35), width=2)
     img = Image.alpha_composite(img.convert("RGBA"), texture).convert("RGB")
 
     # Subtle vignette for focus
@@ -470,8 +471,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 64)
-        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 44)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 84)
+        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 46)
     except OSError:
         font_big = ImageFont.load_default()
         font_small = ImageFont.load_default()
@@ -481,7 +482,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     draw.text((SAFE, SAFE), brand, font=font_small, fill="#E0F2FE")
 
     # Location title with automatic fit
-    base_font_size = 180
+    base_font_size = 220
     location_text = f"{location['city']}, {location['country']}"
 
     def fit_font(size: int) -> ImageFont.FreeTypeFont:
@@ -508,48 +509,98 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
     tx = (WIDTH - w) // 2
-    ty = int(HEIGHT * 0.38) - h // 2
-    plate_pad_x, plate_pad_y = 40, 26
+    ty = int(HEIGHT * 0.34) - h // 2
+    plate_pad_x, plate_pad_y = 48, 32
     plate = [
         (tx - plate_pad_x, ty - plate_pad_y),
         (tx + w + plate_pad_x, ty + h + plate_pad_y),
     ]
-    draw.rounded_rectangle(plate, radius=28, fill="#06243A")
+    # Semi-transparent overlay behind the title for extra contrast
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    odraw = ImageDraw.Draw(overlay)
+    odraw.rounded_rectangle(plate, radius=28, fill=(6, 36, 58, 210))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    # Title on top
     draw.text((tx, ty), location_text, font=font_title, fill="#F8FAFC")
 
-    # Descriptive blurb with simple icons (centered)
-    desc_lines = [
-        ("Waves", "height"),
-        ("Wind", "speed"),
-        ("Water temp", "comfort"),
-        ("Daylight", "visibility"),
-    ]
-    # Compute block height
-    line_h = draw.textbbox((0, 0), "Ag", font=font_small)[3]
-    block_h = len(desc_lines) * (line_h + 10) - 10
-    y0 = int(HEIGHT * 0.62) - block_h // 2
-    icon_size = 14
-    for i, (k, v) in enumerate(desc_lines):
-        text = f"{k} · {v}"
+    # Horizontal metrics row with icons below the title
+    include_values_env = str(os.getenv("OG_INCLUDE_VALUES", "false")).lower() in {"1", "true", "yes", "on"}
+    include_values = include_values_env or (request.GET.get("values", "").lower() in {"1", "true", "yes", "on"})
+
+    wave_val = wind_val = sst_val = None
+    daylight_text = "Daylight"
+    if include_values:
+        try:
+            forecast = fetch_forecast(
+                hours=1,
+                coordinates=location["coordinates"],
+                timezone_str=location["timezone"],
+                country_slug=country,
+                city_slug=city,
+            )
+        except Exception:  # pragma: no cover - OG image should still render
+            forecast = None
+        if forecast:
+            sst_val = forecast[0].get("sea_surface_temperature")
+            wave_val = forecast[0].get("wave_height")
+            wind_ms = forecast[0].get("wind_speed")
+            wind_val = wind_ms * 3.6 if isinstance(wind_ms, (int, float)) else None
+
+    items = []
+    if include_values:
+        items = [
+            ("Waves", f"{wave_val:.1f} m" if isinstance(wave_val, (int, float)) else "—"),
+            ("Wind", f"{wind_val:.0f} km/h" if isinstance(wind_val, (int, float)) else "—"),
+            ("Water", f"{sst_val:.0f}°C" if isinstance(sst_val, (int, float)) else "—"),
+            ("Daylight", "High"),
+        ]
+    else:
+        items = [("Waves", "height"), ("Wind", "speed"), ("Water", "temp"), ("Daylight", "visibility")]
+
+    # Build pill widths to center the row
+    gap = 24
+    pills = []
+    for label, value in items:
+        text = f"{label}: {value}"
         tb = draw.textbbox((0, 0), text, font=font_small)
         tw = tb[2] - tb[0]
-        x_text = (WIDTH - tw) // 2 + 24
-        y_line = y0 + i * (line_h + 10)
-        # simple circle icon to the left
-        draw.ellipse(
-            [
-                (x_text - 24, y_line + line_h // 2 - icon_size // 2),
-                (x_text - 24 + icon_size, y_line + line_h // 2 + icon_size // 2),
-            ],
-            fill="#7DD3FC",
-        )
-        draw.text((x_text, y_line), text, font=font_small, fill="#E0F2FE")
+        ph = tb[3] - tb[1]
+        pw = tw + 48 + 20  # icon space + padding
+        pills.append((text, pw, ph))
+    total_w = sum(pw for _, pw, _ in pills) + gap * (len(pills) - 1)
+    start_x = (WIDTH - total_w) // 2
+    row_y = ty + h + 60
 
-    # Brand small at top-right
+    # Draw a semi-transparent strip behind the pills
+    strip = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(strip)
+    sdraw.rounded_rectangle(
+        [(start_x - 24, row_y - 18), (start_x + total_w + 24, row_y + max(ph for _, _, ph in pills) + 18)],
+        radius=22,
+        fill=(6, 36, 58, 160),
+    )
+    img = Image.alpha_composite(img.convert("RGBA"), strip).convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    # Draw pills
+    cx = start_x
+    icon_colors = ["#7DD3FC", "#FDE68A", "#FCA5A5", "#86EFAC"]
+    for idx, (text, pw, ph) in enumerate(pills):
+        draw.rounded_rectangle([(cx, row_y), (cx + pw, row_y + ph + 10)], radius=16, fill="#063245")
+        # icon circle
+        icon_r = 18
+        cy = row_y + (ph + 10) // 2
+        draw.ellipse([(cx + 16, cy - icon_r), (cx + 16 + 2 * icon_r, cy + icon_r)], fill=icon_colors[idx % len(icon_colors)])
+        # text
+        draw.text((cx + 16 + 2 * icon_r + 12, row_y + 6), text, font=font_small, fill="#F8FAFC")
+        cx += pw + gap
+
+    # Brand small at bottom-right
     brand = "SnorkelForecast.com"
     bb = draw.textbbox((0, 0), brand, font=font_small)
     bx = WIDTH - SAFE - (bb[2] - bb[0])
-    by = SAFE
+    by = HEIGHT - SAFE - (bb[3] - bb[1])
     draw.rounded_rectangle(
         [(bx - 14, by - 8), (WIDTH - SAFE + 14, by + (bb[3] - bb[1]) + 8)],
         radius=14,
