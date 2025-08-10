@@ -471,10 +471,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 84)
         font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 46)
     except OSError:
-        font_big = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
     # Brand tag top-left
@@ -525,11 +523,17 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     draw.text((tx, ty), location_text, font=font_title, fill="#F8FAFC")
 
     # Horizontal metrics row with icons below the title
-    include_values_env = str(os.getenv("OG_INCLUDE_VALUES", "false")).lower() in {"1", "true", "yes", "on"}
-    include_values = include_values_env or (request.GET.get("values", "").lower() in {"1", "true", "yes", "on"})
+    include_values_env = str(os.getenv("OG_INCLUDE_VALUES", "false")).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    include_values = include_values_env or (
+        request.GET.get("values", "").lower() in {"1", "true", "yes", "on"}
+    )
 
     wave_val = wind_val = sst_val = None
-    daylight_text = "Daylight"
     if include_values:
         try:
             forecast = fetch_forecast(
@@ -556,7 +560,12 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
             ("Daylight", "High"),
         ]
     else:
-        items = [("Waves", "height"), ("Wind", "speed"), ("Water", "temp"), ("Daylight", "visibility")]
+        items = [
+            ("Waves", "height"),
+            ("Wind", "speed"),
+            ("Water", "temp"),
+            ("Daylight", "visibility"),
+        ]
 
     # Build pill widths to center the row
     gap = 24
@@ -576,7 +585,10 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     strip = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     sdraw = ImageDraw.Draw(strip)
     sdraw.rounded_rectangle(
-        [(start_x - 24, row_y - 18), (start_x + total_w + 24, row_y + max(ph for _, _, ph in pills) + 18)],
+        [
+            (start_x - 24, row_y - 18),
+            (start_x + total_w + 24, row_y + max(ph for _, _, ph in pills) + 18),
+        ],
         radius=22,
         fill=(6, 36, 58, 160),
     )
@@ -591,7 +603,10 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         # icon circle
         icon_r = 18
         cy = row_y + (ph + 10) // 2
-        draw.ellipse([(cx + 16, cy - icon_r), (cx + 16 + 2 * icon_r, cy + icon_r)], fill=icon_colors[idx % len(icon_colors)])
+        draw.ellipse(
+            [(cx + 16, cy - icon_r), (cx + 16 + 2 * icon_r, cy + icon_r)],
+            fill=icon_colors[idx % len(icon_colors)],
+        )
         # text
         draw.text((cx + 16 + 2 * icon_r + 12, row_y + 6), text, font=font_small, fill="#F8FAFC")
         cx += pw + gap
