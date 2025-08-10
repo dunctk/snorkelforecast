@@ -425,16 +425,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     location = LOCATIONS[country][city]
 
-    forecast = fetch_forecast(
-        hours=1,
-        coordinates=location["coordinates"],
-        timezone_str=location["timezone"],
-        country_slug=country,
-        city_slug=city,
-    )
-    sst = forecast[0]["sea_surface_temperature"] if forecast else None
-    wave = forecast[0]["wave_height"] if forecast else None
-    wind = forecast[0]["wind_speed"] if forecast else None
+    # Intentionally do not include live metrics on OG images; keep them
+    # stable and descriptive for social previews.
 
     WIDTH, HEIGHT = 1200, 630
     SAFE = 64
@@ -465,8 +457,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 48)
-        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 36)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 56)
+        font_small = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 42)
     except OSError:
         font_big = ImageFont.load_default()
         font_small = ImageFont.load_default()
@@ -476,7 +468,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     draw.text((SAFE, SAFE), brand, font=font_small, fill="#E0F2FE")
 
     # Location title with automatic fit
-    base_font_size = 118
+    base_font_size = 160
     location_text = f"{location['city']}, {location['country']}"
 
     def fit_font(size: int) -> ImageFont.FreeTypeFont:
@@ -491,11 +483,11 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         bbox = draw.textbbox((0, 0), location_text, font=font_title)
         w = bbox[2] - bbox[0]
         if w <= max_width or (
-            hasattr(font_title, "size") and getattr(font_title, "size", 20) <= 60
+            hasattr(font_title, "size") and getattr(font_title, "size", 20) <= 80
         ):
             break
         # reduce and retry
-        new_size = max(60, int((getattr(font_title, "size", base_font_size)) * 0.9))
+        new_size = max(80, int((getattr(font_title, "size", base_font_size)) * 0.9))
         font_title = fit_font(new_size)
 
     # Dark plate behind title for readability
@@ -512,30 +504,20 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     draw.rounded_rectangle(plate, radius=24, fill="#06243A")
     draw.text((tx, ty), location_text, font=font_title, fill="#F8FAFC")
 
-    # Metric cards: strong contrast dark plates, big numbers
-    def metric_card(label: str, value: float | None, unit: str, x: int, y: int, width: int) -> None:
-        if value is None:
-            return
-        label_upper = label.upper()
-        # card background
-        card_h = 150
-        draw.rounded_rectangle([(x, y), (x + width, y + card_h)], radius=20, fill="#083247")
-        # label small
-        draw.text((x + 20, y + 18), label_upper, font=font_small, fill="#7DD3FC")
-        # value big
-        val_text = f"{value:.1f} {unit}"
-        vb = draw.textbbox((0, 0), val_text, font=font_big)
-        vh = vb[3] - vb[1]
-        draw.text((x + 20, y + card_h - vh - 24), val_text, font=font_big, fill="#F0F9FF")
-
-    grid_margin = SAFE
-    grid_gap = 24
-    cols = 3
-    col_w = int((WIDTH - grid_margin * 2 - grid_gap * (cols - 1)) / cols)
-    y_cards = int(HEIGHT * 0.55)
-    metric_card("Sea Temp", sst, "°C", grid_margin + 0 * (col_w + grid_gap), y_cards, col_w)
-    metric_card("Wave", wave, "m", grid_margin + 1 * (col_w + grid_gap), y_cards, col_w)
-    metric_card("Wind", wind, "m/s", grid_margin + 2 * (col_w + grid_gap), y_cards, col_w)
+    # Descriptive blurb instead of live metrics
+    desc_lines = [
+        "Snorkeling forecast overview",
+        "Hours are rated excellent, good, fair, or poor",
+        "based on wave height, wind, water temperature,",
+        "and daylight for visibility and safety.",
+    ]
+    y0 = int(HEIGHT * 0.58)
+    x0 = SAFE
+    gap = 10
+    for i, line in enumerate(desc_lines):
+        bbox = draw.textbbox((0, 0), line, font=font_small)
+        lh = bbox[3] - bbox[1]
+        draw.text((x0, y0 + i * (lh + gap)), line, font=font_small, fill="#E0F2FE")
 
     output = BytesIO()
     img.save(output, "PNG", optimize=True)
@@ -573,8 +555,8 @@ def site_og_image(request: HttpRequest) -> HttpResponse:
 
     FONT_DIR = "/usr/share/fonts/truetype/dejavu"
     try:
-        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 124)
-        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 42)
+        font_huge = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans-Bold.ttf", 148)
+        font_big = ImageFont.truetype(f"{FONT_DIR}/DejaVuSans.ttf", 48)
     except OSError:
         font_huge = ImageFont.load_default()
         font_big = ImageFont.load_default()
