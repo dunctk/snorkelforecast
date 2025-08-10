@@ -20,13 +20,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-=g*_jf9q0)yg)b+ja75w=p_u6l%_&#y31*gg$k0qtj#vlk8vqo"
+# SECURITY: Configure via environment in production
+# SECRET_KEY: required in production, fallback dev key for local use
+_DEV_FALLBACK_SECRET = "dev-insecure-snorkelforecast-key"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEV_FALLBACK_SECRET)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG: default true for local dev, override to false in prod
+DEBUG = str(os.getenv("DEBUG", "true")).lower() in {"1", "true", "yes", "on"}
 
-ALLOWED_HOSTS = ["snorkelforecast.com", "www.snorkelforecast.com", "localhost", "127.0.0.1"]
+# Hosts: comma-separated in env, with sensible defaults for dev/prod
+_default_hosts = [
+    "snorkelforecast.com",
+    "www.snorkelforecast.com",
+    "localhost",
+    "127.0.0.1",
+]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", ",".join(_default_hosts)).split(",") if h.strip()]
+
+# Additional security: CSRF trusted origins (comma-separated)
+_csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_env.split(",") if o.strip()]
 
 
 # Application definition
@@ -78,6 +92,10 @@ WSGI_APPLICATION = "snorkelforecast.snorkelforecast.wsgi.application"
 
 # Use /persistent path for DB when PRODUCTION env var is truthy
 IS_PRODUCTION = str(os.getenv("PRODUCTION", "")).lower() in {"1", "true", "yes", "on"}
+
+# In production, ensure a real SECRET_KEY is provided
+if IS_PRODUCTION and (not SECRET_KEY or SECRET_KEY == _DEV_FALLBACK_SECRET):
+    raise RuntimeError("SECRET_KEY environment variable must be set in production.")
 db_name: Path | str
 if IS_PRODUCTION:
     db_name = "/persistent/db.sqlite3"

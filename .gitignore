@@ -51,3 +51,6 @@ package-lock.json
 
 # Large files
 tailwind
+
+# Build artifacts
+staticfiles/
