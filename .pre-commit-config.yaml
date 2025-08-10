@@ -33,6 +33,13 @@ repos:
   # Run Django tests on pre-push to avoid breaking changes
   - repo: local
     hooks:
+      - id: ruff-check
+        name: Ruff check (CI parity)
+        entry: uv run ruff check .
+        language: system
+        pass_filenames: false
+        stages: [push]
+
       - id: django-tests
         name: Run Django tests
         entry: uv run python snorkelforecast/manage.py test
