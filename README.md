@@ -3,6 +3,11 @@ SnorkelForecast.com
 
 Forecasts for snorkeling conditions worldwide. Django backend, Tailwind UI, and a lightweight Docker deploy.
 
+Live
+- Website: https://snorkelforecast.com
+
+![Homepage screenshot](screenshots/home-screenshot.png)
+
 Quick Start
 - Install deps: `uv sync`
 - Run dev server: `uv run python snorkelforecast/manage.py runserver`
@@ -59,4 +64,3 @@ Contributing
 
 License
 - See repository license or contact maintainers if unspecified.
-
