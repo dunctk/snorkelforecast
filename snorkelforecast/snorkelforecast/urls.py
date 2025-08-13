@@ -21,6 +21,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.sitemaps.views import sitemap
 from conditions.sitemaps import CountrySitemap, LocationSitemap
+from django.views.static import serve
+from django.conf.urls import url
 
 sitemaps = {
     "countries": CountrySitemap,
@@ -31,6 +33,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("conditions.urls")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
+    url(r'^robots.txt
+, serve, {'path': 'robots.txt', 'document_root': settings.STATIC_ROOT}),
 ]
 
 if settings.DEBUG:
