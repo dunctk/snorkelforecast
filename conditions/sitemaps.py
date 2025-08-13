@@ -9,7 +9,7 @@ class CountrySitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        return LOCATIONS.keys()
+        return list(LOCATIONS.keys())
 
     def location(self, item):
         return reverse("country_directory", args=[item])
