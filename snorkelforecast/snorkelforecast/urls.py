@@ -34,14 +34,4 @@ urlpatterns = [
     path("", include("conditions.urls")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
     url(r'^robots.txt
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.BASE_DIR / "static")
 , serve, {'path': 'robots.txt', 'document_root': settings.STATIC_ROOT}),
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.BASE_DIR / "static")
