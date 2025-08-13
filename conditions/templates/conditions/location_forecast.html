@@ -560,10 +560,43 @@
           document.head.appendChild(s);
         }
 
+        function setupLazyCharts() {
+          var targets = [
+            document.getElementById('scoreChart24'),
+            document.getElementById('scoreChart'),
+            document.getElementById('waveChart24'),
+            document.getElementById('waveChart'),
+            document.getElementById('windChart24'),
+            document.getElementById('windChart'),
+            document.getElementById('tideChart24'),
+            document.getElementById('tideChart')
+          ].filter(function (el) { return !!el; });
+
+          if (targets.length === 0) return;
+
+          if (!('IntersectionObserver' in window)) {
+            loadAndInit();
+            return;
+          }
+
+          var didLoad = false;
+          var io = new IntersectionObserver(function (entries) {
+            if (didLoad) return;
+            var any = entries.some(function (e) { return e.isIntersecting; });
+            if (any) {
+              didLoad = true;
+              io.disconnect();
+              loadAndInit();
+            }
+          }, { root: null, rootMargin: '100px', threshold: 0.05 });
+
+          targets.forEach(function (t) { io.observe(t); });
+        }
+
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', loadAndInit);
+          document.addEventListener('DOMContentLoaded', setupLazyCharts);
         } else {
-          loadAndInit();
+          setupLazyCharts();
         }
       })();
     </script>
