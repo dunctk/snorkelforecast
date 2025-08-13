@@ -54,3 +54,4 @@ tailwind
 
 # Build artifacts
 staticfiles/
+artifacts/
