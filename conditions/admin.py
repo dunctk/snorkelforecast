@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import ForecastHour
 
+# Register your models here.
 
 @admin.register(ForecastHour)
 class ForecastHourAdmin(admin.ModelAdmin):
