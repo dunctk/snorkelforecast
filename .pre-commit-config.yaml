@@ -39,6 +39,7 @@ repos:
         language: python
         types: [python]
         pass_filenames: true
+        additional_dependencies: ['pyrefly', 'django']
       - id: ruff-check
         name: Ruff check (CI parity)
         entry: uv run ruff check
