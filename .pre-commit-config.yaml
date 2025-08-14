@@ -38,10 +38,9 @@ repos:
         entry: uv run pyrefly check
         language: system
         types: [python]
-        pass_filenames: false
       - id: ruff-check
         name: Ruff check (CI parity)
-        entry: uv run ruff check .
+        entry: uv run ruff check
         language: system
         pass_filenames: false
         stages: [pre-push]
