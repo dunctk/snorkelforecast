@@ -35,9 +35,10 @@ repos:
     hooks:
       - id: pyrefly
         name: pyrefly
-        entry: uv run pyrefly check
-        language: system
+        entry: pyrefly check
+        language: python
         types: [python]
+        pass_filenames: true
       - id: ruff-check
         name: Ruff check (CI parity)
         entry: uv run ruff check
