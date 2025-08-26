@@ -13,6 +13,19 @@
   <meta name="twitter:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
   <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
   <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TouristDestination",
+      "name": "{{ location.city }}, {{ location.country }}",
+      "description": "{{ location.description }}",
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": {{ location.coordinates.lat }},
+        "longitude": {{ location.coordinates.lon }}
+      }
+    }
+  </script>
 {% endblock %}
 
 {% block content %}
@@ -112,6 +125,25 @@
         </p>
       </div>
     {% endif %}
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Recent Average Conditions</h2>
+      <ul class="text-sm sm:text-base space-y-1">
+        <li>Wave height: {{ recent_averages.avg_wave_height|floatformat:1 }} m</li>
+        <li>Wind speed: {{ recent_averages.avg_wind_speed|floatformat:1 }} m/s</li>
+        <li>Sea temperature: {{ recent_averages.avg_sea_temp|floatformat:1 }} °C</li>
+      </ul>
+    </div>
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Seasonal Snorkeling Trends</h2>
+      <div class="h-48 sm:h-64 mb-4">
+        <canvas id="seasonChart" class="w-full h-full"></canvas>
+      </div>
+      {% if best_months %}
+        <p class="text-sm sm:text-base">Best months for snorkeling: {{ best_months|join:", " }}</p>
+      {% endif %}
+    </div>
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">FAQs</h2>
@@ -264,6 +296,8 @@
           const tempData24 = [{% for h in hours_24 %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const scoreData24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const seasonLabels = [{% for l in season_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const seasonData = [{% for s in season_scores %}{% if s is not None %}{{ s }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const waveThreshold = Array(labels.length).fill(0.3);
           const windThreshold = Array(labels.length).fill(4.5);
           const perfectThreshold = Array(labels.length).fill(0.8);
@@ -541,6 +575,24 @@
             options: commonOptions
           });
 
+          new Chart(document.getElementById('seasonChart'), {
+            type: 'line',
+            data: {
+              labels: seasonLabels,
+              datasets: [
+                {
+                  label: 'Avg Score',
+                  data: seasonData,
+                  borderColor: 'rgb(234,179,8)',
+                  backgroundColor: 'rgba(234,179,8,0.3)',
+                  fill: true,
+                  tension: 0.3
+                }
+              ]
+            },
+            options: scoreOptions
+          });
+
           // No chart for temperature; display average bar instead
         }
 
@@ -569,7 +621,8 @@
             document.getElementById('windChart24'),
             document.getElementById('windChart'),
             document.getElementById('tideChart24'),
-            document.getElementById('tideChart')
+            document.getElementById('tideChart'),
+            document.getElementById('seasonChart')
           ].filter(function (el) { return !!el; });
 
           if (targets.length === 0) return;

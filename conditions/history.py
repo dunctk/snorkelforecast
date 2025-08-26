@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
+from django.db.models import Avg
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
+
 from .models import ForecastHour
 
 
@@ -29,3 +35,41 @@ def save_forecast_history(country_slug: str, city_slug: str, hours: list[dict]) 
             )
         )
     ForecastHour.objects.bulk_create(rows, ignore_conflicts=True)
+
+
+def get_recent_averages(
+    country_slug: str, city_slug: str, days: int = 30
+) -> dict[str, float | None]:
+    """Return average conditions for the recent period.
+
+    Calculates averages for wave height, wind speed and sea surface temperature
+    over the last ``days`` days.
+    """
+
+    cutoff = timezone.now() - timedelta(days=days)
+    qs = ForecastHour.objects.filter(
+        country_slug=country_slug, city_slug=city_slug, time__gte=cutoff
+    )
+    return qs.aggregate(
+        avg_wave_height=Avg("wave_height"),
+        avg_wind_speed=Avg("wind_speed"),
+        avg_sea_temp=Avg("sea_surface_temperature"),
+    )
+
+
+def get_monthly_scores(
+    country_slug: str, city_slug: str, months: int = 12
+) -> list[dict[str, object]]:
+    """Return monthly average snorkel scores for the past ``months`` months."""
+
+    cutoff = timezone.now() - timedelta(days=months * 31)
+    qs = (
+        ForecastHour.objects.filter(
+            country_slug=country_slug, city_slug=city_slug, time__gte=cutoff
+        )
+        .annotate(month=TruncMonth("time"))
+        .values("month")
+        .annotate(avg_score=Avg("score"))
+        .order_by("month")
+    )
+    return list(qs)
