@@ -12,15 +12,15 @@ from .models import ForecastHour
 
 CARBONERAS = {"lat": 36.997, "lon": -1.896}
 THRESHOLDS = {
-    "wave_height": 0.3,  # m
-    "wind_speed": 4.5,  # m/s (~10 mph)
-    "sea_surface_temperature": (22, 29),  # °C
+    "wave_height": 0.36,  # m
+    "wind_speed": 5.4,  # m/s (~12 mph)
+    "sea_surface_temperature": (20.6, 30.4),  # °C
 }
 
 THRESHOLDS.update(
     {
-        "current_velocity": 0.3,  # m/s
-        "slack_window_minutes": 60,
+        "current_velocity": 0.36,  # m/s
+        "slack_window_minutes": 72,
     }
 )
 

@@ -223,10 +223,10 @@
             We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
         </p>
         <ul class="list-disc list-inside mt-2 text-sm sm:text-base space-y-1">
-            <li><strong>Wave height</strong> is less than 0.3 meters.</li>
-            <li><strong>Wind speed</strong> is below 4.5 meters/second.</li>
-            <li><strong>Sea surface temperature</strong> is between 22°C and 29°C.</li>
-            <li><strong>Within ±60&nbsp;min of high tide</strong> and currents ≤ 0.3&nbsp;m/s.</li>
+            <li><strong>Wave height</strong> is less than 0.36 meters.</li>
+            <li><strong>Wind speed</strong> is below 5.4 meters/second.</li>
+            <li><strong>Sea surface temperature</strong> is between 20.6°C and 30.4°C.</li>
+            <li><strong>Within ±72&nbsp;min of high tide</strong> and currents ≤ 0.36&nbsp;m/s.</li>
         </ul>
     </div>
 
@@ -298,20 +298,20 @@
           const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const seasonLabels = [{% for l in season_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
           const seasonData = [{% for s in season_scores %}{% if s is not None %}{{ s }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const waveThreshold = Array(labels.length).fill(0.3);
-          const windThreshold = Array(labels.length).fill(4.5);
+          const waveThreshold = Array(labels.length).fill(0.36);
+          const windThreshold = Array(labels.length).fill(5.4);
           const perfectThreshold = Array(labels.length).fill(0.8);
           const okThreshold = Array(labels.length).fill(0.6);
           const notGoodThreshold = Array(labels.length).fill(0.4);
 
-          const waveThreshold24 = Array(labels24.length).fill(0.3);
-          const windThreshold24 = Array(labels24.length).fill(4.5);
+          const waveThreshold24 = Array(labels24.length).fill(0.36);
+          const windThreshold24 = Array(labels24.length).fill(5.4);
           const perfectThreshold24 = Array(labels24.length).fill(0.8);
           const okThreshold24 = Array(labels24.length).fill(0.6);
           const notGoodThreshold24 = Array(labels24.length).fill(0.4);
 
-          const idealMin = 22;
-          const idealMax = 29;
+          const idealMin = 20.6;
+          const idealMax = 30.4;
           const scaleMax = 35; // max temperature for scale
           const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
           const avgTemp24 = tempData24.reduce((a, b) => a + b, 0) / tempData24.length;
@@ -449,7 +449,7 @@
                   tension: 0.3
                 },
                 {
-                  label: 'Ideal Threshold (0.3 m)',
+                  label: 'Ideal Threshold (0.36 m)',
                   data: waveThreshold24,
                   borderColor: 'rgb(239,68,68)',
                   borderDash: [6,6],
@@ -475,7 +475,7 @@
                   tension: 0.3
                 },
                 {
-                  label: 'Ideal Threshold (0.3 m)',
+                  label: 'Ideal Threshold (0.36 m)',
                   data: waveThreshold,
                   borderColor: 'rgb(239,68,68)',
                   borderDash: [6,6],
@@ -501,7 +501,7 @@
                   tension: 0.3
                 },
                 {
-                  label: 'Ideal Threshold (4.5 m/s)',
+                  label: 'Ideal Threshold (5.4 m/s)',
                   data: windThreshold24,
                   borderColor: 'rgb(239,68,68)',
                   borderDash: [6,6],
@@ -527,7 +527,7 @@
                   tension: 0.3
                 },
                 {
-                  label: 'Ideal Threshold (4.5 m/s)',
+                  label: 'Ideal Threshold (5.4 m/s)',
                   data: windThreshold,
                   borderColor: 'rgb(239,68,68)',
                   borderDash: [6,6],
