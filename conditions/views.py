@@ -14,7 +14,11 @@ import math
 
 from .snorkel import fetch_forecast
 from .models import ForecastHour
-from .history import save_forecast_history
+from .history import (
+    save_forecast_history,
+    get_recent_averages,
+    get_monthly_scores,
+)
 from .locations import LOCATIONS
 
 # Popular locations moved to conditions/locations.py
@@ -335,6 +339,22 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
+    # Historical aggregates for seasonal insights
+    recent_averages = get_recent_averages(country, city)
+    monthly_scores = get_monthly_scores(country, city)
+    season_labels = [m["month"].strftime("%b") for m in monthly_scores]
+    season_scores = [
+        round(m["avg_score"], 2) if m["avg_score"] is not None else None
+        for m in monthly_scores
+    ]
+    best_months = [
+        m["month"].strftime("%B")
+        for m in sorted(
+            monthly_scores, key=lambda x: x["avg_score"] or 0, reverse=True
+        )[:3]
+        if m["avg_score"] is not None
+    ]
+
     context = {
         "location": location_data,
         "hours": hours,
@@ -353,6 +373,10 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,
+        "recent_averages": recent_averages,
+        "season_labels": season_labels,
+        "season_scores": season_scores,
+        "best_months": best_months,
     }
     return render(request, "conditions/location_forecast.html", context)
 
