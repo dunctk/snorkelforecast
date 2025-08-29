@@ -6,12 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
+    <link rel="canonical" href="https://snorkelforecast.com{{ request.path }}">
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
     <meta name="theme-color" content="#0ea5e9" />
     <script src="{% static 'js/theme.js' %}" defer></script>
     <script src="{% static 'js/nav.js' %}" defer></script>
+    <script src="{% static 'js/autocomplete.min.js' %}" defer></script>
+    <script src="{% static 'js/search.js' %}" defer></script>
   </head>
   <body class="ui-day min-h-screen flex flex-col">
 

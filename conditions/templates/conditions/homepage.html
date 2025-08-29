@@ -23,6 +23,13 @@
       <p class="text-lg sm:text-xl max-w-3xl mx-auto px-2">
         Real‑time and forecasted snorkeling conditions based on wave height, wind speed, tides, and water temperature.
       </p>
+      <div class="mt-8 max-w-md mx-auto">
+        <div id="autoComplete_wrapper">
+          <input id="autoComplete" type="search" dir="ltr" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off"
+            class="w-full px-4 py-3 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search for a location...">
+        </div>
+      </div>
       <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
         <a href="#popular" class="btn btn-primary">Explore Popular Spots</a>
         <a href="{% url 'countries_index' %}" class="btn btn-ghost">Browse {{ country_count }} Countries</a>
@@ -37,8 +44,8 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {% for c in countries %}
                 <a href="/{% firstof c.slug %}/"
-                   class="block p-4 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 transition-colors">
-                    <span class="font-semibold">{{ c.name }}</span>
+                   class="block p-4 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 transition-colors border border-gray-200 ui-night:border-gray-700">
+                    <span class="font-semibold">{{ c.emoji }} {{ c.name }}</span>
                 </a>
             {% endfor %}
         </div>

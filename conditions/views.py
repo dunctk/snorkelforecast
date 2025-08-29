@@ -4,7 +4,7 @@ from collections import defaultdict
 from io import BytesIO
 
 from dateutil import tz
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.cache import cache_page
@@ -56,12 +56,20 @@ def homepage(request: HttpRequest) -> HttpResponse:
 
             popular_locations.append(location_data)
 
+    flag_emojis = {
+        "spain": "🇪🇸",
+        "greece": "🇬🇷",
+        "turkey": "🇹🇷",
+        "croatia": "🇭🇷",
+        "usa": "🇺🇸",
+    }
     country_list = [
         {
             "slug": slug,
             "name": next(iter(cities.values())).get("country", slug.title())
             if cities
             else slug.title(),
+            "emoji": flag_emojis.get(slug, ""),
         }
         for slug, cities in LOCATIONS.items()
     ]
@@ -344,14 +352,11 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     monthly_scores = get_monthly_scores(country, city)
     season_labels = [m["month"].strftime("%b") for m in monthly_scores]
     season_scores = [
-        round(m["avg_score"], 2) if m["avg_score"] is not None else None
-        for m in monthly_scores
+        round(m["avg_score"], 2) if m["avg_score"] is not None else None for m in monthly_scores
     ]
     best_months = [
         m["month"].strftime("%B")
-        for m in sorted(
-            monthly_scores, key=lambda x: x["avg_score"] or 0, reverse=True
-        )[:3]
+        for m in sorted(monthly_scores, key=lambda x: x["avg_score"] or 0, reverse=True)[:3]
         if m["avg_score"] is not None
     ]
 
@@ -379,6 +384,33 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "best_months": best_months,
     }
     return render(request, "conditions/location_forecast.html", context)
+
+
+def location_search_api(request: HttpRequest) -> HttpResponse:
+    """API endpoint for location search with autocomplete."""
+    query = request.GET.get("q", "")
+    if isinstance(query, list):
+        query = query[0]
+
+    results = defaultdict(list)
+
+    if not query:
+        return JsonResponse(results)
+
+    query = query.lower()
+
+    for country_slug, cities in LOCATIONS.items():
+        for city_slug, location_data in cities.items():
+            if query in location_data["city"].lower():
+                results[location_data["country"]].append(
+                    {
+                        "city": location_data["city"],
+                        "slug": city_slug,
+                        "country_slug": country_slug,
+                    }
+                )
+
+    return JsonResponse(results)
 
 
 @cache_page(getattr(settings, "CACHE_TTL", 300))

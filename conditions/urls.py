@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("api/search-locations/", views.location_search_api, name="location_search_api"),
     path("", views.homepage, name="homepage"),
     # Site-wide OG image
     path("og.png", views.site_og_image, name="site_og_image"),

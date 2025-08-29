@@ -5,6 +5,7 @@ from .locations import LOCATIONS
 
 
 class CountrySitemap(Sitemap):
+    protocol = "https"
     changefreq = "weekly"
     priority = 0.8
 
@@ -16,6 +17,7 @@ class CountrySitemap(Sitemap):
 
 
 class LocationSitemap(Sitemap):
+    protocol = "https"
     changefreq = "daily"
     priority = 0.9
 
@@ -27,6 +29,4 @@ class LocationSitemap(Sitemap):
         return locations
 
     def location(self, item):
-        return reverse(
-            "location_forecast", args=[item["country_slug"], item["city_slug"]]
-        )
+        return reverse("location_forecast", args=[item["country_slug"], item["city_slug"]])

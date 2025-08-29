@@ -10,6 +10,8 @@ class ForecastHour(models.Model):
     when the same hour is saved multiple times.
     """
 
+    objects = models.Manager()
+
     country_slug = models.CharField(max_length=64)
     city_slug = models.CharField(max_length=64)
     time = models.DateTimeField()

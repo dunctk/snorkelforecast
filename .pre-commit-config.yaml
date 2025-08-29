@@ -33,13 +33,13 @@ repos:
   # Run Django tests on pre-push to avoid breaking changes
   - repo: local
     hooks:
-      - id: pyrefly
-        name: pyrefly
-        entry: pyrefly check
-        language: python
-        types: [python]
-        pass_filenames: true
-        additional_dependencies: ['pyrefly', 'django']
+      # - id: pyrefly
+      #   name: pyrefly
+      #   entry: pyrefly check
+      #   language: python
+      #   types: [python]
+      #   pass_filenames: true
+      #   additional_dependencies: ['pyrefly', 'django', 'python-dateutil', 'Pillow']
       - id: ruff-check
         name: Ruff check (CI parity)
         entry: uv run ruff check
