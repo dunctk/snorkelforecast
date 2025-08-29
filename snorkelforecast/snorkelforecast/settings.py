@@ -35,7 +35,9 @@ _default_hosts = [
     "localhost",
     "127.0.0.1",
 ]
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", ",".join(_default_hosts)).split(",") if h.strip()]
+ALLOWED_HOSTS = [
+    h.strip() for h in os.getenv("ALLOWED_HOSTS", ",".join(_default_hosts)).split(",") if h.strip()
+]
 
 # Additional security: CSRF trusted origins (comma-separated)
 _csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
@@ -154,6 +156,8 @@ STATICFILES_DIRS = [
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+WHITENOISE_MAX_AGE = 31536000  # 1 year
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

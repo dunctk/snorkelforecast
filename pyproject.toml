@@ -22,3 +22,6 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pyrefly.errors]
+bad-override = false

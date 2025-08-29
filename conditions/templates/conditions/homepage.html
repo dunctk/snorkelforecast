@@ -31,14 +31,17 @@
   </section>
 
   <section class="max-w-6xl mx-auto px-4 py-12">
-    <!-- Browse by Country pills -->
+    <!-- Browse by Country -->
     <div class="mb-10">
-      <h2 class="text-xl sm:text-2xl font-bold mb-4">Browse by Country</h2>
-      <div class="flex flex-wrap gap-2">
-        {% for c in countries %}
-          <a href="/{% firstof c.slug %}/" class="badge bg-blue-50 text-blue-700 ui-night:bg-blue-900/40 ui-night:text-blue-200 hover:shadow-sm">{{ c.name }}</a>
-        {% endfor %}
-      </div>
+        <h2 class="text-xl sm:text-2xl font-bold mb-4">Browse by Country</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {% for c in countries %}
+                <a href="/{% firstof c.slug %}/"
+                   class="block p-4 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 transition-colors">
+                    <span class="font-semibold">{{ c.name }}</span>
+                </a>
+            {% endfor %}
+        </div>
     </div>
     <!-- Popular Locations Grid -->
     <div id="popular" class="mb-12 sm:mb-16">
@@ -48,8 +51,8 @@
         <div class="card-enhanced">
           <img src="{% url 'location_tide_chart' country=location.country_slug city=location.city_slug %}"
                alt="24-hour tide chart for {{ location.city }}"
-               loading="lazy" decoding="async"
-               class="w-full h-24 sm:h-32 object-cover" />
+               {% if forloop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async"
+               class="w-full aspect-[3/1] object-cover" />
           <div class="p-4 sm:p-5">
             <div class="flex items-start justify-between gap-2">
               <div>

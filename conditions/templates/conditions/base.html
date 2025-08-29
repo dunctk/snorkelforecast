@@ -6,8 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
-    <link href="{% static 'css/output.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="{% static 'css/output.css' %}" rel="stylesheet"></noscript>
+    <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
     <meta name="theme-color" content="#0ea5e9" />
@@ -15,7 +14,7 @@
     <script src="{% static 'js/nav.js' %}" defer></script>
   </head>
   <body class="ui-day min-h-screen flex flex-col">
-    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 bg-white text-black ui-night:bg-gray-900 ui-night:text-white px-3 py-2 rounded shadow z-50">Skip to content</a>
+
 
     <header class="site-header bg-white/80 ui-night:bg-gray-900/80 backdrop-blur border-b border-gray-200 ui-night:border-gray-800">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
