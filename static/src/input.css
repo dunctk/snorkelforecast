@@ -3,15 +3,23 @@
 
 /* Custom components for enhanced UX */
 .forecast-cell {
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   cursor: pointer;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.ui-night .forecast-cell {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 .forecast-cell:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   z-index: 10;
+}
+
+.ui-night .forecast-cell:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
 }
 
 .touch-target {
@@ -45,25 +53,60 @@
 
 /* UI mode theme classes */
 .ui-day {
-  @apply bg-sky-50 text-gray-900;
+  @apply bg-gradient-to-br from-sky-50 to-blue-50 text-gray-900 transition-all duration-500 ease-in-out;
 }
 
 .ui-twilight {
-  @apply bg-indigo-100 text-gray-900;
+  @apply bg-gradient-to-br from-indigo-100 to-purple-100 text-gray-900 transition-all duration-500 ease-in-out;
 }
 
 .ui-night {
-  @apply bg-gray-900 text-gray-100;
+  @apply bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 text-gray-100 transition-all duration-500 ease-in-out;
 }
 
 .ui-day .card-enhanced {
-  @apply bg-white text-gray-900;
+  @apply bg-white/95 backdrop-blur-sm text-gray-900 border border-gray-200/50 transition-all duration-300 ease-in-out;
 }
 
 .ui-twilight .card-enhanced {
-  @apply bg-indigo-50 text-gray-900;
+  @apply bg-indigo-50/95 backdrop-blur-sm text-gray-900 border border-indigo-200/50 transition-all duration-300 ease-in-out;
 }
 
 .ui-night .card-enhanced {
-  @apply bg-gray-800 text-gray-100;
+  @apply bg-gray-800/95 backdrop-blur-sm text-gray-100 border border-gray-700/50 transition-all duration-300 ease-in-out;
+}
+
+/* Enhanced night mode styling */
+.ui-night {
+  --tw-ring-color: rgb(59 130 246 / 0.5);
+}
+
+.ui-night .site-header {
+  @apply bg-gray-900/95 backdrop-blur-md border-b border-gray-800/50;
+}
+
+.ui-night .forecast-cell {
+  @apply bg-gray-800/80 border border-gray-700/50;
+}
+
+.ui-night .forecast-cell:hover {
+  @apply bg-gray-700/90 border-blue-500/30;
+}
+
+/* Button styling for night mode */
+.ui-night .btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white border border-blue-500/50;
+}
+
+.ui-night .btn-ghost {
+  @apply bg-gray-800/80 hover:bg-gray-700/80 text-gray-200 border border-gray-600/50;
+}
+
+/* Input styling for night mode */
+.ui-night input[type="search"] {
+  @apply bg-gray-800/80 border-gray-600/50 text-gray-100 placeholder-gray-400;
+}
+
+.ui-night input[type="search"]:focus {
+  @apply border-blue-500/50 ring-blue-500/20;
 }

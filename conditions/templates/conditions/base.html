@@ -10,7 +10,7 @@
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
-    <meta name="theme-color" content="#0ea5e9" />
+     <meta name="theme-color" content="#0ea5e9" id="theme-color" />
     <script src="{% static 'js/theme.js' %}" defer></script>
     <script src="{% static 'js/nav.js' %}" defer></script>
     <script src="{% static 'js/autocomplete.min.js' %}" defer></script>
@@ -31,12 +31,17 @@
           <a href="{% url 'homepage' %}#how" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">How it works</a>
           <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="text-gray-500 hover:text-gray-700 ui-night:text-gray-400 ui-night:hover:text-gray-200">Open‑Meteo</a>
         </nav>
-        <!-- Mobile hamburger -->
-        <button id="menu-toggle" class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 ui-night:text-gray-200 hover:bg-gray-100 ui-night:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false" aria-label="Menu">
-          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
+         <!-- Theme toggle -->
+         <button id="theme-toggle" class="inline-flex items-center justify-center p-2 rounded-md text-gray-700 ui-night:text-gray-200 hover:bg-gray-100 ui-night:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" aria-label="Toggle theme">
+           <span id="theme-icon" class="text-lg">☀️</span>
+         </button>
+
+         <!-- Mobile hamburger -->
+         <button id="menu-toggle" class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 ui-night:text-gray-200 hover:bg-gray-100 ui-night:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="mobile-menu" aria-expanded="false" aria-label="Menu">
+           <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+           </svg>
+         </button>
       </div>
 
       <!-- Mobile menu panel -->
@@ -56,10 +61,10 @@
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-gray-800 text-white py-8 mt-16">
+    <footer class="bg-gray-800 ui-night:bg-gray-900/95 ui-night:backdrop-blur-sm text-white py-8 mt-16 border-t border-gray-700/50 ui-night:border-gray-800/50 transition-all duration-300">
       <div class="max-w-6xl mx-auto px-4 text-center">
         <p>&copy; 2024 SnorkelForecast.com</p>
-        <p class="text-gray-400 text-sm mt-1">Powered by Open‑Meteo • Forecasts update hourly</p>
+        <p class="text-gray-400 ui-night:text-gray-500 text-sm mt-1">Powered by Open‑Meteo • Forecasts update hourly</p>
       </div>
     </footer>
   </body>
