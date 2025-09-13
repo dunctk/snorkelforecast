@@ -1,0 +1,195 @@
+{% extends "conditions/base.html" %}
+
+{% block title %}Search Locations - SnorkelForecast.com{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 ui-night:text-white mb-4">Search Snorkeling Locations</h1>
+        <p class="text-gray-600 ui-night:text-gray-300 mb-6">
+            Find snorkeling spots worldwide. Search by name, filter by type, or browse our database of locations.
+        </p>
+    </div>
+
+    <!-- Search Form -->
+    <div class="bg-white ui-night:bg-gray-800 rounded-lg shadow-sm border border-gray-200 ui-night:border-gray-700 p-6 mb-8">
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Search Query -->
+                <div>
+                    <label for="q" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
+                        Location Name
+                    </label>
+                    <input
+                        type="text"
+                        id="q"
+                        name="q"
+                        value="{{ query }}"
+                        placeholder="e.g. Maui, Santorini, Great Barrier Reef"
+                        class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
+                    >
+                </div>
+
+                <!-- Location Type -->
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
+                        Type
+                    </label>
+                    <select
+                        id="type"
+                        name="type"
+                        class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
+                    >
+                        <option value="">All Types</option>
+                        {% for type_value, type_label in location_types %}
+                        <option value="{{ type_value }}" {% if location_type == type_value %}selected{% endif %}>
+                            {{ type_label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Country -->
+                <div>
+                    <label for="country" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
+                        Country
+                    </label>
+                    <input
+                        type="text"
+                        id="country"
+                        name="country"
+                        value="{{ country_filter }}"
+                        placeholder="e.g. Spain, Greece, USA"
+                        class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
+                    >
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button
+                    type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                >
+                    Search
+                </button>
+                <a
+                    href="{% url 'location_search' %}"
+                    class="bg-gray-200 ui-night:bg-gray-700 hover:bg-gray-300 ui-night:hover:bg-gray-600 text-gray-700 ui-night:text-gray-300 px-6 py-2 rounded-md font-medium transition-colors"
+                >
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    {% if search_performed %}
+        {% if locations %}
+            <div class="mb-6">
+                <h2 class="text-xl font-semibold text-gray-900 ui-night:text-white mb-2">
+                    Found {{ result_count }} location{{ result_count|pluralize }}
+                </h2>
+                {% if query %}
+                    <p class="text-gray-600 ui-night:text-gray-300">
+                        Results for "{{ query }}"
+                        {% if location_type %} • Type: {{ location_type|title }}{% endif %}
+                        {% if country_filter %} • Country: {{ country_filter }}{% endif %}
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for location in locations %}
+                <div class="bg-white ui-night:bg-gray-800 rounded-lg shadow-sm border border-gray-200 ui-night:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-start justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-gray-900 ui-night:text-white">
+                            {{ location.name }}
+                        </h3>
+                        {% if location.is_popular %}
+                        <span class="bg-blue-100 ui-night:bg-blue-900 text-blue-800 ui-night:text-blue-200 text-xs px-2 py-1 rounded-full font-medium">
+                            Popular
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <p class="text-gray-600 ui-night:text-gray-300 mb-2">
+                        {{ location.country }}
+                    </p>
+
+                    {% if location.description %}
+                    <p class="text-gray-500 ui-night:text-gray-400 text-sm mb-4 line-clamp-2">
+                        {{ location.description }}
+                    </p>
+                    {% endif %}
+
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500 ui-night:text-gray-400 bg-gray-100 ui-night:bg-gray-700 px-2 py-1 rounded">
+                            {{ location.location_type|title }}
+                        </span>
+                        <a
+                            href="{% url 'location_forecast' location.country_slug location.city_slug %}"
+                            class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium text-sm"
+                        >
+                            View Forecast →
+                        </a>
+                    </div>
+
+                    {% if location.source == "osm" %}
+                    <div class="mt-3 pt-3 border-t border-gray-200 ui-night:border-gray-700">
+                        <p class="text-xs text-gray-500 ui-night:text-gray-400">
+                            New location from OpenStreetMap
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <div class="text-gray-400 ui-night:text-gray-500 mb-4">
+                    <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 ui-night:text-white mb-2">No locations found</h3>
+                <p class="text-gray-600 ui-night:text-gray-300 mb-6">
+                    Try adjusting your search terms or browse our popular locations.
+                </p>
+                <a
+                    href="{% url 'homepage' %}"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
+                >
+                    Browse Popular Locations
+                </a>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Popular Locations -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 ui-night:text-white mb-2">Popular Locations</h2>
+            <p class="text-gray-600 ui-night:text-gray-300">
+                Start with our most popular snorkeling destinations
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for location in popular_locations %}
+            <div class="bg-white ui-night:bg-gray-800 rounded-lg shadow-sm border border-gray-200 ui-night:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                <h3 class="text-lg font-semibold text-gray-900 ui-night:text-white mb-2">
+                    {{ location.city }}
+                </h3>
+                <p class="text-gray-600 ui-night:text-gray-300 mb-4">
+                    {{ location.country }}
+                </p>
+                <a
+                    href="{% url 'location_forecast' location.country_slug location.city_slug %}"
+                    class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium"
+                >
+                    View Forecast →
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

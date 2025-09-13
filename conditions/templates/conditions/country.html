@@ -4,15 +4,51 @@
 {% block title %}Snorkeling in {{ country_name }} – SnorkelForecast.com{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Snorkeling spots and forecast locations in {{ country_name }}. Browse cities and check wave, wind, tide and sea temperature.">
-  <meta property="og:title" content="Snorkeling in {{ country_name }} – SnorkelForecast.com" />
-  <meta property="og:description" content="Browse snorkeling locations in {{ country_name }} and view detailed forecasts." />
+  <meta name="description" content="Snorkeling spots and forecast locations in {{ country_name }}. Browse {{ cities|length }} cities and check wave, wind, tide and sea temperature.">
+  <meta property="og:title" content="Snorkeling in {{ country_name }} – {{ cities|length }} Locations – SnorkelForecast.com" />
+  <meta property="og:description" content="Browse {{ cities|length }} snorkeling locations in {{ country_name }} and view detailed forecasts for wave height, wind speed, tides and water temperature." />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:url" content="https://snorkelforecast.com/{{ country_slug }}/" />
   <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Snorkeling in {{ country_name }}",
+    "description": "Browse {{ cities|length }} snorkeling locations in {{ country_name }} with detailed weather forecasts",
+    "url": "https://snorkelforecast.com/{{ country_slug }}/",
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": {{ cities|length }},
+      "itemListElement": [
+        {% for location in cities %}
+        {
+          "@type": "ListItem",
+          "position": {{ forloop.counter }},
+          "item": {
+            "@type": "TouristDestination",
+            "name": "{{ location.city }}",
+            "description": "{{ location.description|truncatechars:100 }}",
+            "url": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/",
+            "address": {
+              "@type": "PostalAddress",
+              "addressCountry": "{{ location.country }}"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": {{ location.coordinates.lat }},
+              "longitude": {{ location.coordinates.lon }}
+            }
+          }
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  }
+  </script>
 {% endblock %}
 
 {% block content %}

@@ -13,13 +13,14 @@ import os
 import math
 
 from .snorkel import fetch_forecast
-from .models import ForecastHour
+from .models import ForecastHour, SnorkelLocation
 from .history import (
     save_forecast_history,
     get_recent_averages,
     get_monthly_scores,
 )
 from .locations import LOCATIONS
+from .osm import osm_service
 
 # Popular locations moved to conditions/locations.py
 
@@ -31,30 +32,39 @@ logger = logging.getLogger(__name__)
 def homepage(request: HttpRequest) -> HttpResponse:
     """Homepage showing popular snorkeling locations."""
     popular_locations = []
-    for country_slug, cities in LOCATIONS.items():
-        for city_slug, location_data in cities.items():
-            location_data["country_slug"] = country_slug
-            location_data["city_slug"] = city_slug
 
-            # Fetch current sea surface temperature for each location
-            forecast = fetch_forecast(
-                hours=1,
-                coordinates=location_data["coordinates"],
-                timezone_str=location_data["timezone"],
-                country_slug=country_slug,
-                city_slug=city_slug,
-            )
-            if not forecast:
-                logger.warning(
-                    "No forecast returned for homepage location: %s, %s",
-                    location_data.get("country"),
-                    location_data.get("city"),
-                )
-            location_data["current_sst"] = (
-                forecast[0]["sea_surface_temperature"] if forecast else None
-            )
+    # Get popular locations from database
+    popular_location_objects = SnorkelLocation.objects.filter(is_popular=True)
 
-            popular_locations.append(location_data)
+    for location in popular_location_objects:
+        location_data = {
+            "name": location.name,
+            "city": location.name,  # For template compatibility
+            "country": location.country,
+            "coordinates": location.coordinates_dict,
+            "timezone": location.timezone,
+            "description": location.description,
+            "country_slug": location.country_slug,
+            "city_slug": location.city_slug,
+        }
+
+        # Fetch current sea surface temperature for each location
+        forecast = fetch_forecast(
+            hours=1,
+            coordinates=location.coordinates_dict,
+            timezone_str=location.timezone,
+            country_slug=location.country_slug,
+            city_slug=location.city_slug,
+        )
+        if not forecast:
+            logger.warning(
+                "No forecast returned for homepage location: %s, %s",
+                location.country,
+                location.name,
+            )
+        location_data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
+
+        popular_locations.append(location_data)
 
     flag_emojis = {
         "spain": "🇪🇸",
@@ -63,15 +73,21 @@ def homepage(request: HttpRequest) -> HttpResponse:
         "croatia": "🇭🇷",
         "usa": "🇺🇸",
     }
+
+    # Get unique countries from popular locations
+    countries_from_db = (
+        SnorkelLocation.objects.filter(is_popular=True)
+        .values_list("country_slug", "country")
+        .distinct()
+    )
+
     country_list = [
         {
-            "slug": slug,
-            "name": next(iter(cities.values())).get("country", slug.title())
-            if cities
-            else slug.title(),
-            "emoji": flag_emojis.get(slug, ""),
+            "slug": country_slug,
+            "name": country_name,
+            "emoji": flag_emojis.get(country_slug, ""),
         }
-        for slug, cities in LOCATIONS.items()
+        for country_slug, country_name in countries_from_db
     ]
     country_list.sort(key=lambda c: c["name"].lower())
 
@@ -89,35 +105,45 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
 
     Shows all cities we have presets for within the given country slug.
     """
-    if country not in LOCATIONS:
+    # Get locations for this country from database
+    country_locations = SnorkelLocation.objects.filter(country_slug=country)
+
+    if not country_locations.exists():
         raise Http404("Country not found")
 
     # Prepare city list with optional current SST for quick glance
     cities = []
-    for city_slug, location_data in LOCATIONS[country].items():
-        data = dict(location_data)
-        data["country_slug"] = country
-        data["city_slug"] = city_slug
+    for location in country_locations:
+        data = {
+            "name": location.name,
+            "city": location.name,  # For template compatibility
+            "country": location.country,
+            "coordinates": location.coordinates_dict,
+            "timezone": location.timezone,
+            "description": location.description,
+            "country_slug": country,
+            "city_slug": location.city_slug,
+        }
 
         forecast = fetch_forecast(
             hours=1,
-            coordinates=data["coordinates"],
-            timezone_str=data["timezone"],
+            coordinates=location.coordinates_dict,
+            timezone_str=location.timezone,
             country_slug=country,
-            city_slug=city_slug,
+            city_slug=location.city_slug,
         )
         if not forecast:
             logger.warning(
                 "No forecast returned for country page location: %s/%s",
                 country,
-                city_slug,
+                location.city_slug,
             )
         data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
 
         cities.append(data)
 
-    # Derive nice country label from first entry (they all share same country name)
-    country_name = next(iter(LOCATIONS[country].values())).get("country", country.title())
+    # Get country name from first location
+    country_name = country_locations.first().country
 
     context = {
         "country_slug": country,
@@ -131,28 +157,39 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
 def countries_index(request: HttpRequest) -> HttpResponse:
     """Index page listing all available countries with counts and sample cities."""
     countries = []
-    for country_slug, cities in LOCATIONS.items():
-        # Derive display name from any city's country field
-        country_name = (
-            next(iter(cities.values())).get("country", country_slug.title())
-            if cities
-            else country_slug.title()
-        )
+
+    # Group locations by country
+    from django.db.models import Count
+
+    country_stats = (
+        SnorkelLocation.objects.values("country_slug", "country")
+        .annotate(city_count=Count("id"))
+        .order_by("country")
+    )
+
+    for stat in country_stats:
+        country_slug = stat["country_slug"]
+        country_name = stat["country"]
+        city_count = stat["city_count"]
+
+        # Get sample cities for this country
+        sample_locations = SnorkelLocation.objects.filter(country_slug=country_slug)[:3]
         city_list = [
             {
-                "city": data.get("city", city_slug.title()),
-                "city_slug": city_slug,
+                "city": location.name,
+                "city_slug": location.city_slug,
                 "country_slug": country_slug,
-                "description": data.get("description"),
+                "description": location.description,
             }
-            for city_slug, data in cities.items()
+            for location in sample_locations
         ]
+
         countries.append(
             {
                 "slug": country_slug,
                 "name": country_name,
-                "city_count": len(city_list),
-                "sample_cities": city_list[:3],
+                "city_count": city_count,
+                "sample_cities": city_list,
             }
         )
 
@@ -193,15 +230,53 @@ def _save_forecast_history(country_slug: str, city_slug: str, hours: list[dict])
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Display forecast for a specific location."""
-    # Find the location data
-    if country not in LOCATIONS or city not in LOCATIONS[country]:
-        raise Http404("Location not found")
+    # First try to find location in database (for dynamic locations)
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+        location_data = {
+            "name": location.name,
+            "country": location.country,
+            "coordinates": location.coordinates_dict,
+            "timezone": location.timezone,
+            "description": location.description,
+            "country_slug": country,
+            "city_slug": city,
+        }
+        coordinates = location.coordinates_dict
+        timezone_str = location.timezone
+    except SnorkelLocation.DoesNotExist:
+        # Fall back to hardcoded locations
+        if country not in LOCATIONS or city not in LOCATIONS[country]:
+            # Try to find location via OSM
+            osm_locations = osm_service.search_locations(query=city, country=country, limit=5)
 
-    location_data = LOCATIONS[country][city]
-    location_data["country_slug"] = country
-    location_data["city_slug"] = city
-    coordinates = location_data["coordinates"]
-    timezone_str = location_data["timezone"]
+            if osm_locations:
+                # Use the first match
+                osm_data = osm_locations[0]
+                location = osm_service.create_or_update_location(osm_data)
+                location_data = {
+                    "name": location.name,
+                    "country": location.country,
+                    "coordinates": location.coordinates_dict,
+                    "timezone": location.timezone,
+                    "description": location.description,
+                    "country_slug": country,
+                    "city_slug": city,
+                }
+                coordinates = location.coordinates_dict
+                timezone_str = location.timezone
+            else:
+                raise Http404("Location not found")
+        else:
+            # Use hardcoded location
+            location_data = LOCATIONS[country][
+                city
+            ].copy()  # Make a copy to avoid modifying original
+            location_data["country_slug"] = country
+            location_data["city_slug"] = city
+            coordinates = location_data["coordinates"]
+            timezone_str = location_data["timezone"]
+            location = None  # No database location object for hardcoded locations
 
     # fetch hourly forecast data for this location
     all_hours = fetch_forecast(
@@ -220,7 +295,10 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         )
 
     # Persist for historical analysis
-    save_forecast_history(country, city, all_hours)
+    if "location" in locals() and location:
+        save_forecast_history(location, None, all_hours)
+    else:
+        save_forecast_history(country, city, all_hours)
 
     # filter out past hours
     local_tz = tz.gettz(timezone_str)
@@ -348,8 +426,12 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
     # Historical aggregates for seasonal insights
-    recent_averages = get_recent_averages(country, city)
-    monthly_scores = get_monthly_scores(country, city)
+    if "location" in locals() and location:
+        recent_averages = get_recent_averages(location)
+        monthly_scores = get_monthly_scores(location)
+    else:
+        recent_averages = get_recent_averages(country, city)
+        monthly_scores = get_monthly_scores(country, city)
     season_labels = [m["month"].strftime("%b") for m in monthly_scores]
     season_scores = [
         round(m["avg_score"], 2) if m["avg_score"] is not None else None for m in monthly_scores
@@ -360,8 +442,27 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         if m["avg_score"] is not None
     ]
 
+    # Use the location object if available, otherwise create a compatible object
+    if "location" in locals() and location:
+        context_location = location
+    else:
+        # Create a mock location object for legacy compatibility
+        class MockLocation:
+            def __init__(self, data):
+                self.name = data.get("name", data.get("city", ""))
+                self.city = data.get("city", "")
+                self.country = data.get("country", "")
+                self.country_slug = data.get("country_slug", "")
+                self.city_slug = data.get("city_slug", "")
+                self.description = data.get("description", "")
+                self.latitude = data.get("coordinates", {}).get("lat", 0)
+                self.longitude = data.get("coordinates", {}).get("lon", 0)
+
+        context_location = MockLocation(location_data)
+        print(f"DEBUG: Using MockLocation with name='{context_location.name}'")
+
     context = {
-        "location": location_data,
+        "location": context_location,
         "hours": hours,
         "hours_24": hours_24,
         "summary": {
@@ -386,6 +487,143 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     return render(request, "conditions/location_forecast.html", context)
 
 
+def location_search(request: HttpRequest) -> HttpResponse:
+    """Location search and discovery page."""
+    query = request.GET.get("q", "").strip()
+    location_type = request.GET.get("type", "")
+    country = request.GET.get("country", "")
+
+    locations = []
+    search_performed = False
+
+    if query or location_type or country:
+        search_performed = True
+
+        # Search in database first (for existing locations)
+        db_locations = SnorkelLocation.objects.all()
+
+        if query:
+            db_locations = db_locations.filter(name__icontains=query)
+        if location_type:
+            db_locations = db_locations.filter(location_type=location_type)
+        if country:
+            db_locations = db_locations.filter(country__icontains=country)
+
+        # Convert to common format
+        for loc in db_locations[:20]:  # Limit results
+            locations.append(
+                {
+                    "name": loc.name,
+                    "country": loc.country,
+                    "country_slug": loc.country_slug,
+                    "city_slug": loc.city_slug,
+                    "location_type": loc.location_type,
+                    "description": loc.description,
+                    "latitude": loc.latitude,
+                    "longitude": loc.longitude,
+                    "source": "database",
+                    "is_popular": loc.is_popular,
+                }
+            )
+
+        # If no results from database, try OSM search
+        if not locations and query:
+            osm_results = osm_service.search_locations(query=query, limit=10)
+
+            for osm_loc in osm_results:
+                # Check if we already have this location
+                existing = SnorkelLocation.objects.filter(
+                    osm_id=osm_loc["osm_id"], osm_type=osm_loc["osm_type"]
+                ).first()
+
+                if existing:
+                    locations.append(
+                        {
+                            "name": existing.name,
+                            "country": existing.country,
+                            "country_slug": existing.country_slug,
+                            "city_slug": existing.city_slug,
+                            "location_type": existing.location_type,
+                            "description": existing.description,
+                            "latitude": existing.latitude,
+                            "longitude": existing.longitude,
+                            "source": "database",
+                            "is_popular": existing.is_popular,
+                        }
+                    )
+                else:
+                    locations.append(
+                        {
+                            "name": osm_loc["name"],
+                            "country": osm_loc["country"],
+                            "country_slug": osm_loc["country_slug"],
+                            "city_slug": osm_loc["city_slug"],
+                            "location_type": osm_loc["location_type"],
+                            "description": osm_loc["description"],
+                            "latitude": osm_loc["latitude"],
+                            "longitude": osm_loc["longitude"],
+                            "source": "osm",
+                            "is_popular": False,
+                        }
+                    )
+
+    # Get location type options for filter
+    location_types = [
+        ("beach", "Beaches"),
+        ("cove", "Coves"),
+        ("bay", "Bays"),
+        ("island", "Islands"),
+        ("reef", "Reefs"),
+        ("dive_site", "Dive Sites"),
+        ("marine_park", "Marine Parks"),
+    ]
+
+    context = {
+        "query": query,
+        "location_type": location_type,
+        "country_filter": country,
+        "locations": locations,
+        "search_performed": search_performed,
+        "location_types": location_types,
+        "result_count": len(locations),
+    }
+
+    return render(request, "conditions/location_search.html", context)
+
+
+def health_check(request: HttpRequest) -> HttpResponse:
+    """Simple health check endpoint for Docker and monitoring."""
+    from django.db import connection
+    from django.core.cache import cache
+
+    # Test database connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        db_status = "ok"
+    except Exception:
+        db_status = "error"
+
+    # Test cache
+    try:
+        cache.set("health_check", "ok", 10)
+        cache_status = "ok" if cache.get("health_check") == "ok" else "error"
+    except Exception:
+        cache_status = "error"
+
+    status = "ok" if db_status == "ok" and cache_status == "ok" else "error"
+
+    return JsonResponse(
+        {
+            "status": status,
+            "database": db_status,
+            "cache": cache_status,
+            "timestamp": datetime.now().isoformat(),
+        },
+        status=200 if status == "ok" else 503,
+    )
+
+
 def location_search_api(request: HttpRequest) -> HttpResponse:
     """API endpoint for location search with autocomplete."""
     query = request.GET.get("q", "")
@@ -399,16 +637,17 @@ def location_search_api(request: HttpRequest) -> HttpResponse:
 
     query = query.lower()
 
-    for country_slug, cities in LOCATIONS.items():
-        for city_slug, location_data in cities.items():
-            if query in location_data["city"].lower():
-                results[location_data["country"]].append(
-                    {
-                        "city": location_data["city"],
-                        "slug": city_slug,
-                        "country_slug": country_slug,
-                    }
-                )
+    # Search locations in database
+    matching_locations = SnorkelLocation.objects.filter(name__icontains=query)[:20]  # Limit results
+
+    for location in matching_locations:
+        results[location.country].append(
+            {
+                "city": location.name,
+                "slug": location.city_slug,
+                "country_slug": location.country_slug,
+            }
+        )
 
     return JsonResponse(results)
 
@@ -416,15 +655,15 @@ def location_search_api(request: HttpRequest) -> HttpResponse:
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Render a simple 24-hour tide chart image for the given location."""
-    if country not in LOCATIONS or city not in LOCATIONS[country]:
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+    except SnorkelLocation.DoesNotExist:
         raise Http404("Location not found")
-
-    location = LOCATIONS[country][city]
 
     hours = fetch_forecast(
         hours=24,
-        coordinates=location["coordinates"],
-        timezone_str=location["timezone"],
+        coordinates=location.coordinates_dict,
+        timezone_str=location.timezone,
         country_slug=country,
         city_slug=city,
     )
@@ -478,10 +717,10 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
     semi-transparent light-on-light elements to keep text legible in
     previews across platforms.
     """
-    if country not in LOCATIONS or city not in LOCATIONS[country]:
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+    except SnorkelLocation.DoesNotExist:
         raise Http404("Location not found")
-
-    location = LOCATIONS[country][city]
 
     # Intentionally do not include live metrics on OG images; keep them
     # stable and descriptive for social previews.
@@ -537,7 +776,7 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
 
     # Location title with automatic fit
     base_font_size = 220
-    location_text = f"{location['city']}, {location['country']}"
+    location_text = f"{location.name}, {location.country}"
 
     def fit_font(size: int) -> ImageFont.FreeTypeFont:
         try:
@@ -594,8 +833,8 @@ def location_og_image(request: HttpRequest, country: str, city: str) -> HttpResp
         try:
             forecast = fetch_forecast(
                 hours=1,
-                coordinates=location["coordinates"],
-                timezone_str=location["timezone"],
+                coordinates=location.coordinates_dict,
+                timezone_str=location.timezone,
                 country_slug=country,
                 city_slug=city,
             )
@@ -784,7 +1023,7 @@ def location_history_api(request: HttpRequest, country: str, city: str) -> HttpR
     from datetime import timedelta
     from django.utils import timezone as djtz
 
-    if country not in LOCATIONS or city not in LOCATIONS[country]:
+    if not SnorkelLocation.objects.filter(country_slug=country, city_slug=city).exists():
         raise Http404("Location not found")
 
     since = djtz.now() - timedelta(days=7)
@@ -819,10 +1058,11 @@ def location_history_api(request: HttpRequest, country: str, city: str) -> HttpR
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def location_history(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Simple page showing historical trend for the last 7 days."""
-    if country not in LOCATIONS or city not in LOCATIONS[country]:
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+    except SnorkelLocation.DoesNotExist:
         raise Http404("Location not found")
 
-    location = LOCATIONS[country][city]
     return render(
         request,
         "conditions/history.html",

@@ -26,10 +26,10 @@ THRESHOLDS.update(
 
 logger = logging.getLogger(__name__)
 
-# Cache settings
-DEFAULT_FORECAST_CACHE_TTL = 600  # seconds
-DEFAULT_FORECAST_STALE_TTL = 43200  # 12 hours for stale-if-error
-DEFAULT_FORECAST_NEGATIVE_TTL = 120  # seconds to back off after API errors
+# Cache settings from Django settings
+DEFAULT_FORECAST_CACHE_TTL = getattr(settings, "FORECAST_CACHE_TTL", 21600)  # 6 hours
+DEFAULT_FORECAST_STALE_TTL = getattr(settings, "FORECAST_CACHE_STALE_TTL", 86400)  # 24 hours
+DEFAULT_FORECAST_NEGATIVE_TTL = getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", 1800)  # 30 minutes
 FORECAST_CACHE_VERSION = 1
 
 

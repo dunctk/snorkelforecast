@@ -3,6 +3,8 @@ from . import views
 
 urlpatterns = [
     path("api/search-locations/", views.location_search_api, name="location_search_api"),
+    path("search/", views.location_search, name="location_search"),
+    path("health/", views.health_check, name="health_check"),
     path("", views.homepage, name="homepage"),
     # Site-wide OG image
     path("og.png", views.site_og_image, name="site_og_image"),

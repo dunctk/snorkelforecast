@@ -27,6 +27,9 @@
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
              class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Countries</a>
+          <a href="{% url 'location_search' %}"
+             aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Search</a>
           <a href="{% url 'homepage' %}#popular" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Popular</a>
           <a href="{% url 'homepage' %}#how" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">How it works</a>
           <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="text-gray-500 hover:text-gray-700 ui-night:text-gray-400 ui-night:hover:text-gray-200">Open‑Meteo</a>
@@ -50,6 +53,9 @@
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
              class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Countries</a>
+          <a href="{% url 'location_search' %}"
+             aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Search</a>
           <a href="{% url 'homepage' %}#popular" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Popular</a>
           <a href="{% url 'homepage' %}#how" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">How it works</a>
           <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-500 ui-night:text-gray-400">Open‑Meteo</a>

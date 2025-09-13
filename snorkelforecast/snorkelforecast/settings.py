@@ -175,3 +175,12 @@ CACHES = {
 
 # Default cache TTL (seconds) for decorators; override with CACHE_TTL env
 CACHE_TTL = int(os.getenv("CACHE_TTL", "300"))
+
+# OSM Service settings
+OSM_CACHE_TTL = int(os.getenv("OSM_CACHE_TTL", "86400"))  # 24 hours
+OSM_REQUEST_DELAY = float(os.getenv("OSM_REQUEST_DELAY", "1.0"))  # seconds between requests
+
+# Forecast cache settings (6 hours for weather data)
+FORECAST_CACHE_TTL = int(os.getenv("FORECAST_CACHE_TTL", "21600"))  # 6 hours
+FORECAST_CACHE_STALE_TTL = int(os.getenv("FORECAST_CACHE_STALE_TTL", "86400"))  # 24 hours
+FORECAST_CACHE_NEGATIVE_TTL = int(os.getenv("FORECAST_CACHE_NEGATIVE_TTL", "1800"))  # 30 minutes

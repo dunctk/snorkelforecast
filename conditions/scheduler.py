@@ -4,7 +4,6 @@ import os
 import signal
 import sys
 import time
-from typing import Dict
 
 import django
 
@@ -15,11 +14,11 @@ def _setup_django() -> None:
     django.setup()
 
 
-def _iter_locations() -> Dict[str, Dict[str, dict]]:
+def _iter_locations():
     # Import lazily after Django setup
-    from .locations import LOCATIONS
+    from .models import SnorkelLocation
 
-    return LOCATIONS
+    return SnorkelLocation.objects.all()
 
 
 def _run_once() -> None:
@@ -27,15 +26,22 @@ def _run_once() -> None:
     from .history import save_forecast_history
 
     locations = _iter_locations()
-    for country_slug, cities in locations.items():
-        for city_slug, location in cities.items():
-            coords = location["coordinates"]
-            tz = location["timezone"]
-            try:
-                hours = fetch_forecast(coordinates=coords, timezone_str=tz)
-                save_forecast_history(country_slug, city_slug, hours)
-            except Exception as e:  # noqa: BLE001
-                print(f"[scheduler] Error for {country_slug}/{city_slug}: {e}", file=sys.stderr)
+    for location in locations:
+        coords = location.coordinates_dict
+        tz = location.timezone
+        try:
+            hours = fetch_forecast(
+                coordinates=coords,
+                timezone_str=tz,
+                country_slug=location.country_slug,
+                city_slug=location.city_slug,
+            )
+            save_forecast_history(location, None, hours)
+        except Exception as e:  # noqa: BLE001
+            print(
+                f"[scheduler] Error for {location.country_slug}/{location.city_slug}: {e}",
+                file=sys.stderr,
+            )
 
 
 def main() -> None:

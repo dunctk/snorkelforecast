@@ -1,12 +1,12 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}{{ location.city }}, {{ location.country }} – Snorkel Forecast{% endblock %}
+{% block title %}{% if location.name %}{{ location.name }}{% else %}DEBUG: No name{% endif %}, {{ location.country }} – Snorkel Forecast{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Snorkeling forecast for {{ location.city }}, {{ location.country }}. Wave height, wind speed, tides and sea temperature.">
-  <meta property="og:title" content="{{ location.city }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
-  <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.city }}, {{ location.country }}." />
+  <meta name="description" content="Snorkeling forecast for {{ location.name }}, {{ location.country }}. Wave height, wind speed, tides and sea temperature.">
+  <meta property="og:title" content="{{ location.name }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
+  <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.name }}, {{ location.country }}." />
   <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -14,17 +14,51 @@
   <meta property="og:url" content="https://snorkelforecast.com{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
+  [
     {
       "@context": "https://schema.org",
       "@type": "TouristDestination",
       "name": "{{ location.city }}, {{ location.country }}",
       "description": "{{ location.description }}",
+      "url": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "{{ location.country }}"
+      },
       "geo": {
         "@type": "GeoCoordinates",
-        "latitude": {{ location.coordinates.lat }},
-        "longitude": {{ location.coordinates.lon }}
+        "latitude": {{ location.latitude }},
+        "longitude": {{ location.longitude }}
+      },
+      "touristType": "Snorkeling destination",
+      "offers": {
+        "@type": "Offer",
+        "description": "Snorkeling forecast with real-time conditions"
       }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "When is the next safe snorkel window?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "{% if next_window %}The next suitable window starts {{ next_window.start|date:'D H:i' }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:'D H:i' }}{% endif %}.{% else %}No safe snorkeling window is expected in the next 72 hours.{% endif %}"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What conditions make snorkeling ideal?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ideal snorkeling conditions require wave height less than 0.36 meters, wind speed below 5.4 meters/second, sea surface temperature between 20.6°C and 30.4°C, and being within ±72 minutes of high tide with currents ≤ 0.36 m/s."
+          }
+        }
+      ]
     }
+  ]
   </script>
 {% endblock %}
 
@@ -201,20 +235,23 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto mt-6">
-      {% for h in hours %}
-        {% with alpha=h.score|floatformat:2 %}
-        <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
-          <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} rating {{ h.rating }} score {{ h.score|floatformat:2 }}">
-            <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
-            <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
-            <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
-          </time>
-          <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
-        </div>
-        {% endwith %}
-      {% endfor %}
-    </div>
+     <section aria-label="72-hour snorkeling forecast" class="mt-6">
+       <h2 class="text-lg font-semibold mb-4 text-center">72-Hour Forecast Overview</h2>
+       <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto">
+         {% for h in hours %}
+           {% with alpha=h.score|floatformat:2 %}
+           <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
+             <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} rating {{ h.rating }} score {{ h.score|floatformat:2 }}">
+               <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
+               <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
+               <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
+             </time>
+             <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
+           </div>
+           {% endwith %}
+         {% endfor %}
+       </div>
+     </section>
 
     {# Explanation of conditions #}
     <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">

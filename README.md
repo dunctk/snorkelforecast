@@ -48,6 +48,60 @@ Docker
 
 Deployment
 - GitHub Actions runs lint and tests on `master`/`main` pushes.
+
+Production Deployment with Docker Compose
+-----------------------------------------
+
+1. **Environment Setup:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your production values
+   ```
+
+2. **Required Environment Variables:**
+   ```bash
+   SECRET_KEY="your-production-secret-key-here"
+   DEBUG="false"
+   ALLOWED_HOSTS="yourdomain.com,www.yourdomain.com"
+   CSRF_TRUSTED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+   PRODUCTION="true"
+   ```
+
+3. **Deploy with Docker Compose:**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Initial Data Migration:**
+   ```bash
+   docker-compose exec snorkelforecast uv run python snorkelforecast/manage.py migrate_popular_locations
+   ```
+
+5. **Health Check:**
+   ```bash
+   curl https://yourdomain.com/health/
+   ```
+
+New Features in Production
+--------------------------
+
+### Global Location Support
+- **Lazy Loading**: Locations are discovered and cached on-demand
+- **OpenStreetMap Integration**: Access to worldwide snorkeling locations
+- **6-Hour Weather Caching**: Reduced API calls and rate limit handling
+- **Smart Search**: Find locations by name, type, or region
+
+### Production Optimizations
+- **Persistent Database**: SQLite with persistent volume in production
+- **Health Checks**: Docker health monitoring endpoint
+- **Configurable Caching**: Environment-based cache TTL settings
+- **Error Handling**: Graceful degradation with stale data fallbacks
+
+### Monitoring
+- Health check endpoint: `/health/`
+- Database and cache status monitoring
+- Automatic migration of popular locations
+- Background scheduler for data updates
 - Coolify (or similar) can watch the repo and deploy on push. Ensure env vars are set in the platform.
 
 Security

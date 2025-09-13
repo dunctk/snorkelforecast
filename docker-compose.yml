@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  snorkelforecast:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PRODUCTION=true
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-snorkelforecast.com,www.snorkelforecast.com}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-https://snorkelforecast.com,https://www.snorkelforecast.com}
+      - CACHE_TTL=${CACHE_TTL:-21600}  # 6 hours for weather data
+      - ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
+      - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS:-1800}
+    volumes:
+      - ./persistent:/persistent
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
