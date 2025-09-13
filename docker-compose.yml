@@ -11,9 +11,11 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-snorkelforecast.com,www.snorkelforecast.com}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-https://snorkelforecast.com,https://www.snorkelforecast.com}
-      - CACHE_TTL=${CACHE_TTL:-21600}  # 6 hours for weather data
-      - ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
-      - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS:-1800}
+       - CACHE_TTL=${CACHE_TTL:-21600}
+       - ENABLE_SCHEDULER=${ENABLE_SCHEDULER:-true}
+       - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS:-1800}
+       - ENABLE_OSM_IMPORT=${ENABLE_OSM_IMPORT:-false}
+       - USE_POSTGIS=${USE_POSTGIS:-false}
     volumes:
       - ./persistent:/persistent
     restart: unless-stopped

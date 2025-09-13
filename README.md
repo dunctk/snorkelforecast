@@ -27,6 +27,8 @@ Environment
   - `CSRF_TRUSTED_ORIGINS`: comma-separated origins (https URLs)
   - `PRODUCTION`: set to enable `/persistent/db.sqlite3`
   - `CACHE_TTL`: seconds for view cache
+  - `ENABLE_OSM_IMPORT`: `true` to enable automatic OSM location discovery
+  - `USE_POSTGIS`: `true` to use PostGIS instead of SQLite (production)
 
 Common Commands
 - Install: `uv sync`
@@ -45,6 +47,19 @@ Docker
 - Build: `docker build -t snorkelforecast .`
 - Run: `docker run -p 8000:8000 --env-file .env snorkelforecast`
 - The container runs migrations, collects static, and starts Gunicorn via `startup.sh`.
+- Development with OSM import: `docker-compose -f docker-compose.dev.yml up`
+
+OSM Import System
+- **Automatic Discovery**: Discovers snorkeling spots worldwide from OpenStreetMap
+- **Tile-Based**: Processes the globe in Web Mercator tiles for scalability
+- **Confidence Scoring**: Rates locations by snorkeling suitability (0-1)
+- **Multiple Endpoints**: Round-robin between Overpass API mirrors
+- **Docker Ready**: Fully integrated with container deployment
+
+OSM Commands:
+- Create tile queue: `uv run python snorkelforecast/manage.py import_osm_tiles --create-tiles --zoom 8 --country-bbox "35,-10,45,5"`
+- Import locations: `uv run python snorkelforecast/manage.py import_osm_tiles --batch-size 10`
+- Health check: Visit `/health/` for system status including OSM import progress
 
 Deployment
 - GitHub Actions runs lint and tests on `master`/`main` pushes.

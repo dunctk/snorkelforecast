@@ -21,6 +21,7 @@ from .history import (
 )
 from .locations import LOCATIONS
 from .osm import osm_service
+from .models_spots import OSMSpot, ImportTile
 
 # Popular locations moved to conditions/locations.py
 
@@ -592,9 +593,10 @@ def location_search(request: HttpRequest) -> HttpResponse:
 
 
 def health_check(request: HttpRequest) -> HttpResponse:
-    """Simple health check endpoint for Docker and monitoring."""
+    """Health check endpoint with OSM import status for Docker and monitoring."""
     from django.db import connection
     from django.core.cache import cache
+    from datetime import datetime
 
     # Test database connection
     try:
@@ -611,6 +613,18 @@ def health_check(request: HttpRequest) -> HttpResponse:
     except Exception:
         cache_status = "error"
 
+    # Get location counts
+    legacy_count = SnorkelLocation.objects.count()
+    osm_count = OSMSpot.objects.count()
+    total_locations = legacy_count + osm_count
+
+    # Get OSM import status
+    tiles_pending = ImportTile.objects.filter(status="pending").count()
+    tiles_running = ImportTile.objects.filter(status="running").count()
+    tiles_done = ImportTile.objects.filter(status="done").count()
+    tiles_failed = ImportTile.objects.filter(status="failed").count()
+
+    # Overall status
     status = "ok" if db_status == "ok" and cache_status == "ok" else "error"
 
     return JsonResponse(
@@ -618,6 +632,17 @@ def health_check(request: HttpRequest) -> HttpResponse:
             "status": status,
             "database": db_status,
             "cache": cache_status,
+            "locations": {
+                "total": total_locations,
+                "legacy": legacy_count,
+                "osm": osm_count,
+            },
+            "osm_import": {
+                "tiles_pending": tiles_pending,
+                "tiles_running": tiles_running,
+                "tiles_done": tiles_done,
+                "tiles_failed": tiles_failed,
+            },
             "timestamp": datetime.now().isoformat(),
         },
         status=200 if status == "ok" else 503,

@@ -12,6 +12,7 @@ dependencies = [
     "pillow>=11.3.0",
     "pyrefly>=0.28.1",
     "python-slugify>=8.0.0",
+    "requests>=2.32.5",
 ]
 
 [project.optional-dependencies]

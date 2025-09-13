@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
+    # "django.contrib.gis",  # Temporarily disabled - enable with PostGIS in production
     "conditions",
 ]
 
@@ -105,6 +106,7 @@ if IS_PRODUCTION:
 else:
     db_name = BASE_DIR / "db.sqlite3"
 
+# Database configuration (upgrade to PostGIS in production)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

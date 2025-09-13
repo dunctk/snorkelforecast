@@ -1,8 +1,14 @@
 FROM ghcr.io/astral-sh/uv:debian-slim
 
-# Install curl and CA certs for HTTPS requests at runtime
+# Install curl, CA certs, and spatial libraries for GeoDjango
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libsqlite3-mod-spatialite \
+        libgeos-dev \
+        libproj-dev \
+        libgdal-dev \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,6 +38,9 @@ RUN mkdir -p logs
 
 # Make startup script executable
 RUN chmod +x startup.sh
+
+# Run tests to verify OSM import functionality
+RUN uv run python test_osm_import.py
 
 
 # Expose port

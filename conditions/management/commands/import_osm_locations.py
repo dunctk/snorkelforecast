@@ -63,6 +63,11 @@ class Command(BaseCommand):
                 area for area in search_areas if area["country"].lower() == country_filter.lower()
             ]
 
+        self.stdout.write("Note: Overpass API may be busy. If no results found, try:")
+        self.stdout.write("  1. Wait a few minutes and try again")
+        self.stdout.write("  2. Use a different Overpass instance")
+        self.stdout.write("  3. Consider manual population for critical locations")
+
         total_imported = 0
         total_skipped = 0
 
