@@ -12,6 +12,24 @@ export DJANGO_SETTINGS_MODULE=snorkelforecast.snorkelforecast.settings
 # Run Django migrations
 uv run python snorkelforecast/manage.py migrate
 
+# Populate database with popular locations (only if empty)
+echo "Checking database population..."
+LOCATION_COUNT=$(uv run python -c "
+import os
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'snorkelforecast.snorkelforecast.settings')
+django.setup()
+from conditions.models import SnorkelLocation
+print(SnorkelLocation.objects.count())
+")
+
+if [ "$LOCATION_COUNT" -eq 0 ]; then
+    echo "Database is empty, populating with popular locations..."
+    uv run python snorkelforecast/manage.py migrate_popular_locations
+else
+    echo "Database already has $LOCATION_COUNT locations, skipping population."
+fi
+
 # Collect static files
 uv run python snorkelforecast/manage.py collectstatic --noinput
 
