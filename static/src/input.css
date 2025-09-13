@@ -110,3 +110,58 @@
 .ui-night input[type="search"]:focus {
   @apply border-blue-500/50 ring-blue-500/20;
 }
+
+/* Search UI improvements */
+.search-container {
+  @apply relative;
+}
+
+/* Autocomplete dropdown improvements */
+.autoComplete_wrapper {
+  @apply relative;
+}
+
+.autoComplete_wrapper .autoComplete_results_list {
+  @apply bg-white ui-night:bg-gray-800 border border-gray-200 ui-night:border-gray-700 rounded-lg shadow-xl mt-2 max-h-80 overflow-y-auto;
+}
+
+.autoComplete_wrapper .autoComplete_results_list .autoComplete_result_item {
+  @apply px-4 py-3 hover:bg-gray-50 ui-night:hover:bg-gray-700 cursor-pointer border-b border-gray-100 ui-night:border-gray-700 last:border-b-0 transition-colors;
+}
+
+.autoComplete_wrapper .autoComplete_results_list .autoComplete_result_item:hover {
+  @apply bg-blue-50 ui-night:bg-blue-900/30;
+}
+
+.autoComplete_wrapper .autoComplete_results_list .autoComplete_result_item[aria-selected="true"] {
+  @apply bg-blue-100 ui-night:bg-blue-900/50;
+}
+
+/* Search button improvements */
+#search-button {
+  @apply flex-shrink-0;
+}
+
+#search-button:focus {
+  @apply ring-offset-2;
+}
+
+/* Loading state improvements */
+#search-loading svg {
+  @apply animate-spin;
+}
+
+/* Responsive search improvements */
+@media (max-width: 640px) {
+  .search-input-container {
+    @apply flex-col gap-2;
+  }
+
+  #search-button span {
+    @apply hidden;
+  }
+
+  #search-button {
+    @apply w-full justify-center;
+  }
+}
