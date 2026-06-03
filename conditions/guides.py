@@ -126,6 +126,87 @@ GUIDES = [
 """
         ),
     },
+    {
+        "slug": "best-snorkeling-destinations",
+        "title": "The Best Snorkeling Destinations in the World",
+        "summary": (
+            "From the Great Barrier Reef and the Maldives to Hawaii, the Red Sea "
+            "and the Caribbean — a guide to the world's best places to snorkel, "
+            "and how to check live conditions for each before you go."
+        ),
+        "faqs": [
+            {
+                "q": "Where is the best snorkeling in the world?",
+                "a": (
+                    "The most celebrated snorkeling destinations include the Great Barrier "
+                    "Reef and Ningaloo Reef (Australia), the Maldives, the Red Sea (Egypt), "
+                    "Hawaii, Raja Ampat (Indonesia), the Galápagos, Palau, and Caribbean "
+                    "reefs like Bonaire, Cozumel and Belize. The 'best' for you depends on "
+                    "season, water temperature and how calm the conditions are when you visit."
+                ),
+            },
+            {
+                "q": "What makes a great snorkeling destination?",
+                "a": (
+                    "Clear, warm water; sheltered bays or reefs that stay calm; abundant "
+                    "marine life; and easy entry from shore or a short boat ride. The single "
+                    "biggest day-to-day factor is conditions — low waves and wind, good "
+                    "visibility and slack tide — which is why checking a live forecast for "
+                    "your exact spot matters as much as the destination itself."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>The world is full of extraordinary places to snorkel — but the difference between an unforgettable swim and a murky, choppy disappointment usually comes down to <strong>picking the right spot at the right time</strong>. Below are some of the planet's best snorkeling destinations, grouped by region, with a live forecast for each so you can see today's conditions before you go.</p>
+
+<h2>Pacific &amp; Hawaii</h2>
+<ul>
+  <li><a href="/usa/maui/">Maui, Hawaii</a> — turtles and reef off easy beaches like <a href="/usa/honolua-bay/">Honolua Bay</a> and <a href="/usa/molokini-crater/">Molokini Crater</a>.</li>
+  <li><a href="/usa/hanauma-bay/">Hanauma Bay, Oahu</a> — a protected volcanic-cone reef, Hawaii's most popular spot.</li>
+  <li><a href="/french-polynesia/moorea/">Moorea</a> and <a href="/french-polynesia/bora-bora/">Bora Bora</a> — lagoon rays and sharks in warm, clear water.</li>
+</ul>
+
+<h2>Australia &amp; the Great Barrier Reef</h2>
+<ul>
+  <li><a href="/australia/ningaloo-reef/">Ningaloo Reef</a> — whale sharks and a reef metres off the beach.</li>
+  <li><a href="/australia/lady-elliot-island/">Lady Elliot Island</a> and <a href="/australia/heron-island/">Heron Island</a> — coral cays on the Great Barrier Reef.</li>
+</ul>
+
+<h2>Southeast Asia</h2>
+<ul>
+  <li><a href="/indonesia/raja-ampat/">Raja Ampat, Indonesia</a> — the richest marine biodiversity on Earth.</li>
+  <li><a href="/thailand/similan-islands/">Similan Islands, Thailand</a> and <a href="/philippines/moalboal/">Moalboal, Philippines</a> — clear reefs and a famous sardine run.</li>
+</ul>
+
+<h2>The Maldives &amp; Indian Ocean</h2>
+<ul>
+  <li><a href="/maldives/maafushi/">Maldives</a> — house reefs, mantas and turtles off almost every island.</li>
+  <li><a href="/seychelles/mahe/">Seychelles</a> and <a href="/mauritius/blue-bay/">Mauritius</a> — granite-island reefs and lagoon shallows.</li>
+</ul>
+
+<h2>The Red Sea</h2>
+<ul>
+  <li><a href="/egypt/sharm-el-sheikh/">Sharm El Sheikh</a> and <a href="/egypt/dahab-blue-hole/">Dahab</a>, Egypt — coral walls and turtles straight off the shore.</li>
+</ul>
+
+<h2>The Caribbean &amp; Central America</h2>
+<ul>
+  <li><a href="/bonaire/kralendijk/">Bonaire</a> — a whole island fringed by a protected shore reef.</li>
+  <li><a href="/mexico/cozumel/">Cozumel, Mexico</a> and <a href="/belize/hol-chan/">Hol Chan, Belize</a> — drift reefs on the Mesoamerican Reef.</li>
+</ul>
+
+<h2>The Mediterranean &amp; Atlantic</h2>
+<ul>
+  <li><a href="/greece/milos/">Milos, Greece</a> and <a href="/spain/medes-islands/">the Medes Islands, Spain</a> — clear coves and protected reserves.</li>
+  <li><a href="/iceland/silfra/">Silfra, Iceland</a> — snorkel between two continents in glacier-clear water (drysuit only).</li>
+</ul>
+
+<h2>Before you go: check the conditions</h2>
+<p>Wherever you choose, the same rule applies: snorkel on a calm morning around high tide, when the water is clearest and currents are weakest. Open any destination above to see its live snorkel score for the next 72 hours, the next good window, and the best months to visit. Or <a href="/countries/">browse all 80+ countries</a> to find a spot near you.</p>
+"""
+        ),
+    },
 ]
 
 GUIDES_BY_SLUG = {g["slug"]: g for g in GUIDES}
