@@ -31,10 +31,12 @@ else
 fi
 
 # Always ensure curated snorkeling spots exist (idempotent on every deploy).
+# Non-fatal: a seeding hiccup must never abort boot under `set -e` and break the
+# deploy — the app can start and serve while spots are (re)seeded on a later boot.
 echo "Ensuring Hawaii snorkeling spots are present..."
-uv run python snorkelforecast/manage.py populate_hawaii_spots
+uv run python snorkelforecast/manage.py populate_hawaii_spots || echo "populate_hawaii_spots failed (non-fatal)."
 echo "Ensuring worldwide snorkeling spots are present..."
-uv run python snorkelforecast/manage.py populate_world_spots
+uv run python snorkelforecast/manage.py populate_world_spots || echo "populate_world_spots failed (non-fatal)."
 
 # Optional: Run OSM import if enabled
 if [ -n "$ENABLE_OSM_IMPORT" ] && [[ "$ENABLE_OSM_IMPORT" =~ ^([Tt]rue|[Yy]es|1|on)$ ]]; then
