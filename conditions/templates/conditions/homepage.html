@@ -54,13 +54,14 @@
 
 {% block content %}
   <!-- Hero Section -->
-  <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-twilight:from-indigo-200 ui-twilight:to-purple-100 ui-night:from-slate-800 ui-night:to-gray-900 transition-all duration-500">
-    <div class="max-w-6xl mx-auto px-4 py-12 text-center">
-      <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-gray-900 ui-night:text-white">Find Perfect Snorkeling Conditions</h1>
-      <p class="text-lg sm:text-xl max-w-3xl mx-auto px-2 text-gray-700 ui-night:text-gray-200">
-        Real‑time and forecasted snorkeling conditions based on wave height, wind speed, tides, and water temperature.
+  <section class="hero">
+    <div class="max-w-6xl mx-auto px-4 pt-16 pb-20 sm:pt-24 sm:pb-28 text-center relative">
+      <p class="eyebrow reveal reveal-1 mb-5">Snorkeling forecasts, worldwide</p>
+      <h1 class="reveal reveal-1 mb-5">Know exactly when the<br><em>water turns clear.</em></h1>
+      <p class="reveal reveal-2 text-lg sm:text-xl max-w-2xl mx-auto px-2" style="color:var(--muted)">
+        Hour-by-hour snorkeling conditions for {{ country_count }}+ destinations — wave height, wind, tides and water temperature, scored so you can pick the perfect window.
       </p>
-       <div class="mt-8 max-w-lg mx-auto">
+       <div class="mt-9 max-w-lg mx-auto reveal reveal-3">
          <div class="search-container flex gap-3">
            <div class="relative flex-1">
              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -92,9 +93,9 @@
            </button>
          </div>
        </div>
-      <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-        <a href="#popular" class="btn btn-primary">Explore Popular Spots</a>
-        <a href="{% url 'countries_index' %}" class="btn btn-ghost">Browse {{ country_count }} Countries</a>
+      <div class="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3 reveal reveal-4">
+        <a href="#popular" class="btn btn-primary">Explore popular spots</a>
+        <a href="{% url 'countries_index' %}" class="btn btn-ghost">Browse {{ country_count }} countries</a>
       </div>
     </div>
   </section>

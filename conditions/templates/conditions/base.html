@@ -7,6 +7,9 @@
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
     <link rel="canonical" href="https://snorkelforecast.com{{ request.path }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
     <meta property="og:site_name" content="SnorkelForecast.com">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:site" content="@snorkelforecast">
@@ -32,6 +35,7 @@
     <script src="{% static 'js/search.js' %}" defer></script>
   </head>
   <body class="ui-day min-h-screen flex flex-col">
+    <div class="bg-deco" aria-hidden="true"></div>
 
 
     <header class="site-header bg-white/80 ui-night:bg-gray-900/80 backdrop-blur border-b border-gray-200 ui-night:border-gray-800">

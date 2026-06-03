@@ -771,15 +771,17 @@ def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpRe
         for i, h in enumerate(heights)
     ]
 
-    img = Image.new("RGB", (width, height_img), "#EFF6FF")
+    # Transparent background with the bioluminescent-aqua accent so the chart
+    # blends onto the glass cards in every theme (day / twilight / night).
+    img = Image.new("RGBA", (width, height_img), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
     polygon = points + [
         (points[-1][0], height_img - margin),
         (points[0][0], height_img - margin),
     ]
-    draw.polygon(polygon, fill="#BFDBFE")
-    draw.line(points, fill="#2563EB", width=4)
+    draw.polygon(polygon, fill=(91, 224, 200, 38))  # translucent aqua fill
+    draw.line(points, fill=(91, 224, 200, 255), width=3, joint="curve")  # aqua stroke
 
     output = BytesIO()
     img.save(output, "PNG")

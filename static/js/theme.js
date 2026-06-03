@@ -42,11 +42,11 @@
     const themeColorMeta = document.getElementById('theme-color');
     if (themeColorMeta) {
       const colors = {
-        'ui-day': '#0ea5e9',      // sky-500
-        'ui-twilight': '#6366f1', // indigo-500
-        'ui-night': '#1f2937'     // gray-800
+        'ui-day': '#cfe9ea',      // sunlit shallows
+        'ui-twilight': '#3a2450', // golden hour
+        'ui-night': '#041d29'     // abyss
       };
-      themeColorMeta.content = colors[theme] || '#0ea5e9';
+      themeColorMeta.content = colors[theme] || '#041d29';
     }
 
     // Save preference
