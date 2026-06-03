@@ -67,8 +67,8 @@ The 10× traffic target is an **outcome gated on factors outside the code**, now
 2. **Manual GSC action (only the site owner can do):** submit `https://snorkelforecast.com/sitemap.xml` (GSC still reports 0 sitemaps) and "Request indexing" for `/usa/maui/` and the new `/usa/*/` spot + `/guides/*` pages. **This is the single biggest unlock and cannot be automated from the codebase.**
 3. Measure after ~2–4 weeks: Maui avg position, impressions→clicks on informational queries, indexed-page count.
 
-### Page footprint expansion — shipped (~9× location pages)
-- ✅ **~200 curated real snorkeling spots** added across **72 countries** (`conditions/world_spots.py` + `world_spots_2.py`, seeded by idempotent `populate_world_spots`, wired into `startup.sh`). Location pages went from ~26 → **231**; **sitemap.xml grew from 35 → 309 URLs**.
+### Page footprint expansion — shipped (10× location pages)
+- ✅ **~230 curated real snorkeling spots** across **84 countries** (`conditions/world_spots.py` + `world_spots_2.py` + `world_spots_3.py`, seeded by idempotent `populate_world_spots`, wired into `startup.sh`). Location pages went from ~26 → **259 (a literal 10×)**; **sitemap.xml grew from 35 → 349 URLs**.
 - ✅ **Rate-limit safeguards** for the larger footprint: jittered forecast cache TTL (±12%, prevents synchronized expiry bursts) and a throttled scheduler (`SCHEDULER_REQUEST_DELAY_SECONDS`, default 0.5s + jitter) so a full refresh of ~1,000 locations stays ~4 req/s — well under Open-Meteo's limits. New spots are `is_popular=False`, so the homepage's per-location fetch is unaffected; spots are spread across many countries to keep each country page's fetch burst small.
 
 ### Indexing acceleration — shipped (IndexNow)

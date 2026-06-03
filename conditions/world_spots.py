@@ -575,5 +575,12 @@ def iter_spots():
     try:
         from .world_spots_2 import iter_spots_2
     except ImportError:
+        pass
+    else:
+        yield from iter_spots_2()
+
+    try:
+        from .world_spots_3 import iter_spots_3
+    except ImportError:
         return
-    yield from iter_spots_2()
+    yield from iter_spots_3()
