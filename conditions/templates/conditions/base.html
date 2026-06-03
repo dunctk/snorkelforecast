@@ -88,6 +88,46 @@
     </main>
 
     <footer class="bg-gray-800 ui-night:bg-gray-900/95 ui-night:backdrop-blur-sm text-white py-8 mt-16 border-t border-gray-700/50 ui-night:border-gray-800/50 transition-all duration-300">
+      <div class="max-w-6xl mx-auto px-4">
+        <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-left text-sm mb-8 pb-8 border-b border-gray-700/50">
+          <div>
+            <h2 class="font-semibold text-gray-200 mb-2">Popular spots</h2>
+            <ul class="space-y-1 text-gray-400">
+              <li><a href="/usa/maui/" class="hover:text-blue-300">Maui</a></li>
+              <li><a href="/usa/hanauma-bay/" class="hover:text-blue-300">Hanauma Bay</a></li>
+              <li><a href="/mexico/cozumel/" class="hover:text-blue-300">Cozumel</a></li>
+              <li><a href="/bonaire/kralendijk/" class="hover:text-blue-300">Bonaire</a></li>
+              <li><a href="/egypt/dahab-blue-hole/" class="hover:text-blue-300">Dahab Blue Hole</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-200 mb-2">More destinations</h2>
+            <ul class="space-y-1 text-gray-400">
+              <li><a href="/maldives/maafushi/" class="hover:text-blue-300">Maldives</a></li>
+              <li><a href="/thailand/koh-tao/" class="hover:text-blue-300">Koh Tao</a></li>
+              <li><a href="/greece/milos/" class="hover:text-blue-300">Milos</a></li>
+              <li><a href="/australia/ningaloo-reef/" class="hover:text-blue-300">Ningaloo Reef</a></li>
+              <li><a href="/iceland/silfra/" class="hover:text-blue-300">Silfra</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-200 mb-2">Guides</h2>
+            <ul class="space-y-1 text-gray-400">
+              <li><a href="/guides/best-time-to-snorkel/" class="hover:text-blue-300">Best time to snorkel</a></li>
+              <li><a href="/guides/snorkeling-water-temperature/" class="hover:text-blue-300">Water temperature</a></li>
+              <li><a href="{% url 'guides_index' %}" class="hover:text-blue-300">All guides</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-200 mb-2">Explore</h2>
+            <ul class="space-y-1 text-gray-400">
+              <li><a href="{% url 'countries_index' %}" class="hover:text-blue-300">All countries</a></li>
+              <li><a href="{% url 'location_search' %}" class="hover:text-blue-300">Search spots</a></li>
+              <li><a href="{% url 'homepage' %}" class="hover:text-blue-300">Home</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
       <div class="max-w-6xl mx-auto px-4 text-center">
         <p>&copy; MMXXV SnorkelForecast.com</p>
         <p class="text-gray-400 ui-night:text-gray-500 text-sm mt-1">Powered by Open‑Meteo • Forecasts update hourly</p>
