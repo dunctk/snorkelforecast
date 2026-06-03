@@ -90,6 +90,22 @@ The 10× traffic target is an **outcome gated on factors outside the code**, now
 10. Add an email/"notify me when conditions are good" hook for retention (recurring-visit product).
 
 ## 4. What to measure
+
+### Baseline snapshot — 2026-06-03 (day of shipping, before Google re-crawl)
+This is the "before" against which the 10× traffic goal is measured once Google indexes:
+- **Clicks (30d): 19 · Impressions (30d): 689** · Clicks (7d): 1 · Impressions (7d): 118
+- **Sitemaps submitted in GSC: 0** ← submit `sitemap.xml` to flip this.
+- Live page count shipped this session: **231 location pages / 72 countries / 309 sitemap URLs** (from ~26 / ~9 / 35).
+
+A 10× traffic outcome = roughly **~190 clicks / ~6,900 impressions per 30d**. Re-pull GSC in 2–4 weeks to track the climb.
+
+### KPIs to watch
 - Maui avg position (target: <10 within 4 weeks of indexing + content).
 - Impressions on informational queries → clicks (FAQ/guides working).
-- Indexed-page count after sitemap submission + OSM page rollout.
+- Indexed-page count after sitemap submission.
+- New `/usa/*` spot pages and `/guides/*` appearing in GSC pages report.
+
+### Status
+Build + ship: **complete** (merged to `main`, commit `e36862e`). Traffic outcome:
+**pending** Google's crawl/index/rank cycle (weeks) + the manual GSC sitemap
+submission — the only remaining lever, and it is outside the codebase.
