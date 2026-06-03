@@ -460,10 +460,17 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
                 self.longitude = data.get("coordinates", {}).get("lon", 0)
 
         context_location = MockLocation(location_data)
-        print(f"DEBUG: Using MockLocation with name='{context_location.name}'")
+
+    # Nearby spots in the same country for internal linking and discovery
+    nearby_locations = list(
+        SnorkelLocation.objects.filter(country_slug=country)
+        .exclude(city_slug=city)
+        .values("name", "city_slug", "country_slug", "description")[:6]
+    )
 
     context = {
         "location": context_location,
+        "nearby_locations": nearby_locations,
         "hours": hours,
         "hours_24": hours_24,
         "summary": {
@@ -590,6 +597,47 @@ def location_search(request: HttpRequest) -> HttpResponse:
     }
 
     return render(request, "conditions/location_search.html", context)
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def guides_index(request: HttpRequest) -> HttpResponse:
+    """Hub page listing all evergreen snorkeling guides."""
+    from .guides import GUIDES
+
+    return render(request, "conditions/guides_index.html", {"guides": GUIDES})
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def guide_detail(request: HttpRequest, slug: str) -> HttpResponse:
+    """Render a single evergreen snorkeling guide, with a few popular spots."""
+    from .guides import GUIDES_BY_SLUG
+
+    guide = GUIDES_BY_SLUG.get(slug)
+    if not guide:
+        raise Http404("Guide not found")
+
+    popular = list(
+        SnorkelLocation.objects.filter(is_popular=True).values(
+            "name", "city_slug", "country_slug", "country"
+        )[:8]
+    )
+    return render(
+        request,
+        "conditions/guide_detail.html",
+        {"guide": guide, "popular_locations": popular},
+    )
+
+
+def indexnow_key_file(request: HttpRequest, key: str) -> HttpResponse:
+    """Serve the IndexNow key verification file at /<key>.txt.
+
+    IndexNow requires a text file at the host root, named <key>.txt and
+    containing exactly the key, to prove ownership before accepting URL pings.
+    """
+    expected = getattr(settings, "INDEXNOW_KEY", "")
+    if not expected or key != expected:
+        raise Http404("Not found")
+    return HttpResponse(expected, content_type="text/plain")
 
 
 def health_check(request: HttpRequest) -> HttpResponse:

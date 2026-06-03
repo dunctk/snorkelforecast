@@ -22,8 +22,16 @@ def _iter_locations():
 
 
 def _run_once() -> None:
+    import random
+
     from .snorkel import fetch_forecast
     from .history import save_forecast_history
+
+    # Throttle between locations so a synchronized cache-expiry can never burst
+    # the Open-Meteo rate limit. At the default 0.5s delay, even a full refresh of
+    # ~1,000 locations stays around ~4 requests/sec (2 API calls each), well under
+    # Open-Meteo's free-tier limits. Tune via SCHEDULER_REQUEST_DELAY_SECONDS.
+    delay = float(os.getenv("SCHEDULER_REQUEST_DELAY_SECONDS", "0.5"))
 
     locations = _iter_locations()
     for location in locations:
@@ -42,6 +50,9 @@ def _run_once() -> None:
                 f"[scheduler] Error for {location.country_slug}/{location.city_slug}: {e}",
                 file=sys.stderr,
             )
+        if delay > 0:
+            # Small jitter avoids a regular request cadence.
+            time.sleep(delay + random.uniform(0, delay))
 
 
 def main() -> None:

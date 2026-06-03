@@ -4,6 +4,38 @@ from django.urls import reverse
 from .models import SnorkelLocation
 
 
+class StaticViewSitemap(Sitemap):
+    """Top-level evergreen pages (homepage, countries index, search)."""
+
+    protocol = "https"
+    changefreq = "daily"
+    priority = 1.0
+
+    def items(self):
+        return ["homepage", "countries_index", "location_search"]
+
+    def location(self, item):
+        return reverse(item)
+
+
+class GuideSitemap(Sitemap):
+    """Evergreen snorkeling guides (hub + articles)."""
+
+    protocol = "https"
+    changefreq = "monthly"
+    priority = 0.7
+
+    def items(self):
+        from .guides import GUIDES
+
+        return ["__index__"] + [g["slug"] for g in GUIDES]
+
+    def location(self, item):
+        if item == "__index__":
+            return reverse("guides_index")
+        return reverse("guide_detail", args=[item])
+
+
 class CountrySitemap(Sitemap):
     protocol = "https"
     changefreq = "weekly"

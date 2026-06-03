@@ -1,0 +1,48 @@
+{% extends 'conditions/base.html' %}
+{% load static %}
+
+{% block title %}Snorkeling Guides: Best Time, Tides, Water Temperature & Tips{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Practical snorkeling guides: the best time to snorkel, the best tide, what water temperature is comfortable, what to wear and how to read conditions.">
+  <meta property="og:title" content="Snorkeling Guides — SnorkelForecast.com" />
+  <meta property="og:description" content="Practical, no-nonsense guides to snorkeling conditions, timing, tides and water temperature." />
+  <meta property="og:image" content="https://snorkelforecast.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta property="og:url" content="https://snorkelforecast.com/guides/" />
+{% endblock %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
+    <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
+      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li>/</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">Guides</li>
+    </ol>
+  </nav>
+
+  <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-night:from-slate-800 ui-night:to-gray-900">
+    <div class="max-w-6xl mx-auto px-4 py-10 text-center">
+      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling Guides</h1>
+      <p class="text-sm sm:text-base mt-2 max-w-2xl mx-auto text-gray-700 ui-night:text-gray-200">
+        Practical answers to the questions that decide whether a snorkel is great or disappointing —
+        timing, tides, water temperature and what to wear.
+      </p>
+    </div>
+  </section>
+
+  <section class="max-w-4xl mx-auto px-4 py-10">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      {% for guide in guides %}
+        <a href="{% url 'guide_detail' slug=guide.slug %}"
+           class="card-enhanced p-5 sm:p-6 block hover:-translate-y-0.5 transition-transform">
+          <h2 class="text-lg font-semibold mb-2">{{ guide.title }}</h2>
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">{{ guide.summary }}</p>
+          <span class="inline-block mt-3 text-sm text-blue-600 ui-night:text-blue-400">Read guide →</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

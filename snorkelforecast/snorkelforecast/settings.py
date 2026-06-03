@@ -191,3 +191,9 @@ OSM_REQUEST_DELAY = float(os.getenv("OSM_REQUEST_DELAY", "1.0"))  # seconds betw
 FORECAST_CACHE_TTL = int(os.getenv("FORECAST_CACHE_TTL", "21600"))  # 6 hours
 FORECAST_CACHE_STALE_TTL = int(os.getenv("FORECAST_CACHE_STALE_TTL", "86400"))  # 24 hours
 FORECAST_CACHE_NEGATIVE_TTL = int(os.getenv("FORECAST_CACHE_NEGATIVE_TTL", "1800"))  # 30 minutes
+
+# IndexNow: instantly notify Bing, Yandex, DuckDuckGo, Seznam and Naver of new/
+# changed URLs. The key is public by design (hosted at /<key>.txt). Override per
+# environment with INDEXNOW_KEY.
+INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "be177cbd2ec82163c3306faf2a57923d")
+SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://snorkelforecast.com")
