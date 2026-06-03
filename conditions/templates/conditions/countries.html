@@ -1,31 +1,54 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}Browse Countries – SnorkelForecast.com{% endblock %}
+{% block title %}Snorkeling by Country: {{ countries|length }} Destinations Worldwide{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Browse countries with supported snorkeling locations and open detailed forecasts.">
-  <meta property="og:title" content="Browse Countries – SnorkelForecast.com" />
-  <meta property="og:description" content="Explore snorkeling locations by country and find the best conditions." />
+  <meta name="description" content="Where to snorkel around the world — browse {{ countries|length }} countries and compare live snorkeling conditions (wave height, wind, water temperature and tides) for every spot.">
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Snorkeling by Country: {{ countries|length }} Destinations Worldwide" />
+  <meta property="og:description" content="Browse {{ countries|length }} countries and find the best snorkeling conditions worldwide." />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:url" content="https://snorkelforecast.com/countries/" />
   <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Snorkeling Destinations by Country",
+    "description": "Browse {{ countries|length }} countries with live snorkeling forecasts worldwide.",
+    "url": "https://snorkelforecast.com/countries/",
+    "mainEntity": {
+      "@type": "ItemList",
+      "numberOfItems": {{ countries|length }},
+      "itemListElement": [
+        {% for c in countries %}
+        {"@type": "ListItem", "position": {{ forloop.counter }}, "name": "Snorkeling in {{ c.name }}", "url": "https://snorkelforecast.com/{{ c.slug }}/"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  }
+  </script>
 {% endblock %}
 
 {% block content %}
   <!-- Hero -->
-  <section class="bg-gradient-to-r from-sky-200 to-blue-100">
+  <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-night:from-slate-800 ui-night:to-gray-900">
     <div class="max-w-6xl mx-auto px-4 py-10 text-center">
-      <h1 class="text-2xl sm:text-3xl font-bold">Browse Countries</h1>
-      <p class="text-sm sm:text-base mt-2">Pick a country to see supported snorkeling locations and forecasts.</p>
+      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling Destinations by Country</h1>
+      <p class="text-sm sm:text-base mt-2 max-w-2xl mx-auto text-gray-700 ui-night:text-gray-200">
+        Explore snorkeling across {{ countries|length }} countries — from Red Sea reefs and Mediterranean coves
+        to Caribbean cays and Pacific atolls. Pick a country to compare spots and live conditions.
+      </p>
     </div>
   </section>
 
   <!-- Countries Grid -->
   <section class="max-w-6xl mx-auto px-4 py-10">
+    <h2 class="sr-only">All countries</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {% for c in countries %}
       <a href="/{% firstof c.slug %}/" class="group block">
