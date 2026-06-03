@@ -1,9 +1,14 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 
 urlpatterns = [
+    # IndexNow key verification file (/<hexkey>.txt). Hex-only + .txt suffix so it
+    # never collides with country/city slugs.
+    re_path(r"^(?P<key>[a-f0-9]{16,64})\.txt$", views.indexnow_key_file, name="indexnow_key_file"),
     path("api/search-locations/", views.location_search_api, name="location_search_api"),
     path("search/", views.location_search, name="location_search"),
+    path("guides/", views.guides_index, name="guides_index"),
+    path("guides/<slug:slug>/", views.guide_detail, name="guide_detail"),
     path("health/", views.health_check, name="health_check"),
     path("", views.homepage, name="homepage"),
     # Site-wide OG image

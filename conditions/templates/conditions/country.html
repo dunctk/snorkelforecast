@@ -1,10 +1,10 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}Snorkeling in {{ country_name }} – SnorkelForecast.com{% endblock %}
+{% block title %}Best Snorkeling in {{ country_name }}: {{ cities|length }} Spots, Conditions & Forecast{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Snorkeling spots and forecast locations in {{ country_name }}. Browse {{ cities|length }} cities and check wave, wind, tide and sea temperature.">
+  <meta name="description" content="The best snorkeling spots in {{ country_name }} with live conditions. Compare {{ cities|length }} locations by wave height, wind, water temperature and tides, and find the best time to snorkel.">
   <meta property="og:title" content="Snorkeling in {{ country_name }} – {{ cities|length }} Locations – SnorkelForecast.com" />
   <meta property="og:description" content="Browse {{ cities|length }} snorkeling locations in {{ country_name }} and view detailed forecasts for wave height, wind speed, tides and water temperature." />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
@@ -61,15 +61,31 @@
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ country_name }}</li>
     </ol>
   </nav>
-  <section class="bg-gradient-to-r from-sky-200 to-blue-100">
+  <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-night:from-slate-800 ui-night:to-gray-900">
     <div class="max-w-6xl mx-auto px-4 py-10 text-center">
-      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling in {{ country_name }}</h1>
-      <p class="text-sm sm:text-base mt-2">Browse supported locations and open detailed forecasts.</p>
+      <h1 class="text-2xl sm:text-3xl font-bold">Best Snorkeling in {{ country_name }}</h1>
+      <p class="text-sm sm:text-base mt-2 max-w-2xl mx-auto text-gray-700 ui-night:text-gray-200">
+        Live snorkeling conditions for {{ cities|length }} spot{{ cities|length|pluralize }} in {{ country_name }} —
+        wave height, wind, water temperature and tides, updated hourly.
+      </p>
+    </div>
+  </section>
+
+  <section class="max-w-6xl mx-auto px-4 pt-8">
+    <div class="card-enhanced p-4 sm:p-6 mb-2">
+      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+        Snorkeling in {{ country_name }} is best when the sea is calm and clear: low wave height,
+        light winds and water inside a comfortable temperature range. Conditions vary a lot by spot,
+        season and time of day, so we forecast each location below individually. As a rule of thumb,
+        snorkel in the morning before the wind builds, and aim for the window around high tide when
+        currents are slack and visibility is highest. Pick a spot to see its hourly snorkel score,
+        the next good window and the best months to visit.
+      </p>
     </div>
   </section>
 
   <section class="max-w-6xl mx-auto px-4 py-10">
-    <h2 class="text-xl sm:text-2xl font-bold mb-6">Locations in {{ country_name }}</h2>
+    <h2 class="text-xl sm:text-2xl font-bold mb-6">Snorkeling spots in {{ country_name }}</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {% for location in cities %}
       <div class="card-enhanced transition-transform hover:-translate-y-0.5">

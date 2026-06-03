@@ -21,9 +21,16 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from conditions.sitemaps import CountrySitemap, LocationSitemap
+from conditions.sitemaps import (
+    CountrySitemap,
+    GuideSitemap,
+    LocationSitemap,
+    StaticViewSitemap,
+)
 
 sitemaps = {
+    "static": StaticViewSitemap,
+    "guides": GuideSitemap,
     "countries": CountrySitemap,
     "locations": LocationSitemap,
 }

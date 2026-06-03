@@ -488,7 +488,13 @@ def fetch_forecast(
         )
     # Store in cache (fresh and stale) before returning
     try:
+        import random
+
         ttl = int(getattr(settings, "FORECAST_CACHE_TTL", DEFAULT_FORECAST_CACHE_TTL))
+        # Jitter the fresh TTL by ±12% so that, across many locations, caches do
+        # not all expire at the same instant and trigger a synchronized burst of
+        # Open-Meteo requests (rate-limit protection as the location count grows).
+        ttl = max(60, int(ttl * random.uniform(0.88, 1.12)))
         stale_ttl = int(getattr(settings, "FORECAST_CACHE_STALE_TTL", DEFAULT_FORECAST_STALE_TTL))
         cache.set(cache_key, result, timeout=ttl)
         cache.set(stale_key, result, timeout=stale_ttl)

@@ -1,12 +1,12 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}{% if location.name %}{{ location.name }}{% else %}DEBUG: No name{% endif %}, {{ location.country }} – Snorkel Forecast{% endblock %}
+{% block title %}{{ location.name }} Snorkel Report Today | Conditions & 3-Day Forecast{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Snorkeling forecast for {{ location.name }}, {{ location.country }}. Wave height, wind speed, tides and sea temperature.">
-  <meta property="og:title" content="{{ location.name }}, {{ location.country }} Snorkel Forecast - SnorkelForecast.com" />
-  <meta property="og:description" content="Get accurate snorkeling forecasts for {{ location.name }}, {{ location.country }}." />
+  <meta name="description" content="Can you snorkel in {{ location.name }}, {{ location.country }} today? {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72 hours look good for snorkeling. {% endif %}Live wave height, wind speed, water temperature and tide forecast, updated hourly.">
+  <meta property="og:title" content="{{ location.name }} Snorkel Report Today — Conditions & Forecast" />
+  <meta property="og:description" content="Live snorkeling conditions for {{ location.name }}, {{ location.country }}: wave height, wind, water temperature and tides. {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h are suitable.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -38,14 +38,47 @@
     },
     {
       "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://snorkelforecast.com/"},
+        {"@type": "ListItem", "position": 2, "name": "{{ location.country }}", "item": "https://snorkelforecast.com/{{ location.country_slug }}/"},
+        {"@type": "ListItem", "position": 3, "name": "{{ location.city }}", "item": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/"}
+      ]
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "FAQPage",
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "When is the next safe snorkel window?",
+          "name": "Can you snorkel in {{ location.name }} today?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "{% if next_window %}The next suitable window starts {{ next_window.start|date:'D H:i' }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:'D H:i' }}{% endif %}.{% else %}No safe snorkeling window is expected in the next 72 hours.{% endif %}"
+            "text": "{% if summary.ok_count > 0 and next_window %}Yes. The next good snorkeling window in {{ location.name }} starts {{ next_window.start|date:'D H:i' }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:'D H:i' }}{% endif %}. Around {{ summary.percent_ok }}% of the next 72 hours are suitable for snorkeling.{% else %}Conditions look marginal right now — no clearly safe snorkeling window is forecast in {{ location.name }} over the next 72 hours. Check the hourly table for the calmest period.{% endif %}"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the best time of day to snorkel in {{ location.name }}?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Snorkel during daylight, ideally in the morning before the wind picks up, and within about an hour of high tide when water is clearest and currents are slack. SnorkelForecast scores every daylight hour in {{ location.name }} so you can pick the calmest window."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the best tide for snorkeling?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The best snorkeling is usually around high tide, within roughly 72 minutes of the peak when currents are weakest (slack water) and visibility is highest. Strong incoming or outgoing tides create currents that stir up sediment and make snorkeling harder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the water warm enough to snorkel in {{ location.name }}?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "{% if recent_averages.avg_sea_temp %}Recent sea surface temperature in {{ location.name }} has averaged about {{ recent_averages.avg_sea_temp|floatformat:0 }}°C. {% endif %}Most snorkelers are comfortable between 20°C and 30°C; below that a wetsuit or rash guard is recommended.{% if best_months %} The warmest, calmest months here are typically {{ best_months|join:', ' }}.{% endif %}"
           }
         },
         {
@@ -76,9 +109,35 @@
   </nav>
   <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">Snorkel Forecast – {{ location.city }}, {{ location.country }}</h1>
-      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">All times are in {{ timezone }}</p>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Snorkeling Conditions &amp; Report</h1>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · Live forecast, updated hourly · All times in {{ timezone }}</p>
     </div>
+
+    {# Above-the-fold verdict: directly answers "can I snorkel here today?" #}
+    {% if summary.total_hours > 0 %}
+      <div class="w-full max-w-2xl mx-auto mt-4 mb-6">
+        {% if summary.ok_count > 0 and next_window %}
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50 ui-night:bg-emerald-900/20 ui-night:border-emerald-800 p-4 sm:p-5 text-center">
+            <p class="text-base sm:text-lg font-semibold text-emerald-800 ui-night:text-emerald-200">
+              ✅ Good snorkeling expected in {{ location.city }}
+            </p>
+            <p class="text-sm sm:text-base text-emerald-900/80 ui-night:text-emerald-100/80 mt-1">
+              Next good window: <span class="font-semibold">{{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %}–{{ next_window.end|date:"H:i" }}{% endif %}</span>.
+              {{ summary.percent_ok }}% of the next 72&nbsp;hours look suitable.
+            </p>
+          </div>
+        {% else %}
+          <div class="rounded-xl border border-amber-200 bg-amber-50 ui-night:bg-amber-900/20 ui-night:border-amber-800 p-4 sm:p-5 text-center">
+            <p class="text-base sm:text-lg font-semibold text-amber-800 ui-night:text-amber-200">
+              ⚠️ Marginal conditions in {{ location.city }}
+            </p>
+            <p class="text-sm sm:text-base text-amber-900/80 ui-night:text-amber-100/80 mt-1">
+              No clearly calm window is forecast in the next 72&nbsp;hours. Check the hourly table below for the best available period.
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
     {# Detailed text summary of snorkel forecast #}
     {% if summary.total_hours > 0 %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
@@ -130,6 +189,33 @@
       <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
     {% endif %}
 
+    {# Evergreen, location-specific content: gives the page substance beyond live data #}
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkeling in {{ location.city }}</h2>
+      {% if location.description %}
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">{{ location.description }}</p>
+      {% endif %}
+      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
+        This page tracks live snorkeling conditions in {{ location.city }}{% if location.country %}, {{ location.country }}{% endif %} —
+        wave height, wind speed, sea temperature, tides and currents — and scores every daylight
+        hour over the next 72&nbsp;hours so you can pick the calmest, clearest window to get in the water.
+      </p>
+      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+        <strong>Best time to snorkel:</strong> mornings are usually calmest here, before wind and waves
+        build through the afternoon. Aim for daylight within about an hour of high tide, when currents
+        are slack and visibility is highest.{% if best_months %} Across the year, the best months for
+        snorkeling in {{ location.city }} are typically <strong>{{ best_months|join:", " }}</strong>.{% endif %}
+        {% if recent_averages.avg_sea_temp %} Recent sea temperature has averaged about
+        {{ recent_averages.avg_sea_temp|floatformat:0 }}°C.{% endif %}
+      </p>
+      <p class="text-sm mt-3 text-gray-600 ui-night:text-gray-400">
+        New to this? Read our guides on the
+        <a href="/guides/best-time-to-snorkel/" class="text-blue-600 ui-night:text-blue-400 hover:underline">best time to snorkel</a>
+        and
+        <a href="/guides/snorkeling-water-temperature/" class="text-blue-600 ui-night:text-blue-400 hover:underline">water temperature for snorkeling</a>.
+      </p>
+    </div>
+
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 24h)</h2>
       <div class="h-48 sm:h-64">
@@ -180,15 +266,29 @@
     </div>
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">FAQs</h2>
-      <p class="font-medium text-sm sm:text-base mb-1">When is the next safe snorkel window?</p>
-      {% if next_window %}
-        <p class="text-sm sm:text-base">
-          The next suitable window starts {{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:"D H:i" }}{% endif %}.
-        </p>
-      {% else %}
-        <p class="text-sm sm:text-base">No safe snorkeling window is expected in the next 72 hours.</p>
-      {% endif %}
+      <h2 class="text-base sm:text-lg font-semibold mb-3">{{ location.city }} snorkeling FAQs</h2>
+      <div class="space-y-4">
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">Can you snorkel in {{ location.city }} today?</h3>
+          {% if summary.ok_count > 0 and next_window %}
+            <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Yes — the next good window starts {{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:"D H:i" }}{% endif %}. About {{ summary.percent_ok }}% of the next 72&nbsp;hours look suitable.</p>
+          {% else %}
+            <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Conditions look marginal — no clearly safe window is forecast in the next 72&nbsp;hours. Use the hourly table to find the calmest period.</p>
+          {% endif %}
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">What is the best time of day to snorkel in {{ location.city }}?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Mornings are usually best — winds and waves tend to build through the afternoon. Aim for daylight hours within about an hour of high tide, when currents are slack and visibility is highest.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">What is the best tide for snorkeling?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">High tide, within roughly 72&nbsp;minutes of the peak (slack water), gives the clearest, calmest conditions. We highlight the next high tides above so you can plan around them.</p>
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">Is the water warm enough to snorkel in {{ location.city }}?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">{% if recent_averages.avg_sea_temp %}Sea temperature has recently averaged about {{ recent_averages.avg_sea_temp|floatformat:0 }}°C. {% endif %}Most snorkelers are comfortable from 20–30°C; below that, wear a wetsuit or rash guard.{% if best_months %} The best months here are typically {{ best_months|join:", " }}.{% endif %}</p>
+        </div>
+      </div>
     </div>
 
     <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
@@ -267,10 +367,10 @@
         </ul>
     </div>
 
-    {# Detailed table of snorkel conditions #}
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Detailed Conditions</h2>
-      <div class="responsive-table">
+    {# Detailed table of snorkel conditions (collapsible to keep the page skimmable) #}
+    <details class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto">
+      <summary class="cursor-pointer text-base sm:text-lg font-semibold mb-2 select-none">Detailed hourly conditions — full 72-hour table</summary>
+      <div class="responsive-table mt-2">
         <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
           <thead class="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
@@ -312,7 +412,26 @@
           </tbody>
         </table>
       </div>
-    </div>
+    </details>
+
+    {# Internal linking + discovery: other spots in the same country #}
+    {% if nearby_locations %}
+      <nav aria-label="More snorkeling spots" class="mt-8 sm:mt-10 w-full max-w-4xl mx-auto">
+        <h2 class="text-base sm:text-lg font-semibold mb-3">More snorkeling spots in {{ location.country }}</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {% for spot in nearby_locations %}
+            <a href="/{{ spot.country_slug }}/{{ spot.city_slug }}/"
+               class="block p-4 rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 border border-gray-200 ui-night:border-gray-700 transition-colors">
+              <span class="font-semibold block">{{ spot.name }}</span>
+              {% if spot.description %}<span class="text-sm text-gray-600 ui-night:text-gray-400 line-clamp-2">{{ spot.description|truncatechars:90 }}</span>{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+        <p class="mt-3 text-sm">
+          <a href="/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">See all snorkeling spots in {{ location.country }} →</a>
+        </p>
+      </nav>
+    {% endif %}
     <script>
       (function () {
         function initCharts() {
