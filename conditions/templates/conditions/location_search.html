@@ -1,6 +1,15 @@
 {% extends "conditions/base.html" %}
 
-{% block title %}Search Locations - SnorkelForecast.com{% endblock %}
+{% block title %}Search Snorkeling Locations Worldwide - SnorkelForecast.com{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Search snorkeling spots worldwide by name, type or country and check live conditions — wave height, wind, water temperature and tides.">
+  {# Don't let infinite ?q= result permutations consume crawl budget; keep the bare /search/ landing indexable. #}
+  {% if search_performed %}<meta name="robots" content="noindex,follow">{% endif %}
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Search Snorkeling Locations Worldwide" />
+  <meta property="og:url" content="https://snorkelforecast.com/search/" />
+{% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8">
