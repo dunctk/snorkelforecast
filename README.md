@@ -63,6 +63,14 @@ OSM Commands:
 
 Deployment
 - GitHub Actions runs lint and tests on `master`/`main` pushes.
+- Production runs on Coolify (Docker build on push). Coolify normally deploys via
+  its own GitHub webhook. As a backstop, the `deploy` job in `.github/workflows/ci.yml`
+  pings a Coolify deploy webhook after tests pass on `main` — set repo secrets
+  `COOLIFY_DEPLOY_WEBHOOK` (the app's deploy webhook URL from Coolify → Webhooks)
+  and, if required, `COOLIFY_TOKEN`. Without the secret the job is a no-op.
+- After deploying, verify: `https://snorkelforecast.com/usa/honolua-bay/` returns 200
+  and `https://snorkelforecast.com/sitemap.xml` shows today's `lastmod`. Then submit
+  the sitemap in Google Search Console.
 
 Production Deployment with Docker Compose
 -----------------------------------------
