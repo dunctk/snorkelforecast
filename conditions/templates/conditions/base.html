@@ -7,6 +7,9 @@
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
     <link rel="canonical" href="https://snorkelforecast.com{{ request.path }}">
+    <meta property="og:site_name" content="SnorkelForecast.com">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:site" content="@snorkelforecast">
     <link href="{% static 'css/output.css' %}" rel="stylesheet">
     <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
