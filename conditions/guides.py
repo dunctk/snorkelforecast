@@ -207,6 +207,118 @@ GUIDES = [
 """
         ),
     },
+    {
+        "slug": "best-snorkeling-in-greece",
+        "title": "Best Snorkeling in Greece: Top Islands & Spots",
+        "summary": (
+            "Greece's clear, calm Aegean and Ionian waters make it one of Europe's "
+            "best snorkeling destinations. Here are the top islands and spots, plus "
+            "how to check live conditions before you go."
+        ),
+        "faqs": [
+            {
+                "q": "Where is the best snorkeling in Greece?",
+                "a": (
+                    "Some of the best snorkeling in Greece is around the Ionian islands "
+                    "(Zakynthos, Kefalonia, Lefkada, Corfu) and the Cyclades (Milos, Paros, "
+                    "Naxos), plus Rhodes' Anthony Quinn Bay in the Dodecanese. These offer "
+                    "clear, sheltered coves with rocky reefs and good visibility."
+                ),
+            },
+            {
+                "q": "When is the best time to snorkel in Greece?",
+                "a": (
+                    "June to September, when the sea is warmest (around 24–26°C) and "
+                    "calmest. Snorkel in the morning before the afternoon meltemi wind picks "
+                    "up, especially in the Cyclades."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>With warm, clear water and thousands of sheltered coves, <strong>Greece is one of the best snorkeling destinations in Europe</strong>. Visibility is excellent across the Ionian and Aegean seas, and most spots are calm rocky coves ideal for spotting fish, octopus and the occasional sea turtle. Here are the top islands and spots, each with a live forecast.</p>
+
+<h2>Ionian Islands (west)</h2>
+<ul>
+  <li><a href="/greece/zakynthos/">Zakynthos</a> — clear Ionian water, plus the famous <a href="/greece/zakynthos-navagio/">Navagio (Shipwreck) cove</a> and Blue Caves.</li>
+  <li><a href="/greece/kefalonia/">Kefalonia</a> — turquoise bays and sheltered pebble coves.</li>
+  <li><a href="/greece/lefkada/">Lefkada</a> — Porto Katsiki and bright, calm swimming bays.</li>
+  <li><a href="/greece/corfu/">Corfu</a> — green island with rocky reefs and clear shallows.</li>
+</ul>
+
+<h2>Cyclades (central Aegean)</h2>
+<ul>
+  <li><a href="/greece/milos/">Milos</a> — volcanic rock formations and clear coves like Sarakiniko.</li>
+  <li><a href="/greece/paros/">Paros</a> and <a href="/greece/naxos/">Naxos</a> — sheltered sandy bays and bright shallows.</li>
+  <li><a href="/greece/santorini/">Santorini</a> — volcanic underwater landscapes and warm water.</li>
+</ul>
+
+<h2>Dodecanese &amp; Crete</h2>
+<ul>
+  <li><a href="/greece/rhodes/">Rhodes</a> — Anthony Quinn Bay is a classic rocky snorkeling cove.</li>
+  <li><a href="/greece/kos/">Kos</a> and <a href="/greece/symi/">Symi</a> — calm bays and deep, clear coves.</li>
+  <li><a href="/greece/crete/">Crete</a> — clear coves, caves and warm Libyan Sea shallows.</li>
+</ul>
+
+<h2>Plan around the conditions</h2>
+<p>Greek summers are reliably calm, but the afternoon <em>meltemi</em> wind can stir up the Cyclades — so snorkel in the morning, around high tide, for the clearest water. Open any island above to see its live snorkel score and the best window over the next 72 hours. You can also <a href="/greece/">browse every Greek spot we forecast</a>.</p>
+"""
+        ),
+    },
+    {
+        "slug": "best-snorkeling-in-hawaii",
+        "title": "Best Snorkeling in Hawaii: Top Spots by Island",
+        "summary": (
+            "Hawaii has some of the world's best beginner-friendly snorkeling, with "
+            "turtles, reef fish and clear water off easy-access beaches. Here are the "
+            "top spots on Maui, Oahu and the Big Island, with live conditions."
+        ),
+        "faqs": [
+            {
+                "q": "What is the best snorkeling spot in Hawaii?",
+                "a": (
+                    "Top spots include Honolua Bay and Molokini Crater on Maui, Hanauma Bay "
+                    "on Oahu, and Kealakekua Bay and Two Step on the Big Island. The best one "
+                    "on any given day depends on conditions — pick the calmest, clearest spot "
+                    "using a live forecast."
+                ),
+            },
+            {
+                "q": "When is the best time to snorkel in Hawaii?",
+                "a": (
+                    "Early morning, and generally the summer months (April–October) when "
+                    "north-shore swells are smaller. Snorkel before the trade winds build and "
+                    "around high tide for the clearest water."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p><strong>Hawaii is one of the world's best places to snorkel</strong>, with warm water, green sea turtles and reef fish accessible right from the beach. Conditions vary a lot by island, shore and season — exposed north shores can be rough in winter — so checking a live forecast for your exact spot is key. Here are the top spots by island.</p>
+
+<h2>Maui</h2>
+<ul>
+  <li><a href="/usa/honolua-bay/">Honolua Bay</a> — a marine reserve with vibrant coral, best on calm summer mornings.</li>
+  <li><a href="/usa/molokini-crater/">Molokini Crater</a> — a crescent volcanic crater with 30m+ visibility.</li>
+  <li><a href="/usa/kaanapali-beach/">Kaanapali (Black Rock)</a>, <a href="/usa/napili-bay/">Napili Bay</a> and <a href="/usa/kapalua-bay/">Kapalua Bay</a> — easy, beginner-friendly turtle beaches.</li>
+</ul>
+
+<h2>Oahu</h2>
+<ul>
+  <li><a href="/usa/hanauma-bay/">Hanauma Bay</a> — a protected reef inside a volcanic cone, Hawaii's most popular spot.</li>
+</ul>
+
+<h2>Big Island</h2>
+<ul>
+  <li><a href="/usa/kealakekua-bay/">Kealakekua Bay</a> — a marine sanctuary with some of Hawaii's healthiest coral.</li>
+  <li><a href="/usa/two-step-honaunau/">Two Step (Honaunau)</a> — easy lava-ledge entry, thriving reef and frequent dolphins.</li>
+</ul>
+
+<h2>Check before you go</h2>
+<p>The golden rule in Hawaii: snorkel in the morning, around high tide, before wind and surf build — and skip exposed shores on high-surf days. Open any spot above to see today's snorkel score, the next good window and the best months. Or <a href="/usa/">see every Hawaii and US spot we forecast</a>.</p>
+"""
+        ),
+    },
 ]
 
 GUIDES_BY_SLUG = {g["slug"]: g for g in GUIDES}
