@@ -11,6 +11,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 def main():
     """Run administrative tasks."""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "snorkelforecast.snorkelforecast.settings")
+    if len(sys.argv) > 1 and sys.argv[1] == "runserver":
+        # Avoid inotify watch-limit crashes in local/container dev environments.
+        os.environ.setdefault("WATCHFILES_FORCE_POLLING", "true")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

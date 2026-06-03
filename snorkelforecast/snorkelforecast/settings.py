@@ -34,6 +34,8 @@ _default_hosts = [
     "www.snorkelforecast.com",
     "localhost",
     "127.0.0.1",
+    "192.168.1.129",
+    "100.90.123.85",
 ]
 ALLOWED_HOSTS = [
     h.strip() for h in os.getenv("ALLOWED_HOSTS", ",".join(_default_hosts)).split(",") if h.strip()
@@ -55,6 +57,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sitemaps",
+    "django_watchfiles",
+    "django_browser_reload",
     # "django.contrib.gis",  # Temporarily disabled - enable with PostGIS in production
     "conditions",
 ]
@@ -68,6 +72,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
 ROOT_URLCONF = "snorkelforecast.snorkelforecast.urls"
