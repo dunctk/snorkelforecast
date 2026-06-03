@@ -49,9 +49,11 @@ def homepage(request: HttpRequest) -> HttpResponse:
             "city_slug": location.city_slug,
         }
 
-        # Fetch current sea surface temperature for each location
+        # Current sea surface temperature for the badge. Use the default 72h
+        # horizon (not hours=1) so this shares the same cache key the background
+        # scheduler keeps warm — turning a per-render blocking API call into a
+        # cache hit and cutting Open-Meteo usage as the location count grows.
         forecast = fetch_forecast(
-            hours=1,
             coordinates=location.coordinates_dict,
             timezone_str=location.timezone,
             country_slug=location.country_slug,
@@ -126,8 +128,10 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
             "city_slug": location.city_slug,
         }
 
+        # Use the default 72h horizon so this shares the scheduler-warmed cache
+        # key (cache hit instead of a blocking per-city Open-Meteo call). Keeps
+        # country pages fast even with many cities, and limits API usage.
         forecast = fetch_forecast(
-            hours=1,
             coordinates=location.coordinates_dict,
             timezone_str=location.timezone,
             country_slug=country,
