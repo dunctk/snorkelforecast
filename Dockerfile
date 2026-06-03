@@ -39,9 +39,11 @@ RUN mkdir -p logs
 # Make startup script executable
 RUN chmod +x startup.sh
 
-# Run tests to verify OSM import functionality
-RUN uv run python test_osm_import.py
-
+# NOTE: We intentionally do NOT run test_osm_import.py here. It imports Django
+# models before settings are configured (raising ImproperlyConfigured) and needs
+# a migrated DB + network — none of which exist at image-build time. As a `RUN`
+# step it failed every build, which silently broke Coolify deploys (the old
+# container kept serving). Tests run in CI (.github/workflows/ci.yml) instead.
 
 # Expose port
 EXPOSE 8000
