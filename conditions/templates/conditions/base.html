@@ -25,10 +25,11 @@
       "sameAs": ["https://github.com/dunctk/snorkelforecast"]
     }
     </script>
-    <link href="{% static 'css/output.css' %}" rel="stylesheet">
-    <link href="{% static 'css/ui.css' %}" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="{% static 'css/ui.css' %}" rel="stylesheet"></noscript>
-     <meta name="theme-color" content="#0ea5e9" id="theme-color" />
+    <link href="{% static 'css/output.css' %}?v=20260604" rel="stylesheet">
+    {# ui.css carries the full design system — load it as a blocking stylesheet (with a
+       cache-busting version) so it always applies and never flashes the un-styled base. #}
+    <link href="{% static 'css/ui.css' %}?v=20260604" rel="stylesheet">
+     <meta name="theme-color" content="#041d29" id="theme-color" />
     <script src="{% static 'js/theme.js' %}" defer></script>
     <script src="{% static 'js/nav.js' %}" defer></script>
     <script src="{% static 'js/autocomplete.min.js' %}" defer></script>
