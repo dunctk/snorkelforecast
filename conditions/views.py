@@ -94,9 +94,12 @@ def homepage(request: HttpRequest) -> HttpResponse:
     ]
     country_list.sort(key=lambda c: c["name"].lower())
 
+    # Real catalogue size (not the small hardcoded LOCATIONS dict) for the hero copy.
+    country_count = SnorkelLocation.objects.values("country_slug").distinct().count()
+
     context = {
         "popular_locations": popular_locations,
-        "country_count": len(LOCATIONS),
+        "country_count": country_count,
         "countries": country_list,
     }
     return render(request, "conditions/homepage.html", context)
