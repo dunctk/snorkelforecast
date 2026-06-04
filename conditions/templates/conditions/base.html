@@ -26,8 +26,7 @@
     }
     </script>
     <link href="{% static 'css/output.css' %}?v=20260604" rel="stylesheet">
-    {# ui.css carries the full design system — load it as a blocking stylesheet (with a
-       cache-busting version) so it always applies and never flashes the un-styled base. #}
+    {# ui.css carries the full design system: blocking + versioned so it always applies #}
     <link href="{% static 'css/ui.css' %}?v=20260604" rel="stylesheet">
      <meta name="theme-color" content="#041d29" id="theme-color" />
     <script src="{% static 'js/theme.js' %}" defer></script>
