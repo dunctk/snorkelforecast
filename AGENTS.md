@@ -28,6 +28,7 @@
 
 ## Commit & Pull Request Guidelines
 - Commit messages: prefix scope when helpful (e.g., `fix: ...`, `feat: ...`), imperative mood, concise subject, optional body.
+- Default workflow: commit changes directly to `main` and push `main` unless the user explicitly asks for a branch or PR.
 - PRs should include: clear description, linked issue (if any), screenshots for UI changes, and a brief testing checklist.
 - Keep PRs small and cohesive; avoid unrelated refactors.
 
