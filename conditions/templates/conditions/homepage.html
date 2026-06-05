@@ -55,13 +55,13 @@
 {% block content %}
   <!-- Hero Section -->
   <section class="hero">
-    <div class="max-w-6xl mx-auto px-4 pt-20 pb-20 sm:pt-28 sm:pb-32 text-center relative">
+    <div class="hero-inner max-w-6xl mx-auto px-4 pt-20 pb-20 sm:pt-28 sm:pb-32 text-center relative">
       <p class="eyebrow reveal reveal-1 mb-6">Snorkeling forecasts, worldwide</p>
       <h1 class="reveal reveal-1 mb-6">Know exactly when the<br><em>water turns clear.</em></h1>
-      <p class="reveal reveal-2 text-lg sm:text-xl max-w-xl mx-auto px-2 leading-relaxed" style="color:var(--muted)">
+      <p class="hero-copy reveal reveal-2 text-lg sm:text-xl max-w-xl mx-auto px-2 leading-relaxed" style="color:var(--muted)">
         Hour-by-hour snorkeling conditions for {{ country_count }}+ destinations — wave height, wind, tides and water temperature, scored so you can pick the perfect window.
       </p>
-       <div class="mt-10 max-w-lg mx-auto reveal reveal-3">
+       <div class="hero-search mt-10 max-w-lg mx-auto reveal reveal-3">
          <div class="search-container flex gap-3">
            <div class="relative flex-1">
              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -93,7 +93,7 @@
            </button>
          </div>
        </div>
-      <div class="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3 reveal reveal-4">
+      <div class="hero-actions mt-7 flex flex-col sm:flex-row items-center justify-center gap-3 reveal reveal-4">
         <a href="#popular" class="btn btn-primary">Explore popular spots</a>
         <a href="{% url 'countries_index' %}" class="btn btn-ghost">Browse {{ country_count }} countries</a>
       </div>

@@ -164,7 +164,11 @@ body {
 .ui-day h1, .ui-twilight h1, .ui-night h1 {
   font-size: clamp(2.4rem, 6vw, 4.4rem);
   letter-spacing: -0.02em;
+  line-height: 1.1;
 }
+/* Hero headline: a touch more air between the two lines, balanced wrapping */
+.hero h1 { line-height: 1.12; text-wrap: balance; margin-inline: auto; }
+.hero h1 em { display: inline-block; margin-top: 0.06em; }
 .ui-day h2, .ui-twilight h2, .ui-night h2 { letter-spacing: -0.015em; }
 /* Italic optical accent for the serif gives it real character */
 .ui-day h1 em, .ui-twilight h1 em, .ui-night h1 em,
@@ -380,6 +384,10 @@ input[type="search"]:focus {
   background: transparent !important;
   overflow: hidden;
 }
+.hero .hero-inner {
+  padding-top: clamp(4.75rem, 8vw, 7rem) !important;
+  padding-bottom: clamp(3.5rem, 6vw, 5.25rem) !important;
+}
 .hero::before {
   /* layered wave bands at the base of the hero */
   content: "";
@@ -396,6 +404,28 @@ input[type="search"]:focus {
   letter-spacing: 0.34em;
   font-size: 0.72rem;
   color: var(--accent);
+  margin-bottom: clamp(0.85rem, 2vw, 1.15rem) !important;
+}
+.hero h1 {
+  margin-bottom: clamp(1.05rem, 2.4vw, 1.45rem) !important;
+}
+.hero .hero-copy {
+  max-width: 38rem;
+}
+.hero .hero-search {
+  margin-top: clamp(1.9rem, 4vw, 2.65rem) !important;
+}
+.hero .hero-actions {
+  margin-top: clamp(1.15rem, 2.5vw, 1.75rem) !important;
+}
+@media (max-width: 640px) {
+  .hero .hero-inner {
+    padding-top: 3.75rem !important;
+    padding-bottom: 2.75rem !important;
+  }
+  .hero .eyebrow {
+    letter-spacing: 0.24em;
+  }
 }
 
 /* Editorial number / data display */
