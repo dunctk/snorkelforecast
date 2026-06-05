@@ -45,6 +45,7 @@ node_modules/
 
 # Django specific
 media/
+.django-cache/
 
 # Node.js specific
 package-lock.json

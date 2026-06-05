@@ -8,6 +8,7 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.cache import cache_page
+from django.utils import timezone as django_timezone
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import os
 import math
@@ -29,13 +30,63 @@ from .models_spots import OSMSpot, ImportTile
 logger = logging.getLogger(__name__)
 
 
+def _current_sst_by_location_id(locations: list[SnorkelLocation]) -> dict[int, float | None]:
+    """Return the nearest upcoming sea temperature for each location from DB history."""
+    location_ids = [location.id for location in locations]
+    if not location_ids:
+        return {}
+
+    rows = (
+        ForecastHour.objects.filter(
+            location_id__in=location_ids,
+            time__gte=django_timezone.now(),
+            sea_surface_temperature__isnull=False,
+        )
+        .order_by("location_id", "time")
+        .values_list("location_id", "sea_surface_temperature")
+    )
+
+    current_sst: dict[int, float | None] = {}
+    for location_id, sst in rows:
+        current_sst.setdefault(location_id, sst)
+
+    missing_locations = [location for location in locations if location.id not in current_sst]
+    if not missing_locations:
+        return current_sst
+
+    country_slugs = {location.country_slug for location in missing_locations}
+    city_slugs = {location.city_slug for location in missing_locations}
+    legacy_rows = (
+        ForecastHour.objects.filter(
+            location__isnull=True,
+            country_slug__in=country_slugs,
+            city_slug__in=city_slugs,
+            time__gte=django_timezone.now(),
+            sea_surface_temperature__isnull=False,
+        )
+        .order_by("country_slug", "city_slug", "time")
+        .values_list("country_slug", "city_slug", "sea_surface_temperature")
+    )
+
+    legacy_sst: dict[tuple[str, str], float | None] = {}
+    for country_slug, city_slug, sst in legacy_rows:
+        legacy_sst.setdefault((country_slug, city_slug), sst)
+
+    for location in missing_locations:
+        sst = legacy_sst.get((location.country_slug, location.city_slug))
+        if sst is not None:
+            current_sst[location.id] = sst
+    return current_sst
+
+
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def homepage(request: HttpRequest) -> HttpResponse:
     """Homepage showing popular snorkeling locations."""
     popular_locations = []
 
     # Get popular locations from database
-    popular_location_objects = SnorkelLocation.objects.filter(is_popular=True)
+    popular_location_objects = list(SnorkelLocation.objects.filter(is_popular=True))
+    current_sst = _current_sst_by_location_id(popular_location_objects)
 
     for location in popular_location_objects:
         location_data = {
@@ -49,23 +100,7 @@ def homepage(request: HttpRequest) -> HttpResponse:
             "city_slug": location.city_slug,
         }
 
-        # Current sea surface temperature for the badge. Use the default 72h
-        # horizon (not hours=1) so this shares the same cache key the background
-        # scheduler keeps warm — turning a per-render blocking API call into a
-        # cache hit and cutting Open-Meteo usage as the location count grows.
-        forecast = fetch_forecast(
-            coordinates=location.coordinates_dict,
-            timezone_str=location.timezone,
-            country_slug=location.country_slug,
-            city_slug=location.city_slug,
-        )
-        if not forecast:
-            logger.warning(
-                "No forecast returned for homepage location: %s, %s",
-                location.country,
-                location.name,
-            )
-        location_data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
+        location_data["current_sst"] = current_sst.get(location.id)
 
         popular_locations.append(location_data)
 
@@ -112,13 +147,14 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
     Shows all cities we have presets for within the given country slug.
     """
     # Get locations for this country from database
-    country_locations = SnorkelLocation.objects.filter(country_slug=country)
+    country_locations = list(SnorkelLocation.objects.filter(country_slug=country))
 
-    if not country_locations.exists():
+    if not country_locations:
         raise Http404("Country not found")
 
     # Prepare city list with optional current SST for quick glance
     cities = []
+    current_sst = _current_sst_by_location_id(country_locations)
     for location in country_locations:
         data = {
             "name": location.name,
@@ -131,27 +167,12 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
             "city_slug": location.city_slug,
         }
 
-        # Use the default 72h horizon so this shares the scheduler-warmed cache
-        # key (cache hit instead of a blocking per-city Open-Meteo call). Keeps
-        # country pages fast even with many cities, and limits API usage.
-        forecast = fetch_forecast(
-            coordinates=location.coordinates_dict,
-            timezone_str=location.timezone,
-            country_slug=country,
-            city_slug=location.city_slug,
-        )
-        if not forecast:
-            logger.warning(
-                "No forecast returned for country page location: %s/%s",
-                country,
-                location.city_slug,
-            )
-        data["current_sst"] = forecast[0]["sea_surface_temperature"] if forecast else None
+        data["current_sst"] = current_sst.get(location.id)
 
         cities.append(data)
 
     # Get country name from first location
-    country_name = country_locations.first().country
+    country_name = country_locations[0].country
 
     context = {
         "country_slug": country,
@@ -740,13 +761,15 @@ def location_tide_chart(request: HttpRequest, country: str, city: str) -> HttpRe
     except SnorkelLocation.DoesNotExist:
         raise Http404("Location not found")
 
+    # Use the default 72h horizon so thumbnail requests reuse the same cache key
+    # warmed by forecast pages and the scheduler, instead of causing separate
+    # Open-Meteo calls for a 24h-only cache entry.
     hours = fetch_forecast(
-        hours=24,
         coordinates=location.coordinates_dict,
         timezone_str=location.timezone,
         country_slug=country,
         city_slug=city,
-    )
+    )[:24]
 
     if not hours:
         raise Http404("No tide data")

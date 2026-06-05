@@ -172,11 +172,24 @@ WHITENOISE_MAX_AGE = 31536000  # 1 year
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Caching
-# Use in-memory cache by default; per-view caching will reference this
+# Use a shared file cache by default so the background scheduler can warm data
+# for Gunicorn workers. LocMemCache is process-local, which makes page and
+# forecast cache hits unreliable in production.
+if IS_PRODUCTION:
+    _default_cache_dir = "/persistent/django-cache"
+else:
+    _default_cache_dir = BASE_DIR / ".django-cache"
+
+_cache_backend = os.getenv(
+    "CACHE_BACKEND",
+    "django.core.cache.backends.filebased.FileBasedCache",
+)
+_cache_location = os.getenv("CACHE_LOCATION", str(_default_cache_dir))
+
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "snorkelforecast-cache",
+        "BACKEND": _cache_backend,
+        "LOCATION": _cache_location,
     }
 }
 
