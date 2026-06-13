@@ -256,7 +256,7 @@ def _save_forecast_history(country_slug: str, city_slug: str, hours: list[dict])
     ForecastHour.objects.bulk_create(rows, ignore_conflicts=True)
 
 
-@cache_page(getattr(settings, "CACHE_TTL", 300))
+@cache_page(getattr(settings, "LOCATION_PAGE_CACHE_TTL", getattr(settings, "CACHE_TTL", 300)))
 def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Display forecast for a specific location."""
     # First try to find location in database (for dynamic locations)

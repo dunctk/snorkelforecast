@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from typing import TypedDict
 import logging
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_FORECAST_CACHE_TTL = getattr(settings, "FORECAST_CACHE_TTL", 21600)  # 6 hours
 DEFAULT_FORECAST_STALE_TTL = getattr(settings, "FORECAST_CACHE_STALE_TTL", 86400)  # 24 hours
 DEFAULT_FORECAST_NEGATIVE_TTL = getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", 1800)  # 30 minutes
+DEFAULT_FORECAST_REQUEST_TIMEOUT = getattr(settings, "FORECAST_REQUEST_TIMEOUT", 5.0)
 FORECAST_CACHE_VERSION = 1
 
 
@@ -247,8 +249,22 @@ def fetch_forecast(
         return cached
 
     try:
-        with httpx.Client(timeout=10.0) as client:
-            marine_response = client.get(marine_url)
+        request_timeout = float(
+            getattr(settings, "FORECAST_REQUEST_TIMEOUT", DEFAULT_FORECAST_REQUEST_TIMEOUT)
+        )
+        timeout = httpx.Timeout(
+            request_timeout,
+            connect=min(request_timeout, 2.0),
+            pool=min(request_timeout, 2.0),
+        )
+        with httpx.Client(timeout=timeout) as client:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                marine_future = executor.submit(client.get, marine_url)
+                wx_future = executor.submit(client.get, wx_url)
+
+                marine_response = marine_future.result()
+                wx_response = wx_future.result()
+
             try:
                 marine_response.raise_for_status()
             except httpx.HTTPError as e:
@@ -286,7 +302,6 @@ def fetch_forecast(
                 )
                 return db if db else []
 
-            wx_response = client.get(wx_url)
             try:
                 wx_response.raise_for_status()
             except httpx.HTTPError as e:

@@ -196,6 +196,11 @@ CACHES = {
 # Default cache TTL (seconds) for decorators; override with CACHE_TTL env
 CACHE_TTL = int(os.getenv("CACHE_TTL", "300"))
 
+# Forecast pages are expensive to rebuild because they can refresh upstream
+# weather data and persist history. Cache the rendered HTML longer than generic
+# pages so anonymous traffic does not repeatedly hit that path.
+LOCATION_PAGE_CACHE_TTL = int(os.getenv("LOCATION_PAGE_CACHE_TTL", "3600"))
+
 # OSM Service settings
 OSM_CACHE_TTL = int(os.getenv("OSM_CACHE_TTL", "86400"))  # 24 hours
 OSM_REQUEST_DELAY = float(os.getenv("OSM_REQUEST_DELAY", "1.0"))  # seconds between requests
@@ -204,6 +209,7 @@ OSM_REQUEST_DELAY = float(os.getenv("OSM_REQUEST_DELAY", "1.0"))  # seconds betw
 FORECAST_CACHE_TTL = int(os.getenv("FORECAST_CACHE_TTL", "21600"))  # 6 hours
 FORECAST_CACHE_STALE_TTL = int(os.getenv("FORECAST_CACHE_STALE_TTL", "86400"))  # 24 hours
 FORECAST_CACHE_NEGATIVE_TTL = int(os.getenv("FORECAST_CACHE_NEGATIVE_TTL", "1800"))  # 30 minutes
+FORECAST_REQUEST_TIMEOUT = float(os.getenv("FORECAST_REQUEST_TIMEOUT", "5.0"))
 
 # IndexNow: instantly notify Bing, Yandex, DuckDuckGo, Seznam and Naver of new/
 # changed URLs. The key is public by design (hosted at /<key>.txt). Override per
