@@ -8,6 +8,7 @@ from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.cache import cache_page
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone as django_timezone
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import os
@@ -19,6 +20,7 @@ from .history import (
     save_forecast_history,
     get_recent_averages,
     get_monthly_scores,
+    get_monthly_sst,
 )
 from .locations import LOCATIONS
 from .osm import osm_service
@@ -458,9 +460,11 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     if "location" in locals() and location:
         recent_averages = get_recent_averages(location)
         monthly_scores = get_monthly_scores(location)
+        monthly_sst = get_monthly_sst(location)
     else:
         recent_averages = get_recent_averages(country, city)
         monthly_scores = get_monthly_scores(country, city)
+        monthly_sst = get_monthly_sst(country, city)
     season_labels = [m["month"].strftime("%b") for m in monthly_scores]
     season_scores = [
         round(m["avg_score"], 2) if m["avg_score"] is not None else None for m in monthly_scores
@@ -470,6 +474,28 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         for m in sorted(monthly_scores, key=lambda x: x["avg_score"] or 0, reverse=True)[:3]
         if m["avg_score"] is not None
     ]
+    sst_labels = [m["month"].strftime("%b") for m in monthly_sst]
+    sst_avg = [
+        round(m["avg_sst"], 1) if m["avg_sst"] is not None else None for m in monthly_sst
+    ]
+    sst_min = [
+        round(m["min_sst"], 1) if m["min_sst"] is not None else None for m in monthly_sst
+    ]
+    sst_max = [
+        round(m["max_sst"], 1) if m["max_sst"] is not None else None for m in monthly_sst
+    ]
+    warmest_month = max(
+        monthly_sst, key=lambda m: m["avg_sst"] or 0
+    )["month"].strftime("%B") if any(m.get("avg_sst") for m in monthly_sst) else None
+    warmest_temp = round(
+        max(m["avg_sst"] for m in monthly_sst if m["avg_sst"] is not None), 1
+    ) if any(m.get("avg_sst") for m in monthly_sst) else None
+    coldest_month = min(
+        monthly_sst, key=lambda m: m["avg_sst"] or 0
+    )["month"].strftime("%B") if any(m.get("avg_sst") for m in monthly_sst) else None
+    coldest_temp = round(
+        min(m["avg_sst"] for m in monthly_sst if m["avg_sst"] is not None), 1
+    ) if any(m.get("avg_sst") for m in monthly_sst) else None
 
     # Use the location object if available, otherwise create a compatible object
     if "location" in locals() and location:
@@ -519,6 +545,14 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "season_labels": season_labels,
         "season_scores": season_scores,
         "best_months": best_months,
+        "sst_labels": sst_labels,
+        "sst_avg": sst_avg,
+        "sst_min": sst_min,
+        "sst_max": sst_max,
+        "warmest_month": warmest_month,
+        "warmest_temp": warmest_temp,
+        "coldest_month": coldest_month,
+        "coldest_temp": coldest_temp,
     }
     return render(request, "conditions/location_forecast.html", context)
 
@@ -1177,3 +1211,184 @@ def location_history(request: HttpRequest, country: str, city: str) -> HttpRespo
             "location": location,
         },
     )
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def location_sea_temperature(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Dedicated sea temperature page for a location."""
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+        location_data = {
+            "name": location.name,
+            "country": location.country,
+            "coordinates": location.coordinates_dict,
+            "timezone": location.timezone,
+            "description": location.description,
+            "country_slug": country,
+            "city_slug": city,
+        }
+        coordinates = location.coordinates_dict
+        timezone_str = location.timezone
+    except SnorkelLocation.DoesNotExist:
+        if country not in LOCATIONS or city not in LOCATIONS[country]:
+            osm_locations = osm_service.search_locations(query=city, country=country, limit=5)
+            if osm_locations:
+                osm_data = osm_locations[0]
+                location = osm_service.create_or_update_location(osm_data)
+                location_data = {
+                    "name": location.name,
+                    "country": location.country,
+                    "coordinates": location.coordinates_dict,
+                    "timezone": location.timezone,
+                    "description": location.description,
+                    "country_slug": country,
+                    "city_slug": city,
+                }
+                coordinates = location.coordinates_dict
+                timezone_str = location.timezone
+            else:
+                raise Http404("Location not found")
+        else:
+            location_data = LOCATIONS[country][city].copy()
+            location_data["country_slug"] = country
+            location_data["city_slug"] = city
+            coordinates = location_data["coordinates"]
+            timezone_str = location_data["timezone"]
+            location = None
+
+    all_hours = fetch_forecast(
+        coordinates=coordinates,
+        timezone_str=timezone_str,
+        country_slug=country,
+        city_slug=city,
+    )
+
+    current_sst = None
+    current_wave = None
+    current_wind = None
+    if all_hours:
+        current = all_hours[0]
+        current_sst = current.get("sea_surface_temperature")
+        current_wave = current.get("wave_height")
+        current_wind = current.get("wind_speed")
+
+    if "location" in locals() and location:
+        recent_averages = get_recent_averages(location)
+        monthly_sst = get_monthly_sst(location, months=24)
+    else:
+        recent_averages = get_recent_averages(country, city)
+        monthly_sst = get_monthly_sst(country, city, months=24)
+
+    sst_labels = [m["month"].strftime("%b") for m in monthly_sst]
+    sst_avg = [
+        round(m["avg_sst"], 1) if m["avg_sst"] is not None else None for m in monthly_sst
+    ]
+    sst_min = [
+        round(m["min_sst"], 1) if m["min_sst"] is not None else None for m in monthly_sst
+    ]
+    sst_max = [
+        round(m["max_sst"], 1) if m["max_sst"] is not None else None for m in monthly_sst
+    ]
+    warmest_month = max(
+        monthly_sst, key=lambda m: m["avg_sst"] or 0
+    )["month"].strftime("%B") if any(m.get("avg_sst") for m in monthly_sst) else None
+    warmest_temp = round(
+        max(m["avg_sst"] for m in monthly_sst if m["avg_sst"] is not None), 1
+    ) if any(m.get("avg_sst") for m in monthly_sst) else None
+    coldest_month = min(
+        monthly_sst, key=lambda m: m["avg_sst"] or 0
+    )["month"].strftime("%B") if any(m.get("avg_sst") for m in monthly_sst) else None
+    coldest_temp = round(
+        min(m["avg_sst"] for m in monthly_sst if m["avg_sst"] is not None), 1
+    ) if any(m.get("avg_sst") for m in monthly_sst) else None
+
+    if "location" in locals() and location:
+        context_location = location
+    else:
+        class MockLocation:
+            def __init__(self, data):
+                self.name = data.get("name", data.get("city", ""))
+                self.city = data.get("city", "")
+                self.country = data.get("country", "")
+                self.country_slug = data.get("country_slug", "")
+                self.city_slug = data.get("city_slug", "")
+                self.description = data.get("description", "")
+                self.latitude = data.get("coordinates", {}).get("lat", 0)
+                self.longitude = data.get("coordinates", {}).get("lon", 0)
+
+        context_location = MockLocation(location_data)
+
+    nearby_locations = list(
+        SnorkelLocation.objects.filter(country_slug=country)
+        .exclude(city_slug=city)
+        .values("name", "city_slug", "country_slug", "description")[:6]
+    )
+
+    context = {
+        "location": context_location,
+        "nearby_locations": nearby_locations,
+        "current_sst": current_sst,
+        "current_wave": current_wave,
+        "current_wind": current_wind,
+        "recent_averages": recent_averages,
+        "sst_labels": sst_labels,
+        "sst_avg": sst_avg,
+        "sst_min": sst_min,
+        "sst_max": sst_max,
+        "warmest_month": warmest_month,
+        "warmest_temp": warmest_temp,
+        "coldest_month": coldest_month,
+        "coldest_temp": coldest_temp,
+    }
+    return render(request, "conditions/location_sea_temperature.html", context)
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+@xframe_options_exempt
+def location_sea_temperature_embed(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    """Minimal embeddable sea-temperature chart for iframe widgets."""
+    try:
+        location = SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+        location_data = {
+            "name": location.name,
+            "country": location.country,
+            "coordinates": location.coordinates_dict,
+            "timezone": location.timezone,
+            "country_slug": country,
+            "city_slug": city,
+        }
+        coordinates = location.coordinates_dict
+    except SnorkelLocation.DoesNotExist:
+        if country not in LOCATIONS or city not in LOCATIONS[country]:
+            raise Http404("Location not found")
+        location_data = LOCATIONS[country][city].copy()
+        location_data["country_slug"] = country
+        location_data["city_slug"] = city
+        coordinates = location_data["coordinates"]
+        location = None
+
+    all_hours = fetch_forecast(
+        coordinates=coordinates,
+        timezone_str=location_data.get("timezone", "UTC"),
+        country_slug=country,
+        city_slug=city,
+    )
+    current_sst = all_hours[0].get("sea_surface_temperature") if all_hours else None
+
+    if location:
+        monthly_sst = get_monthly_sst(location, months=24)
+    else:
+        monthly_sst = get_monthly_sst(country, city, months=24)
+
+    context = {
+        "location_country": location_data.get("country", ""),
+        "location_name": location_data.get("name", location_data.get("city", "")),
+        "country_slug": country,
+        "city_slug": city,
+        "current_sst": current_sst,
+        "sst_labels": [m["month"].strftime("%b") for m in monthly_sst],
+        "sst_avg": [round(m["avg_sst"], 1) if m["avg_sst"] is not None else None for m in monthly_sst],
+        "sst_min": [round(m["min_sst"], 1) if m["min_sst"] is not None else None for m in monthly_sst],
+        "sst_max": [round(m["max_sst"], 1) if m["max_sst"] is not None else None for m in monthly_sst],
+    }
+    return render(request, "conditions/embed_sea_temperature.html", context)

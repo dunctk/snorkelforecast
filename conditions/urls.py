@@ -26,6 +26,16 @@ urlpatterns = [
         name="location_history",
     ),
     path(
+        "<str:country>/<str:city>/sea-temperature/",
+        views.location_sea_temperature,
+        name="location_sea_temperature",
+    ),
+    path(
+        "<str:country>/<str:city>/embed/sea-temperature/",
+        views.location_sea_temperature_embed,
+        name="location_sea_temperature_embed",
+    ),
+    path(
         "<str:country>/<str:city>/tide.png", views.location_tide_chart, name="location_tide_chart"
     ),
     path("<str:country>/<str:city>/image.png", views.location_og_image, name="location_og_image"),

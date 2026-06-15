@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.db.models import Avg
+from django.db.models import Avg, Max, Min
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
@@ -116,6 +116,49 @@ def get_monthly_scores(
             .annotate(month=TruncMonth("time"))
             .values("month")
             .annotate(avg_score=Avg("score"))
+            .order_by("month")
+        )
+
+    return list(qs)
+
+
+def get_monthly_sst(
+    location_or_country: str | SnorkelLocation, city_slug: str | None = None, months: int = 12
+) -> list[dict[str, object]]:
+    """Return monthly min/avg/max sea-surface temperature for the past ``months`` months.
+
+    Args:
+        location_or_country: Either a SnorkelLocation instance or country_slug string
+        city_slug: City slug string (ignored if location is provided)
+        months: Number of months to look back
+    """
+
+    cutoff = timezone.now() - timedelta(days=months * 31)
+
+    if isinstance(location_or_country, SnorkelLocation):
+        qs = (
+            ForecastHour.objects.filter(location=location_or_country, time__gte=cutoff)
+            .annotate(month=TruncMonth("time"))
+            .values("month")
+            .annotate(
+                avg_sst=Avg("sea_surface_temperature"),
+                min_sst=Min("sea_surface_temperature"),
+                max_sst=Max("sea_surface_temperature"),
+            )
+            .order_by("month")
+        )
+    else:
+        qs = (
+            ForecastHour.objects.filter(
+                country_slug=location_or_country, city_slug=city_slug, time__gte=cutoff
+            )
+            .annotate(month=TruncMonth("time"))
+            .values("month")
+            .annotate(
+                avg_sst=Avg("sea_surface_temperature"),
+                min_sst=Min("sea_surface_temperature"),
+                max_sst=Max("sea_surface_temperature"),
+            )
             .order_by("month")
         )
 

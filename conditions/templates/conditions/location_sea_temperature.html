@@ -1,0 +1,324 @@
+{% extends 'conditions/base.html' %}
+{% load static %}
+
+{% block title %}{{ location.city }} Sea Temperature Today & Monthly Averages | {{ location.country }}{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Sea surface temperature in {{ location.name }}, {{ location.country }} today. {% if current_sst %}Currently {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly water temperature averages, historical min/max and seasonal chart — updated hourly.">
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="{{ location.city }} Sea Temperature Today & Monthly Averages" />
+  <meta property="og:description" content="{% if current_sst %}Current sea temperature in {{ location.name }}: {{ current_sst|floatformat:1 }}°C. {% endif %}View monthly water temperature averages, historical trends, and the best time of year for warm water." />
+  <meta property="og:url" content="https://snorkelforecast.com{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" />
+  <meta name="twitter:title" content="{{ location.city }} Sea Temperature Today" />
+  <meta name="twitter:description" content="{% if current_sst %}Current sea temperature: {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly averages and historical water temperature data for {{ location.name }}." />
+  <link rel="canonical" href="https://snorkelforecast.com{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}">
+{% endblock %}
+
+{% block content %}
+  <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
+    <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
+      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li>/</li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li>/</li>
+      <li><a href="/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li>/</li>
+      <li><a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="hover:underline">{{ location.city }}</a></li>
+      <li>/</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">Sea Temperature</li>
+    </ol>
+  </nav>
+
+  <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
+    <div class="text-center">
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Sea Temperature</h1>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · Updated hourly from satellite and marine data</p>
+      <p class="mt-2 text-sm">
+        <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
+          ← Snorkel forecast for {{ location.city }}
+        </a>
+      </p>
+    </div>
+
+    {% if current_sst is not None %}
+      <div class="w-full max-w-md mx-auto mt-6 mb-6 text-center">
+        <div class="inline-flex flex-col items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 ui-night:bg-blue-900/20 ui-night:border-blue-800 px-8 py-6">
+          <p class="text-xs sm:text-sm text-gray-500 ui-night:text-gray-400 uppercase tracking-wide font-medium">Current Sea Temperature</p>
+          <p class="text-5xl sm:text-6xl font-bold text-blue-700 ui-night:text-blue-300 my-2">{{ current_sst|floatformat:1 }}<span class="text-3xl sm:text-4xl">°C</span></p>
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">
+            {% if current_sst >= 20.6 and current_sst <= 30.4 %}
+              <span class="text-emerald-600 ui-night:text-emerald-400 font-medium">Comfortable for snorkeling</span>
+            {% elif current_sst >= 18 %}
+              <span class="text-amber-600 ui-night:text-amber-400 font-medium">Cool — wetsuit recommended</span>
+            {% else %}
+              <span class="text-blue-600 ui-night:text-blue-400 font-medium">Cold — wetsuit required</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Sea Surface Temperature Over the Year</h2>
+      <div class="h-48 sm:h-64 mb-4">
+        <canvas id="sstChart" class="w-full h-full"></canvas>
+      </div>
+      {% if warmest_month and coldest_month %}
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
+          Sea surface temperature in {{ location.city }} ranges from about
+          {{ coldest_temp }}°C in {{ coldest_month }} to
+          {{ warmest_temp }}°C in {{ warmest_month }}.
+          The water is warmest in late summer and coolest in winter.
+        </p>
+      {% endif %}
+      {% if recent_averages.avg_sea_temp %}
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+          Over the past 30 days, the average sea temperature in {{ location.city }} has been
+          {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.
+        </p>
+      {% endif %}
+      <div class="mt-3 pt-3 border-t border-gray-100 ui-night:border-gray-700">
+        <button onclick="copyEmbedCode()" class="text-xs text-gray-500 ui-night:text-gray-400 hover:text-blue-600 ui-night:hover:text-blue-400 underline cursor-pointer">
+          Embed this chart on your site
+        </button>
+        <input type="text" id="embedCodeInput" value='&lt;iframe src="https://snorkelforecast.com{% url 'location_sea_temperature_embed' country=location.country_slug city=location.city_slug %}" width="100%" height="400" frameborder="0"&gt;&lt;/iframe&gt;' readonly class="sr-only">
+        <p id="embedCopied" class="text-xs text-emerald-600 ui-night:text-emerald-400 mt-1 hidden">Copied!</p>
+      </div>
+    </div>
+
+    <script>
+    function copyEmbedCode() {
+      var input = document.getElementById('embedCodeInput');
+      input.classList.remove('sr-only');
+      input.select();
+      navigator.clipboard.writeText(input.value).catch(function () { input.select(); document.execCommand('copy'); });
+      input.classList.add('sr-only');
+      var msg = document.getElementById('embedCopied');
+      msg.classList.remove('hidden');
+      setTimeout(function () { msg.classList.add('hidden'); }, 2000);
+    }
+    </script>
+
+    {% if sst_labels %}
+      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto overflow-x-auto">
+        <h2 class="text-base sm:text-lg font-semibold mb-3">Monthly Water Temperature Averages</h2>
+        <table class="w-full text-sm text-left">
+          <thead>
+            <tr class="border-b border-gray-200 ui-night:border-gray-700">
+              <th class="py-2 pr-4 font-medium">Month</th>
+              <th class="py-2 pr-4 font-medium">Min</th>
+              <th class="py-2 pr-4 font-medium">Average</th>
+              <th class="py-2 font-medium">Max</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for label in sst_labels %}
+              <tr class="border-b border-gray-100 ui-night:border-gray-800">
+                <td class="py-2 pr-4 font-medium">{{ label }}</td>
+                <td class="py-2 pr-4">{{ sst_min|slice:forloop.counter0|last|default:"—" }}{% if sst_min|slice:forloop.counter0|last %}°C{% endif %}</td>
+                <td class="py-2 pr-4 font-semibold">{{ sst_avg|slice:forloop.counter0|last|default:"—" }}{% if sst_avg|slice:forloop.counter0|last %}°C{% endif %}</td>
+                <td class="py-2">{{ sst_max|slice:forloop.counter0|last|default:"—" }}{% if sst_max|slice:forloop.counter0|last %}°C{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="text-xs text-gray-500 ui-night:text-gray-400 mt-3">
+          Based on recent forecast data collected for {{ location.city }}.
+        </p>
+      </div>
+    {% endif %}
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-3">
+        {{ location.city }} Water Temperature — Common Questions
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">What is the sea temperature in {{ location.city }} today?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+            {% if current_sst is not None %}
+              The current sea surface temperature in {{ location.city }} is
+              <strong>{{ current_sst|floatformat:1 }}°C</strong>.
+            {% endif %}
+            {% if recent_averages.avg_sea_temp %}
+              Over the last 30 days, the average has been
+              {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.
+            {% endif %}
+          </p>
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">When is the water warmest in {{ location.city }}?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+            {% if warmest_month and warmest_temp %}
+              The warmest sea temperatures in {{ location.city }} occur in
+              <strong>{{ warmest_month }}</strong>, averaging around
+              {{ warmest_temp }}°C.
+            {% endif %}
+            Late summer typically brings the warmest water, ideal for snorkeling without a wetsuit.
+          </p>
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">When is the water coldest in {{ location.city }}?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+            {% if coldest_month and coldest_temp %}
+              The coldest sea temperatures are in
+              <strong>{{ coldest_month }}</strong>, averaging around
+              {{ coldest_temp }}°C.
+            {% endif %}
+            {% if coldest_temp and coldest_temp < 20 %}A wetsuit is recommended during this time.{% endif %}
+          </p>
+        </div>
+        <div>
+          <h3 class="font-medium text-sm sm:text-base mb-1">Can you swim in {{ location.city }} today?</h3>
+          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+            {% if current_sst is not None %}
+              {% if current_sst >= 20 %}
+                Yes — at {{ current_sst|floatformat:1 }}°C the water is warm enough for comfortable swimming and snorkeling.
+              {% elif current_sst >= 16 %}
+                The water is {{ current_sst|floatformat:1 }}°C — cool but manageable with a wetsuit or for short dips.
+              {% else %}
+                At {{ current_sst|floatformat:1 }}°C the water is cold. A thick wetsuit is strongly recommended.
+              {% endif %}
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Full Snorkeling Forecast</h2>
+      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
+        See how today's sea temperature, wave height, wind, and tides combine into a
+        detailed snorkeling score for {{ location.city }}.
+      </p>
+      <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
+         class="inline-block rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-sm font-medium transition-colors">
+        View Snorkel Forecast →
+      </a>
+    </div>
+
+    {% if nearby_locations %}
+      <nav aria-label="More snorkeling spots" class="mt-8 sm:mt-10 w-full max-w-4xl mx-auto">
+        <h2 class="text-base sm:text-lg font-semibold mb-3">Sea temperatures nearby</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {% for spot in nearby_locations %}
+            <a href="{% url 'location_sea_temperature' country=spot.country_slug city=spot.city_slug %}"
+               class="block p-4 rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 border border-gray-200 ui-night:border-gray-700 transition-colors">
+              <span class="font-semibold block">{{ spot.name }}</span>
+              {% if spot.description %}<span class="text-sm text-gray-600 ui-night:text-gray-400 line-clamp-2">{{ spot.description|truncatechars:90 }}</span>{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+        <p class="mt-3 text-sm">
+          <a href="/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">See all spots in {{ location.country }} →</a>
+        </p>
+      </nav>
+    {% endif %}
+
+    <script>
+      (function () {
+        function initChart() {
+          const isNight = document.body.classList.contains('ui-night');
+          const axisColor = isNight ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
+          const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+          const sstLabels = [{% for l in sst_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstAvgData = [{% for v in sst_avg %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMinData = [{% for v in sst_min %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMaxData = [{% for v in sst_max %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+          new Chart(document.getElementById('sstChart'), {
+            type: 'line',
+            data: {
+              labels: sstLabels,
+              datasets: [
+                {
+                  label: 'Max',
+                  data: sstMaxData,
+                  borderColor: 'rgb(239,68,68)',
+                  backgroundColor: 'rgba(239,68,68,0.08)',
+                  pointRadius: 2,
+                  tension: 0.3,
+                  fill: false
+                },
+                {
+                  label: 'Average',
+                  data: sstAvgData,
+                  borderColor: 'rgb(59,130,246)',
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  pointRadius: 3,
+                  tension: 0.3,
+                  fill: false
+                },
+                {
+                  label: 'Min',
+                  data: sstMinData,
+                  borderColor: 'rgb(34,197,94)',
+                  backgroundColor: 'rgba(34,197,94,0.08)',
+                  pointRadius: 2,
+                  tension: 0.3,
+                  fill: '-1'
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { ticks: { color: axisColor }, grid: { color: gridColor } },
+                y: {
+                  beginAtZero: false,
+                  ticks: { color: axisColor },
+                  grid: { color: gridColor },
+                  title: {
+                    display: true,
+                    text: '°C',
+                    color: axisColor
+                  }
+                }
+              },
+              plugins: { legend: { labels: { color: axisColor } } }
+            }
+          });
+        }
+
+        function loadAndInit() {
+          const s = document.createElement('script');
+          s.src = '{% static "js/chart.umd.min.js" %}';
+          s.async = true;
+          s.onload = initChart;
+          s.onerror = function () {
+            const cdn = document.createElement('script');
+            cdn.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+            cdn.async = true;
+            cdn.onload = initChart;
+            document.head.appendChild(cdn);
+          };
+          document.head.appendChild(s);
+        }
+
+        function setupLazyChart() {
+          var el = document.getElementById('sstChart');
+          if (!el) return;
+          if (!('IntersectionObserver' in window)) { loadAndInit(); return; }
+          var didLoad = false;
+          var io = new IntersectionObserver(function (entries) {
+            if (didLoad) return;
+            if (entries.some(function (e) { return e.isIntersecting; })) {
+              didLoad = true;
+              io.disconnect();
+              loadAndInit();
+            }
+          }, { root: null, rootMargin: '100px', threshold: 0.05 });
+          io.observe(el);
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setupLazyChart);
+        } else {
+          setupLazyChart();
+        }
+      })();
+    </script>
+  </section>
+{% endblock %}

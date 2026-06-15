@@ -254,7 +254,7 @@
       <ul class="text-sm sm:text-base space-y-1">
         <li>Wave height: {{ recent_averages.avg_wave_height|floatformat:1 }} m</li>
         <li>Wind speed: {{ recent_averages.avg_wind_speed|floatformat:1 }} m/s</li>
-        <li>Sea temperature: {{ recent_averages.avg_sea_temp|floatformat:1 }} °C</li>
+        <li><a href="{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline">Sea temperature: {{ recent_averages.avg_sea_temp|floatformat:1 }} °C</a></li>
       </ul>
     </div>
 
@@ -267,6 +267,45 @@
         <p class="text-sm sm:text-base">Best months for snorkeling: {{ best_months|join:", " }}</p>
       {% endif %}
     </div>
+
+    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Sea Temperature Over the Year</h2>
+      <div class="h-48 sm:h-64 mb-4">
+        <canvas id="sstChart" class="w-full h-full"></canvas>
+      </div>
+      {% if warmest_month and coldest_month %}
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
+          Sea surface temperature in {{ location.city }} ranges from about
+          {{ coldest_temp }}°C in {{ coldest_month }} to
+          {{ warmest_temp }}°C in {{ warmest_month }}.
+          The water is warmest in late summer and coolest in winter.
+        </p>
+      {% endif %}
+      <p class="mt-3 text-sm">
+        <a href="{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
+          Full {{ location.city }} sea temperature analysis →
+        </a>
+      </p>
+      <div class="mt-2 pt-2 border-t border-gray-100 ui-night:border-gray-700">
+        <button onclick="copyEmbedCodeSst()" class="text-xs text-gray-500 ui-night:text-gray-400 hover:text-blue-600 ui-night:hover:text-blue-400 underline cursor-pointer">
+          Embed chart
+        </button>
+        <input type="text" id="embedCodeInputSst" value='&lt;iframe src="https://snorkelforecast.com{% url 'location_sea_temperature_embed' country=location.country_slug city=location.city_slug %}" width="100%" height="400" frameborder="0"&gt;&lt;/iframe&gt;' readonly class="sr-only">
+        <span id="embedCopiedSst" class="text-xs text-emerald-600 ui-night:text-emerald-400 ml-1 hidden">Copied!</span>
+      </div>
+    </div>
+    <script>
+    function copyEmbedCodeSst() {
+      var input = document.getElementById('embedCodeInputSst');
+      input.classList.remove('sr-only');
+      input.select();
+      navigator.clipboard.writeText(input.value).catch(function () { input.select(); document.execCommand('copy'); });
+      input.classList.add('sr-only');
+      var msg = document.getElementById('embedCopiedSst');
+      msg.classList.remove('hidden');
+      setTimeout(function () { msg.classList.add('hidden'); }, 2000);
+    }
+    </script>
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-3">{{ location.city }} snorkeling FAQs</h2>
@@ -457,6 +496,10 @@
           const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const seasonLabels = [{% for l in season_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
           const seasonData = [{% for s in season_scores %}{% if s is not None %}{{ s }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstLabels = [{% for l in sst_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstAvgData = [{% for v in sst_avg %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMinData = [{% for v in sst_min %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMaxData = [{% for v in sst_max %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
           const waveThreshold = Array(labels.length).fill(0.36);
           const windThreshold = Array(labels.length).fill(5.4);
           const perfectThreshold = Array(labels.length).fill(0.8);
@@ -752,7 +795,74 @@
             options: scoreOptions
           });
 
-          // No chart for temperature; display average bar instead
+          new Chart(document.getElementById('sstChart'), {
+            type: 'line',
+            data: {
+              labels: sstLabels,
+              datasets: [
+                {
+                  label: 'Max',
+                  data: sstMaxData,
+                  borderColor: 'rgb(239,68,68)',
+                  backgroundColor: 'rgba(239,68,68,0.08)',
+                  pointRadius: 2,
+                  tension: 0.3,
+                  fill: false
+                },
+                {
+                  label: 'Average',
+                  data: sstAvgData,
+                  borderColor: 'rgb(59,130,246)',
+                  backgroundColor: 'rgba(59,130,246,0.15)',
+                  pointRadius: 3,
+                  tension: 0.3,
+                  fill: false
+                },
+                {
+                  label: 'Min',
+                  data: sstMinData,
+                  borderColor: 'rgb(34,197,94)',
+                  backgroundColor: 'rgba(34,197,94,0.08)',
+                  pointRadius: 2,
+                  tension: 0.3,
+                  fill: '-1'
+                },
+                {
+                  label: 'Ideal Range (20.6–30.4°C)',
+                  data: Array(sstLabels.length).fill(20.6),
+                  borderColor: 'rgba(16,185,129,0.4)',
+                  backgroundColor: 'rgba(16,185,129,0.06)',
+                  borderDash: [4, 4],
+                  pointRadius: 0,
+                  fill: false
+                },
+                {
+                  label: 'Ideal Range Upper',
+                  data: Array(sstLabels.length).fill(30.4),
+                  borderColor: 'rgba(16,185,129,0.4)',
+                  borderDash: [4, 4],
+                  pointRadius: 0,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              ...commonOptions,
+              scales: {
+                ...commonOptions.scales,
+                y: {
+                  ...commonOptions.scales.y,
+                  title: {
+                    display: true,
+                    text: '°C',
+                    color: axisColor
+                  }
+                }
+              }
+            }
+          });
+
+
         }
 
         function loadAndInit() {
@@ -781,7 +891,8 @@
             document.getElementById('windChart'),
             document.getElementById('tideChart24'),
             document.getElementById('tideChart'),
-            document.getElementById('seasonChart')
+            document.getElementById('seasonChart'),
+            document.getElementById('sstChart')
           ].filter(function (el) { return !!el; });
 
           if (targets.length === 0) return;
