@@ -248,6 +248,16 @@ def fetch_forecast(
     if cached is not None:
         return cached
 
+    # Serve from DB before hitting the API — the scheduler keeps history fresh
+    db = _fallback_from_db(
+        country_slug=country_slug,
+        city_slug=city_slug,
+        timezone_str=timezone_str,
+        hours=hours,
+    )
+    if db:
+        return db
+
     try:
         request_timeout = float(
             getattr(settings, "FORECAST_REQUEST_TIMEOUT", DEFAULT_FORECAST_REQUEST_TIMEOUT)
