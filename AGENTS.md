@@ -37,6 +37,11 @@
 - Hooks run Ruff lint/format, basic checks, Conventional Commit message lint, and run Django tests on pre-push.
 - Run locally: `uv run pre-commit run --all-files`.
 
+## Forecast Caching & Data Flow
+- A background scheduler (`conditions/scheduler.py`, started by `startup.sh`) loops every 30 min fetching forecasts for all `SnorkelLocation` rows via Open-Meteo and persisting them to `ForecastHour`.
+- Page views serve forecast data in this order: **Django cache** (6h TTL) → **`ForecastHour` DB** (populated by scheduler) → **Open-Meteo API** (slow, only for locations never seen before).
+- Dedicated sea-temperature pages at `/<country>/<city>/sea-temperature/` for SEO. Embeddable iframe widget at `/<country>/<city>/embed/sea-temperature/` with a dofollow backlink.
+
 ## Security & Configuration Tips
 - For production, set `DEBUG=false`, configure `ALLOWED_HOSTS`, and provide a secure `SECRET_KEY` via environment.
 - Static files are served by WhiteNoise; run `collectstatic` in builds.
