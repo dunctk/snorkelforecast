@@ -199,7 +199,7 @@ CACHE_TTL = int(os.getenv("CACHE_TTL", "300"))
 # Forecast pages are expensive to rebuild because they can refresh upstream
 # weather data and persist history. Cache the rendered HTML longer than generic
 # pages so anonymous traffic does not repeatedly hit that path.
-LOCATION_PAGE_CACHE_TTL = int(os.getenv("LOCATION_PAGE_CACHE_TTL", "3600"))
+LOCATION_PAGE_CACHE_TTL = int(os.getenv("LOCATION_PAGE_CACHE_TTL", "21600"))
 
 # OSM Service settings
 OSM_CACHE_TTL = int(os.getenv("OSM_CACHE_TTL", "86400"))  # 24 hours

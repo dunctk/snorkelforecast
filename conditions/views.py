@@ -17,7 +17,6 @@ import math
 from .snorkel import fetch_forecast
 from .models import ForecastHour, SnorkelLocation
 from .history import (
-    save_forecast_history,
     get_recent_averages,
     get_monthly_scores,
     get_monthly_sst,
@@ -325,11 +324,8 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             timezone_str,
         )
 
-    # Persist for historical analysis
-    if "location" in locals() and location:
-        save_forecast_history(location, None, all_hours)
-    else:
-        save_forecast_history(country, city, all_hours)
+    # The background scheduler persists forecast data every 30 min for all
+    # locations. No need to write on every page view.
 
     # filter out past hours
     local_tz = tz.gettz(timezone_str)
