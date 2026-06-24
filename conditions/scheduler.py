@@ -24,7 +24,7 @@ def _iter_locations():
 def _run_once() -> None:
     import random
 
-    from .snorkel import fetch_forecast
+    from .snorkel import fetch_forecast_payload
     from .history import save_forecast_history
 
     # Throttle between locations so a synchronized cache-expiry can never burst
@@ -38,11 +38,19 @@ def _run_once() -> None:
         coords = location.coordinates_dict
         tz = location.timezone
         try:
-            hours = fetch_forecast(
+            payload = fetch_forecast_payload(
                 coordinates=coords,
                 timezone_str=tz,
                 country_slug=location.country_slug,
                 city_slug=location.city_slug,
+                location=location,
+            )
+            hours = payload.get("hours", [])
+            source = payload.get("source", "unknown")
+            stale = payload.get("is_stale", False)
+            print(
+                f"[scheduler] {location.country_slug}/{location.city_slug}: "
+                f"source={source} hours={len(hours)} stale={stale}"
             )
             save_forecast_history(location, None, hours)
         except Exception as e:  # noqa: BLE001

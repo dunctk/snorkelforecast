@@ -59,6 +59,7 @@ Open http://localhost:8000 and search for a spot like **Honolua Bay, Maui**.
 
 ### Smart Caching
 - 6-hour Django cache → ForecastHour DB → Open-Meteo fallback
+- Location pages primarily render from precomputed `LocationForecastSnapshot` rows (scheduled refresh)
 - Background scheduler refreshes forecasts every 30 minutes
 - Graceful degradation: stale data served when APIs are down
 

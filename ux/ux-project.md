@@ -53,7 +53,7 @@ Source of truth: `ux/ux-project.md` (strategy and performance notes)
   - Acceptance: blocks shown with counts for waves/wind/sst/tide/light.
 - [x] Include forecast freshness metadata (`generated_at`, next refresh window).
   - Acceptance: visible human-readable last updated line on forecast page.
-- [ ] Add precomputed snapshot model for location pages.
+- [x] Add precomputed snapshot model for location pages.
   - Acceptance: page render path primarily reads from DB/precomputed row first.
 
 ## P5: Accessibility and readability
@@ -72,7 +72,7 @@ Source of truth: `ux/ux-project.md` (strategy and performance notes)
 
 ## Implementation backlog and validation checklist
 - [x] Add/refresh unit tests for new view helpers (`blockers`, `planner`, `best window`).
-- [ ] Add template tests for new decision-first sections and collapsible advanced sections.
-- [ ] Smoke test on mobile widths with main decision actions.
-- [ ] Update `README`/docs if any behavior changes in forecast page shape.
-- [ ] Validate schema/JSON-LD remains intact after template refactor.
+- [x] Add template tests for new decision-first sections and collapsible advanced sections.
+- [x] Smoke test on mobile widths with main decision actions.
+- [x] Update `README`/docs if any behavior changes in forecast page shape.
+- [x] Validate schema/JSON-LD remains intact after template refactor.
