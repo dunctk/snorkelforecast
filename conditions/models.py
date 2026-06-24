@@ -151,3 +151,50 @@ class ForecastHour(models.Model):
             else f"{self.country_slug}/{self.city_slug}"
         )
         return f"{location_str} @ {self.time.isoformat()} ({self.rating})"
+
+
+class LocationForecastSnapshot(models.Model):
+    """Precomputed hourly snapshot for a location page.
+
+    This lets the location forecast endpoint serve predictable data without
+    making external API calls during requests.
+    """
+
+    objects = models.Manager()
+
+    location = models.ForeignKey(
+        SnorkelLocation,
+        on_delete=models.CASCADE,
+        related_name="forecast_snapshots",
+        help_text="The snorkeling location this snapshot belongs to",
+        null=True,
+        blank=True,
+    )
+    country_slug = models.CharField(max_length=64, blank=True, db_index=True)
+    city_slug = models.CharField(max_length=64, blank=True, db_index=True)
+
+    snapshot_key = models.CharField(max_length=255, unique=True, help_text="Lookup key for row")
+    timezone = models.CharField(max_length=50, default="UTC")
+    horizon_hours = models.IntegerField(default=72)
+    snapshot_hours = models.JSONField(default=list, help_text="Forecast payload for the horizon")
+
+    generated_at = models.DateTimeField()
+    valid_until = models.DateTimeField(help_text="After this time the snapshot is stale")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["location", "horizon_hours"]),
+            models.Index(fields=["country_slug", "city_slug", "horizon_hours"]),
+            models.Index(fields=["valid_until"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - convenience only
+        location_str = (
+            f"{self.location.country_slug}/{self.location.city_slug}"
+            if self.location
+            else f"{self.country_slug}/{self.city_slug}"
+        )
+        return f"Snapshot {location_str} ({self.horizon_hours}h)"

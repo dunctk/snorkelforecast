@@ -3,6 +3,8 @@
 
 {% block title %}{{ location.name }} Snorkel Report Today | Conditions & 3-Day Forecast{% endblock %}
 
+{% block font_links %}{% endblock %}
+
 {% block meta %}
   <meta name="description" content="Snorkeling in {{ location.name }}, {{ location.country }} today? {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h look good. {% endif %}Live wave, wind, water-temp and tide forecast, updated hourly.">
   <meta property="og:type" content="website" />
@@ -57,7 +59,7 @@
           "name": "Can you snorkel in {{ location.name }} today?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "{% if summary.ok_count > 0 and next_window %}Yes. The next good snorkeling window in {{ location.name }} starts {{ next_window.start|date:'D H:i' }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:'D H:i' }}{% endif %}. Around {{ summary.percent_ok }}% of the next 72 hours are suitable for snorkeling.{% else %}Conditions look marginal right now — no clearly safe snorkeling window is forecast in {{ location.name }} over the next 72 hours. Check the hourly table for the calmest period.{% endif %}"
+            "text": "{% if summary.ok_count > 0 and summary.can_snorkel %}Yes. The next good snorkeling window in {{ location.name }} starts {{ summary.next_window.start|date:'D H:i' }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} and lasts until {{ summary.next_window.end|date:'H:i' }}{% endif %}. Around {{ summary.percent_ok }}% of the next 72&nbsp;hours are suitable.{% else %}Conditions look marginal right now — no clearly safe snorkeling window is forecast in {{ location.name }} over the next 72&nbsp;hours. Check the hourly table for the calmest period.{% endif %}"
           }
         },
         {
@@ -65,7 +67,7 @@
           "name": "What is the best time of day to snorkel in {{ location.name }}?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Snorkel during daylight, ideally in the morning before the wind picks up, and within about an hour of high tide when water is clearest and currents are slack. SnorkelForecast scores every daylight hour in {{ location.name }} so you can pick the calmest window."
+            "text": "Snorkel during daylight, ideally in the morning before the wind picks up, and around high slack tide when water is clearest and currents are weakest. SnorkelForecast scores every daylight hour in {{ location.name }} so you can pick the calmest window."
           }
         },
         {
@@ -73,23 +75,7 @@
           "name": "What is the best tide for snorkeling?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The best snorkeling is usually around high tide, within roughly 72 minutes of the peak when currents are weakest (slack water) and visibility is highest. Strong incoming or outgoing tides create currents that stir up sediment and make snorkeling harder."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is the water warm enough to snorkel in {{ location.name }}?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "{% if recent_averages.avg_sea_temp %}Recent sea surface temperature in {{ location.name }} has averaged about {{ recent_averages.avg_sea_temp|floatformat:0 }}°C. {% endif %}Most snorkelers are comfortable between 20°C and 30°C; below that a wetsuit or rash guard is recommended.{% if best_months %} The warmest, calmest months here are typically {{ best_months|join:', ' }}.{% endif %}"
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What conditions make snorkeling ideal?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ideal snorkeling conditions require wave height less than 0.36 meters, wind speed below 5.4 meters/second, sea surface temperature between 20.6°C and 30.4°C, and being within ±72 minutes of high tide with currents ≤ 0.36 m/s."
+            "text": "High slack tide — within about an hour of the high-tide peak when currents are weakest — is the safest, clearest window. Strong low tides, strong tidal flow near channels or headlands, and large tidal-range days reduce score."
           }
         }
       ]
@@ -99,6 +85,9 @@
 {% endblock %}
 
 {% block content %}
+  <a id="skip-links" href="#forecast-verdict" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-blue-600 focus:text-white">Skip to forecast</a>
+  <a id="skip-hourly" href="#hourly-table" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-blue-600 focus:text-white">Skip to hourly table</a>
+
   <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
       <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
@@ -110,816 +99,358 @@
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ location.city }}</li>
     </ol>
   </nav>
-  <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
+
+  <section id="forecast-verdict" class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Snorkeling Conditions &amp; Report</h1>
-      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · Live forecast, updated hourly · All times in {{ timezone }}</p>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Snorkel Conditions</h1>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">
+        {{ location.country }} · Updated {{ summary.updated_at|date:'D H:i' }} ({{ timezone }})
+        · Source: {{ summary.forecast_source_label|default:summary.forecast_source|title }}
+        {% if summary.is_stale %} · Showing fallback/stale data{% endif %}
+      </p>
     </div>
 
-    {# Above-the-fold verdict: directly answers "can I snorkel here today?" #}
-    {% if summary.total_hours > 0 %}
-      <div class="w-full max-w-2xl mx-auto mt-4 mb-6">
-        {% if summary.ok_count > 0 and next_window %}
-          <div class="rounded-xl border border-emerald-200 bg-emerald-50 ui-night:bg-emerald-900/20 ui-night:border-emerald-800 p-4 sm:p-5 text-center">
-            <p class="text-base sm:text-lg font-semibold text-emerald-800 ui-night:text-emerald-200">
-              ✅ Good snorkeling expected in {{ location.city }}
+    <div class="w-full max-w-2xl mx-auto mt-4 mb-6">
+      <section role="status" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 ui-night:bg-emerald-900/20 ui-night:border-emerald-800 p-4 sm:p-5">
+        {% if summary.total_hours > 0 %}
+          {% if summary.can_snorkel %}
+            <p class="text-base sm:text-lg font-semibold text-emerald-800 ui-night:text-emerald-200 mb-1">
+              ✅ Good window is available today
             </p>
-            <p class="text-sm sm:text-base text-emerald-900/80 ui-night:text-emerald-100/80 mt-1">
-              Next good window: <span class="font-semibold">{{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %}–{{ next_window.end|date:"H:i" }}{% endif %}</span>.
-              {{ summary.percent_ok }}% of the next 72&nbsp;hours look suitable.
+            <p class="text-sm sm:text-base text-emerald-900/90 ui-night:text-emerald-100/90">
+              Next safe window:
+              <span class="font-semibold">{{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %}–{{ summary.next_window.end|date:"H:i" }}{% endif %}</span>
+              ({{ summary.percent_ok }}% of next 72h are suitable)
             </p>
-          </div>
+          {% else %}
+            <p class="text-base sm:text-lg font-semibold text-amber-800 ui-night:text-amber-200 mb-1">
+              ⚠️ No safe window in the next 72&nbsp;hours
+            </p>
+            <p class="text-sm sm:text-base text-amber-900/90 ui-night:text-amber-100/90">
+              Use the best-available section for the least-bad times.
+            </p>
+          {% endif %}
         {% else %}
-          <div class="rounded-xl border border-amber-200 bg-amber-50 ui-night:bg-amber-900/20 ui-night:border-amber-800 p-4 sm:p-5 text-center">
-            <p class="text-base sm:text-lg font-semibold text-amber-800 ui-night:text-amber-200">
-              ⚠️ Marginal conditions in {{ location.city }}
-            </p>
-            <p class="text-sm sm:text-base text-amber-900/80 ui-night:text-amber-100/80 mt-1">
-              No clearly calm window is forecast in the next 72&nbsp;hours. Check the hourly table below for the best available period.
-            </p>
-          </div>
+          <p class="text-sm sm:text-base text-red-700">Forecast data is currently unavailable.</p>
         {% endif %}
-      </div>
-    {% endif %}
-    {# Detailed text summary of snorkel forecast #}
-    {% if summary.total_hours > 0 %}
-      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Forecast Summary</h2>
-        {% with first=hours.0 last=hours|last %}
-          <p class="mb-2 text-sm sm:text-base">
-            Over the next {{ summary.total_hours }} hours (from
-            {{ first.time|date:"D H:i" }} to {{ last.time|date:"D H:i" }}),
-            snorkeling conditions will vary across excellent, good, fair and poor periods.
-            Overall, there are
-            <span class="font-medium">{{ rating_counts.excellent }}</span> excellent,
-            <span class="font-medium">{{ rating_counts.good }}</span> good,
-            <span class="font-medium">{{ rating_counts.fair }}</span> fair,
-            and <span class="font-medium">{{ rating_counts.poor }}</span> poor hours.
-          </p>
-          {% if summary.ok_count > 0 %}
-            <p class="text-sm sm:text-base">
-              First suitable period begins {{ summary.earliest_ok|date:"D H:i" }}{% if summary.earliest_ok and summary.latest_ok and summary.earliest_ok != summary.latest_ok %} and lasts until {{ summary.latest_ok|date:"D H:i" }}{% endif %}.
-            </p>
-          {% endif %}
+      </section>
+    </div>
 
-          {% if daily_outlook %}
-            <div class="mt-3">
-              <h3 class="text-sm sm:text-base font-semibold mb-1">Daily outlook</h3>
-              <ul class="text-sm sm:text-base space-y-1">
-                {% for o in daily_outlook %}
-                  <li>
-                    <span class="font-medium">{{ o.label }}:</span>
-                    {% if o.counts.excellent %}
-                      {{ o.counts.excellent }}× excellent{% if o.top_rating == 'excellent' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.good or o.counts.fair or o.counts.poor %}, {% endif %}
-                    {% endif %}
-                    {% if o.counts.good %}
-                      {{ o.counts.good }}× good{% if o.top_rating == 'good' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.fair or o.counts.poor %}, {% endif %}
-                    {% endif %}
-                    {% if o.counts.fair %}
-                      {{ o.counts.fair }}× fair{% if o.top_rating == 'fair' and o.top_start %} ({{ o.top_start|date:"H:i" }}{% if o.top_end and o.top_end != o.top_start %}–{{ o.top_end|date:"H:i" }}{% endif %}){% endif %}{% if o.counts.poor %}, {% endif %}
-                    {% endif %}
-                    {% if o.counts.poor %}
-                      {{ o.counts.poor }}× poor
-                    {% endif %}
-                  </li>
-                {% endfor %}
-              </ul>
-            </div>
-          {% endif %}
-        {% endwith %}
-      </div>
-    {% else %}
-      <p class="text-red-600 mb-6 text-center text-sm sm:text-base">Forecast data is currently unavailable.</p>
-    {% endif %}
+    <div class="flex flex-wrap gap-3 justify-center mb-6">
+      <a href="#day-planner" class="inline-flex touch-target rounded-lg bg-blue-600 px-4 text-white text-sm font-medium hover:bg-blue-700 ui-night:hover:bg-blue-500">3-day planner</a>
+      <a href="#best-available" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">Best available</a>
+      <a href="#advanced-data" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">Show data</a>
+    </div>
 
-    {# Evergreen, location-specific content: gives the page substance beyond live data #}
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkeling in {{ location.city }}</h2>
-      {% if location.description %}
-        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">{{ location.description }}</p>
+    <section id="day-planner" class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">3-day planner</h2>
+      <div class="grid gap-3 sm:grid-cols-3">
+        {% for day in day_planner %}
+            <article class="rounded-lg border border-gray-200 ui-night:border-gray-700 p-3 sm:p-4">
+            <p class="font-semibold">{{ day.label }}</p>
+              <p class="mt-1 text-sm">
+                {% if day.status == "excellent" or day.status == "good" %}✅{% elif day.status == "fair" %}⚠️{% else %}❌{% endif %}
+                <span class="capitalize">{{ day.status }} conditions</span>
+              </p>
+            <p class="text-sm text-gray-600 ui-night:text-gray-400">Main blocker: {{ day.main_blocker }}</p>
+          </article>
+        {% empty %}
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">No planner data available yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section id="best-available" class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Best available hours</h2>
+      {% if summary.can_snorkel %}
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-200 mb-2">
+          Next safe window starts at {{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} until {{ summary.next_window.end|date:"H:i" }}{% endif %}.
+        </p>
+      {% else %}
+        <ul class="space-y-2">
+          {% for item in best_available %}
+            <li class="text-sm sm:text-base">
+              <span class="font-semibold">{{ item.time|date:"D H:i" }}</span> —
+              {{ item.status|title }} ({{ item.score|floatformat:2 }})
+              {% if item.blockers %} · still limited by {{ item.blockers|join:", " }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
       {% endif %}
-      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
-        This page tracks live snorkeling conditions in {{ location.city }}{% if location.country %}, {{ location.country }}{% endif %} —
-        wave height, wind speed, sea temperature, tides and currents — and scores every daylight
-        hour over the next 72&nbsp;hours so you can pick the calmest, clearest window to get in the water.
-      </p>
-      <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
-        <strong>Best time to snorkel:</strong> mornings are usually calmest here, before wind and waves
-        build through the afternoon. Aim for daylight within about an hour of high tide, when currents
-        are slack and visibility is highest.{% if best_months %} Across the year, the best months for
-        snorkeling in {{ location.city }} are typically <strong>{{ best_months|join:", " }}</strong>.{% endif %}
-        {% if recent_averages.avg_sea_temp %} Recent sea temperature has averaged about
-        {{ recent_averages.avg_sea_temp|floatformat:0 }}°C.{% endif %}
-      </p>
-      <p class="text-sm mt-3 text-gray-600 ui-night:text-gray-400">
-        New to this? Read our guides on the
-        <a href="/guides/best-time-to-snorkel/" class="text-blue-600 ui-night:text-blue-400 hover:underline">best time to snorkel</a>
-        and
-        <a href="/guides/snorkeling-water-temperature/" class="text-blue-600 ui-night:text-blue-400 hover:underline">water temperature for snorkeling</a>.
-      </p>
-    </div>
+    </section>
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 24h)</h2>
-      <div class="h-48 sm:h-64">
-        <canvas id="scoreChart24" class="w-full h-full"></canvas>
-      </div>
-    </div>
-
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Snorkel Score (next 72h)</h2>
-      <div class="h-48 sm:h-64">
-        <canvas id="scoreChart" class="w-full h-full"></canvas>
-      </div>
-    </div>
+    <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Why this verdict</h2>
+      <p class="text-sm sm:text-base mb-2">
+        Main blockers across the next 72&nbsp;hours:
+      </p>
+      <ul class="list-disc list-inside text-sm sm:text-base space-y-1 text-left">
+        {% for blocker in summary.primary_blockers %}
+          <li>{{ blocker.label }} ({{ blocker.count }} hours)</li>
+        {% empty %}
+          <li>No major blockers identified.</li>
+        {% endfor %}
+      </ul>
+    </section>
 
     {% if tide_times %}
-      <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-        <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming High Tides</h2>
+      <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming high tides</h2>
         {% if next_early_high_tide %}
-          <p class="text-sm sm:text-base mb-2">
-            Next early morning high tide: {{ next_early_high_tide|date:"D H:i" }}
-          </p>
+          <p class="text-sm sm:text-base mb-2">Next early morning high tide: {{ next_early_high_tide|date:"D H:i" }}</p>
         {% endif %}
         <p class="text-sm sm:text-base">
           {% for t in tide_times %}
             {{ t|date:"D H:i" }}{% if not forloop.last %}, {% endif %}
           {% endfor %}
         </p>
-      </div>
+      </section>
     {% endif %}
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Recent Average Conditions</h2>
-      <ul class="text-sm sm:text-base space-y-1">
-        <li>Wave height: {{ recent_averages.avg_wave_height|floatformat:1 }} m</li>
-        <li>Wind speed: {{ recent_averages.avg_wind_speed|floatformat:1 }} m/s</li>
-        <li><a href="{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline">Sea temperature: {{ recent_averages.avg_sea_temp|floatformat:1 }} °C</a></li>
-      </ul>
-    </div>
-
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Seasonal Snorkeling Trends</h2>
-      <div class="h-48 sm:h-64 mb-4">
-        <canvas id="seasonChart" class="w-full h-full"></canvas>
+    <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+      <h2 class="text-base sm:text-lg font-semibold mb-2">Nearby alternatives in {{ location.country }}</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% for spot in nearby_locations %}
+          <a href="/{{ spot.country_slug }}/{{ spot.city_slug }}/" class="block rounded-lg border border-gray-200 ui-night:border-gray-700 p-3 hover:bg-gray-50 ui-night:hover:bg-gray-800 transition-colors">
+            <p class="font-semibold">{{ spot.name }}</p>
+            <p class="text-sm text-gray-600 ui-night:text-gray-400">
+              {% if spot.status == "good" %}✅ Good{% elif spot.status == "fair" %}⚠️ Fair{% elif spot.status == "excellent" %}🌟 Excellent{% elif spot.status == "poor" %}❌ Poor{% else %}Not enough fresh data{% endif %}
+            </p>
+          </a>
+        {% empty %}
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">No nearby alternatives available.</p>
+        {% endfor %}
       </div>
-      {% if best_months %}
-        <p class="text-sm sm:text-base">Best months for snorkeling: {{ best_months|join:", " }}</p>
-      {% endif %}
-    </div>
+    </section>
 
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Sea Temperature Over the Year</h2>
-      <div class="h-48 sm:h-64 mb-4">
-        <canvas id="sstChart" class="w-full h-full"></canvas>
-      </div>
-      {% if warmest_month and coldest_month %}
-        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
-          Sea surface temperature in {{ location.city }} ranges from about
-          {{ coldest_temp }}°C in {{ coldest_month }} to
-          {{ warmest_temp }}°C in {{ warmest_month }}.
-          The water is warmest in late summer and coolest in winter.
-        </p>
-      {% endif %}
-      <p class="mt-3 text-sm">
-        <a href="{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
-          Full {{ location.city }} sea temperature analysis →
-        </a>
-      </p>
-      <div class="mt-2 pt-2 border-t border-gray-100 ui-night:border-gray-700">
-        <button onclick="copyEmbedCodeSst()" class="text-xs text-gray-500 ui-night:text-gray-400 hover:text-blue-600 ui-night:hover:text-blue-400 underline cursor-pointer">
-          Embed chart
-        </button>
-        <input type="text" id="embedCodeInputSst" value='&lt;iframe src="https://snorkelforecast.com{% url 'location_sea_temperature_embed' country=location.country_slug city=location.city_slug %}" width="100%" height="400" frameborder="0"&gt;&lt;/iframe&gt;' readonly class="sr-only">
-        <span id="embedCopiedSst" class="text-xs text-emerald-600 ui-night:text-emerald-400 ml-1 hidden">Copied!</span>
-      </div>
-    </div>
-    <script>
-    function copyEmbedCodeSst() {
-      var input = document.getElementById('embedCodeInputSst');
-      input.classList.remove('sr-only');
-      input.select();
-      navigator.clipboard.writeText(input.value).catch(function () { input.select(); document.execCommand('copy'); });
-      input.classList.add('sr-only');
-      var msg = document.getElementById('embedCopiedSst');
-      msg.classList.remove('hidden');
-      setTimeout(function () { msg.classList.add('hidden'); }, 2000);
-    }
-    </script>
-
-    <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-3">{{ location.city }} snorkeling FAQs</h2>
-      <div class="space-y-4">
-        <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">Can you snorkel in {{ location.city }} today?</h3>
-          {% if summary.ok_count > 0 and next_window %}
-            <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Yes — the next good window starts {{ next_window.start|date:"D H:i" }}{% if next_window.end and next_window.end != next_window.start %} and lasts until {{ next_window.end|date:"D H:i" }}{% endif %}. About {{ summary.percent_ok }}% of the next 72&nbsp;hours look suitable.</p>
-          {% else %}
-            <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Conditions look marginal — no clearly safe window is forecast in the next 72&nbsp;hours. Use the hourly table to find the calmest period.</p>
-          {% endif %}
-        </div>
-        <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">What is the best time of day to snorkel in {{ location.city }}?</h3>
-          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Mornings are usually best — winds and waves tend to build through the afternoon. Aim for daylight hours within about an hour of high tide, when currents are slack and visibility is highest.</p>
-        </div>
-        <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">What is the best tide for snorkeling?</h3>
-          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">High tide, within roughly 72&nbsp;minutes of the peak (slack water), gives the clearest, calmest conditions. We highlight the next high tides above so you can plan around them.</p>
-        </div>
-        <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">Is the water warm enough to snorkel in {{ location.city }}?</h3>
-          <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">{% if recent_averages.avg_sea_temp %}Sea temperature has recently averaged about {{ recent_averages.avg_sea_temp|floatformat:0 }}°C. {% endif %}Most snorkelers are comfortable from 20–30°C; below that, wear a wetsuit or rash guard.{% if best_months %} The best months here are typically {{ best_months|join:", " }}.{% endif %}</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
-      <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 24h)</h2>
-      <div class="space-y-6">
-        <div class="h-48 sm:h-64">
-          <canvas id="waveChart24" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-48 sm:h-64">
-          <canvas id="windChart24" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-48 sm:h-64">
-          <canvas id="tideChart24" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-24 sm:h-32 flex flex-col justify-center">
-          <div id="tempBar24" class="relative w-full h-8 bg-gray-200 rounded-full">
-            <div id="tempIdeal24" class="absolute inset-y-0 bg-green-200"></div>
-            <div id="tempAvg24" class="absolute inset-y-0 w-1 bg-orange-500"></div>
+    <details id="advanced-data" class="w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-5">
+      <summary class="inline-flex items-center min-h-[44px] cursor-pointer text-base sm:text-lg font-semibold select-none">Advanced forecast data</summary>
+      <div class="space-y-8 mt-4">
+        <section aria-label="Score chart">
+          <h3 class="text-sm sm:text-base font-semibold mb-2">Snorkel Score (next 24h)</h3>
+          <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-1">{{ chart_summaries.score }}</p>
+          <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-3">Score trend, higher is better. <strong>Perfect ≥ 0.8</strong>, good 0.6–0.8, fair 0.4–0.6.</p>
+          <button type="button" data-chart="score" class="inline-flex touch-target px-3 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 ui-night:hover:bg-blue-500">Show score chart</button>
+          <div id="scoreChartWrap" class="mt-3 hidden h-56">
+            <canvas id="scoreChart" class="w-full h-full"></canvas>
           </div>
-          <p id="tempLabel24" class="text-center mt-2 text-sm"></p>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
-      <h2 class="text-base sm:text-lg font-semibold mb-4">Condition Trends (next 72h)</h2>
-      <div class="space-y-6">
-        <div class="h-48 sm:h-64">
-          <canvas id="waveChart" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-48 sm:h-64">
-          <canvas id="windChart" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-48 sm:h-64">
-          <canvas id="tideChart" class="w-full h-full"></canvas>
-        </div>
-        <div class="h-24 sm:h-32 flex flex-col justify-center">
-          <div id="tempBar" class="relative w-full h-8 bg-gray-200 rounded-full">
-            <div id="tempIdeal" class="absolute inset-y-0 bg-green-200"></div>
-            <div id="tempAvg" class="absolute inset-y-0 w-1 bg-orange-500"></div>
+        <section aria-label="Condition trend charts">
+          <h3 class="text-sm sm:text-base font-semibold mb-2">Conditions (24h trends)</h3>
+          <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-3">Tap a chart to load just that series.</p>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-2">{{ chart_summaries.wave }}</p>
+              <button type="button" data-chart="wave" class="inline-flex touch-target w-full px-3 rounded-md bg-gray-100 ui-night:bg-gray-800 border border-gray-200 ui-night:border-gray-700">Show waves</button>
+              <div id="waveChartWrap" class="mt-3 hidden h-56"><canvas id="waveChart" class="w-full h-full"></canvas></div>
+            </div>
+            <div>
+              <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-2">{{ chart_summaries.wind }}</p>
+              <button type="button" data-chart="wind" class="inline-flex touch-target w-full px-3 rounded-md bg-gray-100 ui-night:bg-gray-800 border border-gray-200 ui-night:border-gray-700">Show wind</button>
+              <div id="waveChartWrapWind" class="mt-3 hidden h-56"><canvas id="windChart" class="w-full h-full"></canvas></div>
+            </div>
+            <div>
+              <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-400 mb-2">{{ chart_summaries.tide }}</p>
+              <button type="button" data-chart="tide" class="inline-flex touch-target w-full px-3 rounded-md bg-gray-100 ui-night:bg-gray-800 border border-gray-200 ui-night:border-gray-700">Show tides</button>
+              <div id="tideChartWrap" class="mt-3 hidden h-56"><canvas id="tideChart" class="w-full h-full"></canvas></div>
+            </div>
           </div>
-          <p id="tempLabel" class="text-center mt-2 text-sm"></p>
-        </div>
-      </div>
-    </div>
+        </section>
 
-     <section aria-label="72-hour snorkeling forecast" class="mt-6">
-       <h2 class="text-lg font-semibold mb-4 text-center">72-Hour Forecast Overview</h2>
-       <div class="grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs max-w-6xl mx-auto">
-         {% for h in hours %}
-           {% with alpha=h.score|floatformat:2 %}
-           <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center" style="background-color: rgba(74, 222, 128, {{ alpha }});">
-             <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium" aria-label="{{ h.time|date:'D H:i' }} rating {{ h.rating }} score {{ h.score|floatformat:2 }}">
-               <span class="block sm:hidden">{{ h.time|date:'D'|truncatechars:3 }}</span>
-               <span class="hidden sm:block">{{ h.time|date:'D H:i'|safe }}</span>
-               <span class="block sm:hidden text-[10px]">{{ h.time|date:'H:i' }}</span>
-             </time>
-             <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
-           </div>
-           {% endwith %}
-         {% endfor %}
-       </div>
-     </section>
+        <section aria-label="72-hour grid">
+          <details>
+            <summary class="inline-flex items-center min-h-[44px] cursor-pointer font-medium select-none">72-hour forecast overview</summary>
+            <div class="mt-3 grid grid-cols-6 sm:grid-cols-12 gap-1 text-xs">
+              {% for h in hours %}
+                {% with alpha=h.score|floatformat:2 %}
+                <div class="forecast-cell p-2 sm:p-2 rounded-lg text-center min-h-[64px] sm:min-h-[56px] flex flex-col justify-center">
+                  <time datetime="{{ h.time|date:'c' }}" class="text-xs font-medium">{{ h.time|date:"D H:i" }}</time>
+                  <span class="text-[10px] sm:text-xs mt-1 capitalize">{{ h.rating }}</span>
+                  <span class="text-[10px] sm:text-xs mt-1">
+                    {% if h.rating == "excellent" %}✅ Excellent
+                    {% elif h.rating == "good" %}🌟 Good
+                    {% elif h.rating == "fair" %}⚠️ Fair
+                    {% else %}❌ Limited
+                    {% endif %}
+                  </span>
+                </div>
+                {% endwith %}
+              {% endfor %}
+            </div>
+          </details>
+        </section>
 
-    {# Explanation of conditions #}
-    <div class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-6">
-        <h2 class="text-base sm:text-lg font-semibold mb-2">How We Calculate Conditions</h2>
-        <p class="text-sm sm:text-base">
-            We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
-        </p>
-        <ul class="list-disc list-inside mt-2 text-sm sm:text-base space-y-1">
-            <li><strong>Wave height</strong> is less than 0.36 meters.</li>
-            <li><strong>Wind speed</strong> is below 5.4 meters/second.</li>
-            <li><strong>Sea surface temperature</strong> is between 20.6°C and 30.4°C.</li>
-            <li><strong>Within ±72&nbsp;min of high tide</strong> and currents ≤ 0.36&nbsp;m/s.</li>
-        </ul>
-    </div>
+        <details>
+          <summary class="inline-flex items-center min-h-[44px] cursor-pointer font-medium select-none">Scoring methodology (for technical users)</summary>
+          <div class="mt-3 grid gap-2 text-sm text-gray-700 ui-night:text-gray-200">
+            <p>We score each hour from 0 to 1 using daylight and these weighted components:</p>
+            <ul class="list-disc list-inside space-y-1">
+              <li>Wave height (35%): best below 0.36m, then decreases as it rises.</li>
+              <li>Wind speed (25%): best below 5.4m/s, lower is better.</li>
+              <li>Sea surface temperature (15%): best within 20.6°C to 30.4°C.</li>
+              <li>Tide and currents (15%): best around slack/high-tide windows.</li>
+              <li>Daylight (10%): visibility and safety gate (outside daylight scores lower).</li>
+            </ul>
+          </div>
+        </details>
 
-    {# Detailed table of snorkel conditions (collapsible to keep the page skimmable) #}
-    <details class="mt-6 sm:mt-8 w-full max-w-4xl mx-auto">
-      <summary class="cursor-pointer text-base sm:text-lg font-semibold mb-2 select-none">Detailed hourly conditions — full 72-hour table</summary>
-      <div class="responsive-table mt-2">
-        <table class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-            <tr>
-              <th scope="col" class="px-3 sm:px-6 py-3">Time</th>
-              <th scope="col" class="px-3 sm:px-6 py-3 hidden sm:table-cell">Sunrise</th>
-              <th scope="col" class="px-3 sm:px-6 py-3 hidden sm:table-cell">Sunset</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Wave Height (m)</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Wind Speed (m/s)</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Sea Temp (°C)</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Tide Height (m)</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Current (m/s)</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Score</th>
-              <th scope="col" class="px-3 sm:px-6 py-3">Rating</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for h in hours %}
-              <tr class="border-b hover:bg-gray-50">
-                <th scope="row" class="px-3 sm:px-6 py-3 sm:py-4 font-medium text-gray-900 whitespace-nowrap text-xs sm:text-sm">
-                  {{ h.time|date:"D H:i" }}
-                </th>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm">{{ h.sunrise|date:"H:i" }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm">{{ h.sunset|date:"H:i" }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wave_ok %}text-red-600 font-bold{% endif %}">
-                  {{ h.wave_height|floatformat:2 }}
-                </td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wind_ok %}text-red-600 font-bold{% endif %}">
-                  {{ h.wind_speed|floatformat:2 }}
-                </td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
-                  {{ h.sea_surface_temperature|floatformat:2 }}
-                </td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm">{{ h.sea_level_height|floatformat:2 }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.slack_ok %}text-red-600 font-bold{% endif %}">{{ h.current_velocity|floatformat:2 }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 font-bold text-xs sm:text-sm">{{ h.score|floatformat:2 }}</td>
-                <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm capitalize">{{ h.rating }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <details>
+          <summary class="inline-flex items-center min-h-[44px] cursor-pointer font-medium select-none">Detailed hourly data table</summary>
+          <div class="responsive-table mt-3">
+            <table id="hourly-table" class="w-full text-sm text-left text-gray-700 bg-white shadow rounded-lg text-night-muted bg-night-surface">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-3 sm:px-6 py-3">Time</th>
+                  <th scope="col" class="px-3 sm:px-6 py-3">Wave (m)</th>
+                  <th scope="col" class="px-3 sm:px-6 py-3">Wind (m/s)</th>
+                  <th scope="col" class="px-3 sm:px-6 py-3">Sea temp (°C)</th>
+                  <th scope="col" class="px-3 sm:px-6 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for h in hours %}
+                  <tr class="border-b hover:bg-gray-50">
+                    <th scope="row" class="px-3 sm:px-6 py-3 sm:py-4 font-medium text-gray-900 whitespace-nowrap text-xs sm:text-sm">{{ h.time|date:"D H:i" }}</th>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wave_ok %}text-red-600 font-bold{% endif %}">
+                      {{ h.wave_height|floatformat:2 }} · {% if h.wave_ok %}good{% else %}high{% endif %}
+                    </td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.wind_ok %}text-red-600 font-bold{% endif %}">
+                      {{ h.wind_speed|floatformat:2 }} · {% if h.wind_ok %}good{% else %}high{% endif %}
+                    </td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm {% if not h.sst_ok %}text-red-600 font-bold{% endif %}">
+                      {{ h.sea_surface_temperature|floatformat:2 }} · {% if h.sst_ok %}good{% else %}out of range{% endif %}
+                    </td>
+                    <td class="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm capitalize">{{ h.rating }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </div>
     </details>
 
-    {# Internal linking + discovery: other spots in the same country #}
-    {% if nearby_locations %}
-      <nav aria-label="More snorkeling spots" class="mt-8 sm:mt-10 w-full max-w-4xl mx-auto">
-        <h2 class="text-base sm:text-lg font-semibold mb-3">More snorkeling spots in {{ location.country }}</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {% for spot in nearby_locations %}
-            <a href="/{{ spot.country_slug }}/{{ spot.city_slug }}/"
-               class="block p-4 rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 border border-gray-200 ui-night:border-gray-700 transition-colors">
-              <span class="font-semibold block">{{ spot.name }}</span>
-              {% if spot.description %}<span class="text-sm text-gray-600 ui-night:text-gray-400 line-clamp-2">{{ spot.description|truncatechars:90 }}</span>{% endif %}
-            </a>
-          {% endfor %}
-        </div>
-        <p class="mt-3 text-sm">
-          <a href="/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">See all snorkeling spots in {{ location.country }} →</a>
-        </p>
-      </nav>
-    {% endif %}
     <script>
       (function () {
-        function initCharts() {
-          // Theme-aware chart colors
-          const isNight = document.body.classList.contains('ui-night');
-          const axisColor = isNight ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
-          const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-          const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const waveData = [{% for h in hours %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const windData = [{% for h in hours %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const tempData = [{% for h in hours %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const tideData = [{% for h in hours %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const chartState = { loaded: false, loadedCharts: new Set() };
+        const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const score24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const wave24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const wind24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const tide24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
 
-          const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const waveData24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const windData24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const tempData24 = [{% for h in hours_24 %}{{ h.sea_surface_temperature|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const scoreData24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const tideData24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const seasonLabels = [{% for l in season_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const seasonData = [{% for s in season_scores %}{% if s is not None %}{{ s }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstLabels = [{% for l in sst_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstAvgData = [{% for v in sst_avg %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstMinData = [{% for v in sst_min %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstMaxData = [{% for v in sst_max %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const waveThreshold = Array(labels.length).fill(0.36);
-          const windThreshold = Array(labels.length).fill(5.4);
-          const perfectThreshold = Array(labels.length).fill(0.8);
-          const okThreshold = Array(labels.length).fill(0.6);
-          const notGoodThreshold = Array(labels.length).fill(0.4);
+        const axisColor = document.body.classList.contains('ui-night') ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
+        const gridColor = document.body.classList.contains('ui-night') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+        const perfect = Array(labels24.length).fill(0.8);
+        const good = Array(labels24.length).fill(0.6);
 
-          const waveThreshold24 = Array(labels24.length).fill(0.36);
-          const windThreshold24 = Array(labels24.length).fill(5.4);
-          const perfectThreshold24 = Array(labels24.length).fill(0.8);
-          const okThreshold24 = Array(labels24.length).fill(0.6);
-          const notGoodThreshold24 = Array(labels24.length).fill(0.4);
+        function ensureChartJs() {
+          if (chartState.loaded) return Promise.resolve();
+          return new Promise(function (resolve, reject) {
+            const s = document.createElement('script');
+            s.src = '{% static "js/chart.umd.min.js" %}';
+            s.async = true;
+            s.onload = function () {
+              chartState.loaded = true;
+              resolve();
+            };
+            s.onerror = function () {
+              const cdn = document.createElement('script');
+              cdn.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+              cdn.async = true;
+              cdn.onload = function () {
+                chartState.loaded = true;
+                resolve();
+              };
+              cdn.onerror = function () {
+                reject(new Error('Chart.js failed to load'));
+              };
+              document.head.appendChild(cdn);
+            };
+            document.head.appendChild(s);
+          });
+        }
 
-          const idealMin = 20.6;
-          const idealMax = 30.4;
-          const scaleMax = 35; // max temperature for scale
-          const avgTemp = tempData.reduce((a, b) => a + b, 0) / tempData.length;
-          const avgTemp24 = tempData24.reduce((a, b) => a + b, 0) / tempData24.length;
+        function renderScoreChart() {
+          if (chartState.loadedCharts.has('score')) return;
+          const panel = document.getElementById('scoreChartWrap');
+          const chartCanvas = document.getElementById('scoreChart');
+          panel.classList.remove('hidden');
 
-          // Position ideal range
-          const idealEl = document.getElementById('tempIdeal');
-          idealEl.style.left = `${(idealMin / scaleMax) * 100}%`;
-          idealEl.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
-
-          const idealEl24 = document.getElementById('tempIdeal24');
-          idealEl24.style.left = `${(idealMin / scaleMax) * 100}%`;
-          idealEl24.style.width = `${((idealMax - idealMin) / scaleMax) * 100}%`;
-
-          // Position average marker
-          const avgEl = document.getElementById('tempAvg');
-          avgEl.style.left = `${(avgTemp / scaleMax) * 100}%`;
-
-          const avgEl24 = document.getElementById('tempAvg24');
-          avgEl24.style.left = `${(avgTemp24 / scaleMax) * 100}%`;
-
-          // Label with average temperature
-          document.getElementById('tempLabel').textContent = `Average Sea Temp: ${avgTemp.toFixed(1)}°C`;
-          document.getElementById('tempLabel24').textContent = `Average Sea Temp: ${avgTemp24.toFixed(1)}°C`;
-
-          const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: { ticks: { color: axisColor }, grid: { color: gridColor } },
-              y: { beginAtZero: true, ticks: { color: axisColor }, grid: { color: gridColor } }
-            },
-            plugins: { legend: { labels: { color: axisColor } } }
-          };
-
-          const scoreOptions = {
-            ...commonOptions,
-            scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, max: 1 } }
-          };
-
-          new Chart(document.getElementById('scoreChart24'), {
+          new Chart(chartCanvas, {
             type: 'line',
             data: {
               labels: labels24,
               datasets: [
-                {
-                  label: 'Snorkel Score',
-                  data: scoreData24,
-                  borderColor: 'rgb(91,224,200)',
-                  backgroundColor: 'rgba(91,224,200,0.16)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Excellent (0.8)',
-                  data: perfectThreshold24,
-                  borderColor: 'rgb(34,197,94)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                },
-                {
-                  label: 'Good (0.6)',
-                  data: okThreshold24,
-                  borderColor: 'rgb(234,179,8)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                },
-                {
-                  label: 'Fair (0.4)',
-                  data: notGoodThreshold24,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: scoreOptions
-          });
-
-          new Chart(document.getElementById('scoreChart'), {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Snorkel Score',
-                  data: scoreData,
-                  borderColor: 'rgb(91,224,200)',
-                  backgroundColor: 'rgba(91,224,200,0.16)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Excellent (0.8)',
-                  data: perfectThreshold,
-                  borderColor: 'rgb(34,197,94)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                },
-                {
-                  label: 'Good (0.6)',
-                  data: okThreshold,
-                  borderColor: 'rgb(234,179,8)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                },
-                {
-                  label: 'Fair (0.4)',
-                  data: notGoodThreshold,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: scoreOptions
-          });
-
-          new Chart(document.getElementById('waveChart24'), {
-            type: 'line',
-            data: {
-              labels: labels24,
-              datasets: [
-                {
-                  label: 'Wave Height (m)',
-                  data: waveData24,
-                  borderColor: 'rgb(91,224,200)',
-                  backgroundColor: 'rgba(91,224,200,0.16)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Ideal Threshold (0.36 m)',
-                  data: waveThreshold24,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('waveChart'), {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Wave Height (m)',
-                  data: waveData,
-                  borderColor: 'rgb(91,224,200)',
-                  backgroundColor: 'rgba(91,224,200,0.16)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Ideal Threshold (0.36 m)',
-                  data: waveThreshold,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('windChart24'), {
-            type: 'line',
-            data: {
-              labels: labels24,
-              datasets: [
-                {
-                  label: 'Wind Speed (m/s)',
-                  data: windData24,
-                  borderColor: 'rgb(34,197,94)',
-                  backgroundColor: 'rgba(34,197,94,0.3)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Ideal Threshold (5.4 m/s)',
-                  data: windThreshold24,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('windChart'), {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Wind Speed (m/s)',
-                  data: windData,
-                  borderColor: 'rgb(34,197,94)',
-                  backgroundColor: 'rgba(34,197,94,0.3)',
-                  fill: true,
-                  tension: 0.3
-                },
-                {
-                  label: 'Ideal Threshold (5.4 m/s)',
-                  data: windThreshold,
-                  borderColor: 'rgb(239,68,68)',
-                  borderDash: [6,6],
-                  pointRadius: 0,
-                  fill: false
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('tideChart24'), {
-            type: 'line',
-            data: {
-              labels: labels24,
-              datasets: [
-                {
-                  label: 'Tide Height (m)',
-                  data: tideData24,
-                  borderColor: 'rgb(56,189,248)',
-                  backgroundColor: 'rgba(56,189,248,0.3)',
-                  fill: true,
-                  tension: 0.4
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('tideChart'), {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: 'Tide Height (m)',
-                  data: tideData,
-                  borderColor: 'rgb(56,189,248)',
-                  backgroundColor: 'rgba(56,189,248,0.3)',
-                  fill: true,
-                  tension: 0.4
-                }
-              ]
-            },
-            options: commonOptions
-          });
-
-          new Chart(document.getElementById('seasonChart'), {
-            type: 'line',
-            data: {
-              labels: seasonLabels,
-              datasets: [
-                {
-                  label: 'Avg Score',
-                  data: seasonData,
-                  borderColor: 'rgb(234,179,8)',
-                  backgroundColor: 'rgba(234,179,8,0.3)',
-                  fill: true,
-                  tension: 0.3
-                }
-              ]
-            },
-            options: scoreOptions
-          });
-
-          new Chart(document.getElementById('sstChart'), {
-            type: 'line',
-            data: {
-              labels: sstLabels,
-              datasets: [
-                {
-                  label: 'Max',
-                  data: sstMaxData,
-                  borderColor: 'rgb(239,68,68)',
-                  backgroundColor: 'rgba(239,68,68,0.08)',
-                  pointRadius: 2,
-                  tension: 0.3,
-                  fill: false
-                },
-                {
-                  label: 'Average',
-                  data: sstAvgData,
-                  borderColor: 'rgb(59,130,246)',
-                  backgroundColor: 'rgba(59,130,246,0.15)',
-                  pointRadius: 3,
-                  tension: 0.3,
-                  fill: false
-                },
-                {
-                  label: 'Min',
-                  data: sstMinData,
-                  borderColor: 'rgb(34,197,94)',
-                  backgroundColor: 'rgba(34,197,94,0.08)',
-                  pointRadius: 2,
-                  tension: 0.3,
-                  fill: '-1'
-                },
-                {
-                  label: 'Ideal Range (20.6–30.4°C)',
-                  data: Array(sstLabels.length).fill(20.6),
-                  borderColor: 'rgba(16,185,129,0.4)',
-                  backgroundColor: 'rgba(16,185,129,0.06)',
-                  borderDash: [4, 4],
-                  pointRadius: 0,
-                  fill: false
-                },
-                {
-                  label: 'Ideal Range Upper',
-                  data: Array(sstLabels.length).fill(30.4),
-                  borderColor: 'rgba(16,185,129,0.4)',
-                  borderDash: [4, 4],
-                  pointRadius: 0,
-                  fill: false
-                }
+                { label: 'Snorkel score', data: score24, borderColor: 'rgb(91,224,200)', backgroundColor: 'rgba(91,224,200,0.16)', fill: true, tension: 0.3 },
+                { label: 'Excellent (0.8)', data: perfect, borderColor: 'rgb(34,197,94)', borderDash: [6, 6], pointRadius: 0, fill: false }
               ]
             },
             options: {
-              ...commonOptions,
-              scales: {
-                ...commonOptions.scales,
-                y: {
-                  ...commonOptions.scales.y,
-                  title: {
-                    display: true,
-                    text: '°C',
-                    color: axisColor
-                  }
-                }
-              }
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { x: { ticks: { color: axisColor }, grid: { color: gridColor } }, y: { beginAtZero: true, max: 1, ticks: { color: axisColor }, grid: { color: gridColor } } },
+              plugins: { legend: { labels: { color: axisColor } } }
             }
           });
-
-
+          chartState.loadedCharts.add('score');
         }
 
-        function loadAndInit() {
-          const s = document.createElement('script');
-          s.src = '{% static "js/chart.umd.min.js" %}';
-          s.async = true;
-          s.onload = initCharts;
-          s.onerror = function () {
-            // Fallback to CDN if local asset missing (e.g., in dev)
-            const cdn = document.createElement('script');
-            cdn.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
-            cdn.async = true;
-            cdn.onload = initCharts;
-            document.head.appendChild(cdn);
-          };
-          document.head.appendChild(s);
-        }
+        function renderSingleChart(type) {
+          const canvasId = type + 'Chart';
+          const wrapId = type + 'ChartWrap';
+          const dataSet = type === 'wave' ? wave24 : type === 'wind' ? wind24 : tide24;
+          const thresholds = type === 'wave' ? Array(labels24.length).fill(0.36) : type === 'wind' ? Array(labels24.length).fill(5.4) : [];
+          const labelsForChart = type === 'tide' ? labels24 : labels24;
+          const units = type === 'wave' ? 'Wave height (m)' : type === 'wind' ? 'Wind speed (m/s)' : 'Tide height (m)';
+          const color = type === 'wave' ? 'rgb(59,130,246)' : type === 'wind' ? 'rgb(234,179,8)' : 'rgb(16,185,129)';
 
-        function setupLazyCharts() {
-          var targets = [
-            document.getElementById('scoreChart24'),
-            document.getElementById('scoreChart'),
-            document.getElementById('waveChart24'),
-            document.getElementById('waveChart'),
-            document.getElementById('windChart24'),
-            document.getElementById('windChart'),
-            document.getElementById('tideChart24'),
-            document.getElementById('tideChart'),
-            document.getElementById('seasonChart'),
-            document.getElementById('sstChart')
-          ].filter(function (el) { return !!el; });
+          const panel = document.getElementById(wrapId);
+          const canvas = document.getElementById(canvasId);
+          if (!panel || !canvas) return;
+          panel.classList.remove('hidden');
 
-          if (targets.length === 0) return;
-
-          if (!('IntersectionObserver' in window)) {
-            loadAndInit();
-            return;
+          const datasets = [
+            { label: units, data: dataSet, borderColor: color, backgroundColor: color.replace(')', ',0.18)').replace('rgb(', 'rgba('), fill: true, tension: 0.3 }
+          ];
+          if (thresholds.length) {
+            const thresholdLabel = type === 'wave' ? 'Ideal max (0.36m)' : 'Ideal max (5.4m/s)';
+            datasets.push({ label: thresholdLabel, data: thresholds, borderColor: 'rgb(239,68,68)', borderDash: [6, 6], pointRadius: 0, fill: false });
           }
 
-          var didLoad = false;
-          var io = new IntersectionObserver(function (entries) {
-            if (didLoad) return;
-            var any = entries.some(function (e) { return e.isIntersecting; });
-            if (any) {
-              didLoad = true;
-              io.disconnect();
-              loadAndInit();
+          new Chart(canvas, {
+            type: 'line',
+            data: { labels: labelsForChart, datasets: datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { x: { ticks: { color: axisColor }, grid: { color: gridColor } }, y: { beginAtZero: true, ticks: { color: axisColor }, grid: { color: gridColor } } },
+              plugins: { legend: { labels: { color: axisColor } } }
             }
-          }, { root: null, rootMargin: '100px', threshold: 0.05 });
-
-          targets.forEach(function (t) { io.observe(t); });
+          });
+          chartState.loadedCharts.add(type);
         }
 
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', setupLazyCharts);
-        } else {
-          setupLazyCharts();
+        function handleChartClick(event) {
+          const chartType = event.currentTarget.getAttribute('data-chart');
+          if (!chartType) return;
+          ensureChartJs().then(function () {
+            if (chartType === 'score') {
+              renderScoreChart();
+            } else {
+              renderSingleChart(chartType);
+            }
+          }).catch(function () {
+            event.currentTarget.textContent = 'Chart failed to load';
+          });
+        }
+
+        var buttons = document.querySelectorAll('[data-chart]');
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener('click', handleChartClick, { once: true });
         }
       })();
     </script>

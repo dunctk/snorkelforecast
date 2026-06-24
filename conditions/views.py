@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import os
 import math
 
-from .snorkel import fetch_forecast
+from .snorkel import THRESHOLDS, fetch_forecast, fetch_forecast_payload
 from .models import ForecastHour, SnorkelLocation
 from .history import (
     get_recent_averages,
@@ -257,6 +257,206 @@ def _save_forecast_history(country_slug: str, city_slug: str, hours: list[dict])
     ForecastHour.objects.bulk_create(rows, ignore_conflicts=True)
 
 
+def _count_blockers(hours: list[dict]) -> list[dict]:
+    """Return top blocker metrics for a list of hourly records."""
+    metrics: list[tuple[str, str]] = [
+        ("Waves", "wave_ok"),
+        ("Wind", "wind_ok"),
+        ("Sea temperature", "sst_ok"),
+        ("Tide/current", "slack_ok"),
+        ("Darkness", "light_ok"),
+    ]
+
+    counts: list[dict] = []
+    for label, key in metrics:
+        bad = [
+            h
+            for h in hours
+            if (h.get(key) is not None and not bool(h.get(key)) and h.get("score") is not None)
+        ]
+        if bad:
+            counts.append({"label": label, "count": len(bad)})
+
+    counts.sort(key=lambda item: item["count"], reverse=True)
+    return counts[:3]
+
+
+def _build_day_summaries(hours: list[dict], local_tz: tz.tzfile | None = None) -> list[dict]:
+    """Build compact day cards for the planning layer."""
+    days: dict = defaultdict(list)
+    for h in hours:
+        day = h["time"].date()
+        days[day].append(h)
+
+    summaries = []
+    today_tz = local_tz or tz.tzutc()
+    today = datetime.now(tz=today_tz).date()
+    for day in sorted(days)[:3]:
+        day_hours = days[day]
+        ratings = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+        for h in day_hours:
+            rating = h.get("rating") or "poor"
+            ratings[rating] = ratings.get(rating, 0) + 1
+
+        for tier in ("excellent", "good", "fair", "poor"):
+            if ratings[tier] > 0:
+                status = tier
+                break
+        else:
+            status = "poor"
+
+        blockers = _count_blockers(day_hours)
+        summaries.append(
+            {
+                "date": day,
+                "label": day.strftime("%A"),
+                "ratings": ratings,
+                "status": status,
+                "main_blocker": blockers[0]["label"] if blockers else "Good",
+                "is_today": day == today,
+                "sample_hours": len(day_hours),
+            }
+        )
+
+    return summaries
+
+
+def _best_available_hours(hours: list[dict], limit: int = 3) -> list[dict]:
+    """Return the best-scoring future hours (used when no clean window exists)."""
+    if not hours:
+        return []
+
+    def sort_key(record: dict) -> tuple:
+        score = record.get("score")
+        score_value = -1.0 if score is None else float(score)
+        return (score_value, record["time"])
+
+    ranked = sorted(hours, key=sort_key, reverse=True)
+    picks: list[dict] = []
+    for hour in ranked:
+        blockers = []
+        if hour.get("wave_ok") is not None and not bool(hour.get("wave_ok")):
+            blockers.append("waves")
+        if hour.get("wind_ok") is not None and not bool(hour.get("wind_ok")):
+            blockers.append("wind")
+        if hour.get("sst_ok") is not None and not bool(hour.get("sst_ok")):
+            blockers.append("sea temperature")
+        if hour.get("slack_ok") is not None and not bool(hour.get("slack_ok")):
+            blockers.append("tide/current")
+        if hour.get("light_ok") is not None and not bool(hour.get("light_ok")):
+            blockers.append("darkness")
+
+        picks.append(
+            {
+                "time": hour["time"],
+                "score": hour.get("score", 0.0),
+                "status": hour.get("rating", "poor"),
+                "blockers": blockers[:2],
+            }
+        )
+        if len(picks) >= limit:
+            break
+
+    return picks
+
+
+def _format_best_window(hours: list[dict], next_window: dict | None) -> dict | None:
+    """Return a compact next-window payload for the UI."""
+    if not next_window:
+        return None
+
+    start = next_window.get("start")
+    end = next_window.get("end")
+    return {
+        "start": start,
+        "end": end,
+        "duration_hours": None if not end or not start else int((end - start).total_seconds() / 3600),
+        "label": "Good window" if end and end != start else "Best hour",
+    }
+
+
+def _status_word(rating: str | None) -> str:
+    """Normalize rating values into a short semantic label."""
+    if rating in {"excellent", "good"}:
+        return "Good"
+    if rating == "fair":
+        return "Fair"
+    return "Poor"
+
+
+def _build_chart_summaries(hours: list[dict]) -> dict[str, str]:
+    """Build plain-English summaries for 24h chart sections."""
+    if not hours:
+        return {
+            "score": "No score data is available for the next 24 hours yet.",
+            "wave": "No wave-height trend data is available for the next 24 hours yet.",
+            "wind": "No wind-speed trend data is available for the next 24 hours yet.",
+            "tide": "No tide trend data is available for the next 24 hours yet.",
+        }
+
+    score_hours = [h for h in hours if isinstance(h.get("score"), int | float)]
+    if score_hours:
+        best_score_hour = max(score_hours, key=lambda h: h.get("score", 0.0))
+        best_time = best_score_hour["time"].strftime("%a %H:%M")
+        best_score = round(best_score_hour.get("score", 0.0), 2)
+        good_hours = sum(1 for h in score_hours if _status_word(h.get("rating")) != "Poor")
+        score_summary = (
+            f"Best snorkel score is {best_score} around {best_time}; "
+            f"{good_hours} of {len(score_hours)} hours are good, fair, or excellent."
+        )
+    else:
+        score_summary = "No score data is available for the next 24 hours yet."
+
+    wave_values = [
+        float(h["wave_height"]) for h in hours if isinstance(h.get("wave_height"), int | float)
+    ]
+    if wave_values:
+        waves_ok = sum(1 for value in wave_values if value <= THRESHOLDS["wave_height"])
+        min_wave = min(wave_values)
+        max_wave = max(wave_values)
+        wave_summary = (
+            f"{waves_ok}/{len(wave_values)} sampled hours stay at or below "
+            f"{THRESHOLDS['wave_height']}m (range {round(min_wave, 2)}m to {round(max_wave, 2)}m)."
+        )
+    else:
+        wave_summary = "No wave-height trend data is available for the next 24 hours yet."
+
+    wind_values = [
+        float(h["wind_speed"]) for h in hours if isinstance(h.get("wind_speed"), int | float)
+    ]
+    if wind_values:
+        wind_ok = sum(1 for value in wind_values if value <= THRESHOLDS["wind_speed"])
+        min_wind = min(wind_values)
+        max_wind = max(wind_values)
+        wind_summary = (
+            f"Wind is at or below {THRESHOLDS['wind_speed']}m/s in "
+            f"{wind_ok}/{len(wind_values)} sampled hours (range {round(min_wind, 2)} to {round(max_wind, 2)}m/s)."
+        )
+    else:
+        wind_summary = "No wind-speed trend data is available for the next 24 hours yet."
+
+    tide_values = [
+        float(h["sea_level_height"]) for h in hours if isinstance(h.get("sea_level_height"), int | float)
+    ]
+    if tide_values:
+        min_tide = min(tide_values)
+        max_tide = max(tide_values)
+        slack_count = sum(1 for h in hours if h.get("is_high_tide"))
+        tide_summary = (
+            f"Tides range from {round(min_tide, 2)}m to {round(max_tide, 2)}m; "
+            f"{slack_count} of {len(hours)} hours are in or near peak slack windows."
+        )
+    else:
+        tide_summary = "No tide trend data is available for the next 24 hours yet."
+
+    return {
+        "score": score_summary,
+        "wave": wave_summary,
+        "wind": wind_summary,
+        "tide": tide_summary,
+    }
+
+
 @cache_page(getattr(settings, "LOCATION_PAGE_CACHE_TTL", getattr(settings, "CACHE_TTL", 300)))
 def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResponse:
     """Display forecast for a specific location."""
@@ -308,13 +508,16 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             timezone_str = location_data["timezone"]
             location = None  # No database location object for hardcoded locations
 
-    # fetch hourly forecast data for this location
-    all_hours = fetch_forecast(
+    # Fetch hourly forecast data for this location.
+    forecast_payload = fetch_forecast_payload(
         coordinates=coordinates,
         timezone_str=timezone_str,
         country_slug=country,
         city_slug=city,
+        location=location,
+        allow_api=False,
     )
+    all_hours = forecast_payload.get("hours", [])
     if not all_hours:
         logger.warning(
             "Empty forecast for %s/%s at coords=%s tz=%s",
@@ -340,98 +543,24 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
             all_hours[-1]["time"] if all_hours else None,
         )
 
-    # first 24 hours for separate charts
     hours_24 = hours[:24]
-
-    # compute summary statistics
+    forecast_updated = forecast_payload.get("generated_at") or now
     total = len(hours)
     ok_hours = [h for h in hours if h.get("ok")]
     ok_count = len(ok_hours)
     percent_ok = round(ok_count / total * 100) if total > 0 else 0
-
-    # rating breakdown
     rating_counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
+
     for h in hours:
         rating = h.get("rating") or "poor"
         if rating in rating_counts:
             rating_counts[rating] += 1
 
-    # determine earliest and latest suitable times
     if ok_hours:
         earliest_ok = ok_hours[0]["time"]
         latest_ok = ok_hours[-1]["time"]
     else:
         earliest_ok = latest_ok = None
-
-    # group hours by date to highlight best periods
-    days = defaultdict(list)
-    for h in hours:
-        days[h["time"].date()].append(h)
-
-    day_summaries = []
-    daily_outlook = []
-    for day, day_hours in days.items():
-        ok_day = [h for h in day_hours if h.get("ok")]
-        # Build per-day rating breakdown and top-tier window (always shown)
-        counts = {"excellent": 0, "good": 0, "fair": 0, "poor": 0}
-        for h in day_hours:
-            r = h.get("rating") or "poor"
-            if r in counts:
-                counts[r] += 1
-
-        # Determine the best available rating for the day
-        order = ["excellent", "good", "fair", "poor"]
-        top_rating = next((r for r in order if counts[r] > 0), "poor")
-
-        # Find earliest and latest continuous block for the top rating
-        top_times = [h["time"] for h in day_hours if h.get("rating") == top_rating]
-        top_start = top_end = None
-        if top_times:
-            top_start = top_times[0]
-            top_end = top_times[0]
-            # Walk through consecutive hours to extend the initial block
-            for i in range(1, len(top_times)):
-                if top_times[i] - top_times[i - 1] == timedelta(hours=1):
-                    top_end = top_times[i]
-                else:
-                    break
-
-        daily_outlook.append(
-            {
-                "date": day,
-                "label": (
-                    ok_day[0]["time"].strftime("%A")
-                    if ok_day
-                    else day_hours[0]["time"].strftime("%A")
-                ),
-                "counts": counts,
-                "top_rating": top_rating,
-                "top_start": top_start,
-                "top_end": top_end,
-            }
-        )
-
-        # Compute only when there are suitable 'ok' hours for best-period blurb
-        ok_day = [h for h in day_hours if h.get("ok")]
-        if not ok_day:
-            continue
-        day_earliest = ok_day[0]["time"]
-        day_latest = ok_day[-1]["time"]
-        if day_latest.hour < 12:
-            period = "morning"
-        elif day_earliest.hour >= 12:
-            period = "afternoon"
-        else:
-            period = "morning and afternoon"
-        day_summaries.append(
-            {
-                "date": day,
-                "label": day_earliest.strftime("%A"),
-                "period": period,
-                "earliest": day_earliest,
-                "latest": day_latest,
-            }
-        )
 
     # find next continuous block of suitable conditions
     next_window = None
@@ -449,6 +578,28 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
                 j += 1
             next_window = {"start": start, "end": end}
             break
+
+    decision_summary = {
+        "total_hours": total,
+        "ok_count": ok_count,
+        "percent_ok": percent_ok,
+        "can_snorkel": bool(next_window),
+        "primary_blockers": _count_blockers(hours),
+        "next_window": _format_best_window(hours, next_window),
+        "earliest_ok": earliest_ok,
+        "latest_ok": latest_ok,
+        "updated_at": forecast_updated,
+        "forecast_source": forecast_payload.get("source", "unknown"),
+        "forecast_source_label": str(
+            forecast_payload.get("source", "unknown")
+        ).replace("_", " ").title(),
+        "is_stale": bool(forecast_payload.get("is_stale", False)),
+        "next_refresh_at": forecast_payload.get("next_refresh_at"),
+    }
+
+    day_planner = _build_day_summaries(hours, local_tz=local_tz)
+    best_available = _best_available_hours(hours, limit=3)
+    chart_summaries = _build_chart_summaries(hours_24)
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
@@ -512,28 +663,61 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         context_location = MockLocation(location_data)
 
     # Nearby spots in the same country for internal linking and discovery
-    nearby_locations = list(
+    nearby_spots = list(
         SnorkelLocation.objects.filter(country_slug=country)
         .exclude(city_slug=city)
-        .values("name", "city_slug", "country_slug", "description")[:6]
+        .order_by("name")[:6]
     )
+    nearby_locations = []
+    for spot in nearby_spots[:4]:
+        nearby_status = "unknown"
+        if nearby_spots:
+            spot_payload = fetch_forecast_payload(
+                coordinates=spot.coordinates_dict,
+                timezone_str=spot.timezone,
+                country_slug=spot.country_slug,
+                city_slug=spot.city_slug,
+                location=spot,
+                allow_api=False,
+            )
+            spot_hours = spot_payload.get("hours", [])
+            if spot_hours:
+                local = tz.gettz(spot.timezone)
+                spot_now = datetime.now(tz=local)
+                upcoming = [h for h in spot_hours if h["time"] >= spot_now]
+                if upcoming:
+                    first_ok = next((h for h in upcoming if h.get("ok")), None)
+                    if first_ok:
+                        nearby_status = "good"
+                    else:
+                        nearby_status = upcoming[0].get("rating", "poor")
+
+        nearby_locations.append(
+            {
+                "name": spot.name,
+                "city_slug": spot.city_slug,
+                "country_slug": spot.country_slug,
+                "description": spot.description,
+                "status": nearby_status,
+            }
+        )
 
     context = {
         "location": context_location,
         "nearby_locations": nearby_locations,
+        "forecast_source": forecast_payload.get("source", "unknown"),
+        "forecast_is_stale": bool(forecast_payload.get("is_stale", False)),
+        "forecast_refreshed_at": forecast_payload.get("generated_at"),
+        "forecast_next_refresh_at": forecast_payload.get("next_refresh_at"),
         "hours": hours,
         "hours_24": hours_24,
-        "summary": {
-            "total_hours": total,
-            "ok_count": ok_count,
-            "percent_ok": percent_ok,
-            "earliest_ok": earliest_ok,
-            "latest_ok": latest_ok,
-        },
+        "summary": decision_summary,
+        "decision_summary": decision_summary,
+        "day_planner": day_planner,
+        "best_available": best_available,
+        "chart_summaries": chart_summaries,
         "rating_counts": rating_counts,
         "timezone": local_tz.tzname(now),
-        "day_summaries": day_summaries,
-        "daily_outlook": sorted(daily_outlook, key=lambda d: d["date"]),
         "next_window": next_window,
         "tide_times": tide_times,
         "next_early_high_tide": next_early_high_tide,
@@ -1252,12 +1436,15 @@ def location_sea_temperature(request: HttpRequest, country: str, city: str) -> H
             timezone_str = location_data["timezone"]
             location = None
 
-    all_hours = fetch_forecast(
+    forecast_payload = fetch_forecast_payload(
         coordinates=coordinates,
         timezone_str=timezone_str,
         country_slug=country,
         city_slug=city,
+        location=location,
+        allow_api=False,
     )
+    all_hours = forecast_payload.get("hours", [])
 
     current_sst = None
     current_wave = None
@@ -1363,12 +1550,15 @@ def location_sea_temperature_embed(request: HttpRequest, country: str, city: str
         coordinates = location_data["coordinates"]
         location = None
 
-    all_hours = fetch_forecast(
+    forecast_payload = fetch_forecast_payload(
         coordinates=coordinates,
         timezone_str=location_data.get("timezone", "UTC"),
         country_slug=country,
         city_slug=city,
+        location=location,
+        allow_api=False,
     )
+    all_hours = forecast_payload.get("hours", [])
     current_sst = all_hours[0].get("sea_surface_temperature") if all_hours else None
 
     if location:

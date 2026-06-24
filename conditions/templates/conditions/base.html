@@ -7,9 +7,11 @@
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
     <link rel="canonical" href="https://snorkelforecast.com{{ request.path }}">
+    {% block font_links %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+    {% endblock %}
     <meta property="og:site_name" content="SnorkelForecast.com">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:site" content="@snorkelforecast">
@@ -28,11 +30,10 @@
     <link href="{% static 'css/output.css' %}?v=20260604b" rel="stylesheet">
     {# ui.css carries the full design system: blocking + versioned so it always applies #}
     <link href="{% static 'css/ui.css' %}?v=20260605a" rel="stylesheet">
-     <meta name="theme-color" content="#041d29" id="theme-color" />
+    <meta name="theme-color" content="#041d29" id="theme-color" />
     <script src="{% static 'js/theme.js' %}" defer></script>
     <script src="{% static 'js/nav.js' %}" defer></script>
-    <script src="{% static 'js/autocomplete.min.js' %}" defer></script>
-    <script src="{% static 'js/search.js' %}" defer></script>
+    {% block extra_head_scripts %}{% endblock %}
   </head>
   <body class="ui-day min-h-screen flex flex-col">
     <div class="bg-deco" aria-hidden="true"></div>

@@ -1,143 +1,173 @@
-SnorkelForecast.com
-====================
+<div align="center">
 
-Forecasts for snorkeling conditions worldwide. Django backend, Tailwind UI, and a lightweight Docker deploy.
+# SnorkelForecast
 
-Live
-- Website: https://snorkelforecast.com
+> **Know before you go.** Hyperlocal snorkeling conditions — swell, wind, water temp, tide — for thousands of spots worldwide.
+
+[![CI](https://github.com/snorkelforecast/snorkelforecast/actions/workflows/ci.yml/badge.svg)](https://github.com/snorkelforecast/snorkelforecast/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](pyproject.toml)
+[![Django](https://img.shields.io/badge/django-5.0+-green.svg)](pyproject.toml)
+
+🌊 [SnorkelForecast.com](https://snorkelforecast.com) · [Quick Start](#quick-start) · [Features](#features) · [Contributing](CONTRIBUTING.md)
+
+</div>
 
 ![Homepage screenshot](screenshots/home-screenshot.png)
 
-Quick Start
-- Install deps: `uv sync`
-- Run dev server: `uv run python snorkelforecast/manage.py runserver`
-- Tailwind (dev): `npm run tailwind:watch`
+## Why this exists
 
-Project Layout
-- Django project: `snorkelforecast/` (settings, manage.py)
-- App: `conditions/` (views, urls, templates)
-- Static: `snorkelforecast/static/` (Tailwind input/output, UI CSS); root `static/` for shared assets
-- Templates: `conditions/templates/conditions/` (base + views)
+Checking swell, wind, and water temperature across a dozen tabs wastes the time you could be in the water. SnorkelForecast pulls everything onto one page — wave height, wind direction, tide, water temp, UV index — for any snorkeling spot on the planet. It's free, open-source, and self-hostable.
 
-Environment
-- Copy `.env.example` to your runtime environment and set:
-  - `SECRET_KEY`: required for production
-  - `DEBUG`: `false` in production
-  - `ALLOWED_HOSTS`: comma-separated hostnames
-  - `CSRF_TRUSTED_ORIGINS`: comma-separated origins (https URLs)
-  - `PRODUCTION`: set to enable `/persistent/db.sqlite3`
-  - `CACHE_TTL`: seconds for view cache
-  - `ENABLE_OSM_IMPORT`: `true` to enable automatic OSM location discovery
-  - `USE_POSTGIS`: `true` to use PostGIS instead of SQLite (production)
+## Quick Start
 
-Common Commands
-- Install: `uv sync`
-- Lint: `uv run ruff check .`
-- Format: `uv run ruff format .`
-- Migrate: `uv run python snorkelforecast/manage.py makemigrations && uv run python snorkelforecast/manage.py migrate`
-- Test: `uv run python snorkelforecast/manage.py test`
-- Run: `uv run python snorkelforecast/manage.py runserver`
+```bash
+# Install dependencies
+uv sync
 
-Tailwind
-- Dev: `npm run tailwind:watch`
-- Build (CI/Docker): `npm run tailwind:build`
-  - Dockerfile also downloads the Tailwind standalone binary and builds `snorkelforecast/static/css/output.css`.
+# Set up the database
+uv run python snorkelforecast/manage.py migrate
 
-Docker
-- Build: `docker build -t snorkelforecast .`
-- Run: `docker run -p 8000:8000 --env-file .env snorkelforecast`
-- The container runs migrations, collects static, and starts Gunicorn via `startup.sh`.
-- Development with OSM import: `docker-compose -f docker-compose.dev.yml up`
+# Populate with 500+ snorkeling spots
+uv run python snorkelforecast/manage.py migrate_popular_locations
 
-OSM Import System
-- **Automatic Discovery**: Discovers snorkeling spots worldwide from OpenStreetMap
-- **Tile-Based**: Processes the globe in Web Mercator tiles for scalability
-- **Confidence Scoring**: Rates locations by snorkeling suitability (0-1)
-- **Multiple Endpoints**: Round-robin between Overpass API mirrors
-- **Docker Ready**: Fully integrated with container deployment
+# Start the dev server
+uv run python snorkelforecast/manage.py runserver
 
-OSM Commands:
-- Create tile queue: `uv run python snorkelforecast/manage.py import_osm_tiles --create-tiles --zoom 8 --country-bbox "35,-10,45,5"`
-- Import locations: `uv run python snorkelforecast/manage.py import_osm_tiles --batch-size 10`
-- Health check: Visit `/health/` for system status including OSM import progress
+# (in another terminal) Watch Tailwind CSS
+npm run tailwind:watch
+```
 
-Deployment
-- GitHub Actions runs lint and tests on `master`/`main` pushes.
-- Production runs on Coolify (Docker build on push). Coolify normally deploys via
-  its own GitHub webhook. As a backstop, the `deploy` job in `.github/workflows/ci.yml`
-  pings a Coolify deploy webhook after tests pass on `main` — set repo secrets
-  `COOLIFY_DEPLOY_WEBHOOK` (the app's deploy webhook URL from Coolify → Webhooks)
-  and, if required, `COOLIFY_TOKEN`. Without the secret the job is a no-op.
-- After deploying, verify: `https://snorkelforecast.com/usa/honolua-bay/` returns 200
-  and `https://snorkelforecast.com/sitemap.xml` shows today's `lastmod`. Then submit
-  the sitemap in Google Search Console.
+Open http://localhost:8000 and search for a spot like **Honolua Bay, Maui**.
 
-Production Deployment with Docker Compose
------------------------------------------
+## Features
 
-1. **Environment Setup:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your production values
-   ```
+### Global Coverage
+- **Thousands of locations** — automatically discovered from OpenStreetMap
+- **Lazy-loaded forecasts** — spots appear on-demand, no manual entry needed
+- **Tile-based OSM import** — process the globe at Zoom 8 for scalable spot discovery
 
-2. **Required Environment Variables:**
-   ```bash
-   SECRET_KEY="your-production-secret-key-here"
-   DEBUG="false"
-   ALLOWED_HOSTS="yourdomain.com,www.yourdomain.com"
-   CSRF_TRUSTED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
-   PRODUCTION="true"
-   ```
+### Forecast Data
+| Metric | Source |
+|---|---|
+| Wave height & period | Open-Meteo Marine |
+| Wind speed & direction | Open-Meteo Marine |
+| Water temperature (SST) | Open-Meteo + ERA5 monthly |
+| Tide predictions | Open-Meteo Tide API |
+| UV index | Open-Meteo Air Quality |
+| Weather (clouds, rain) | Open-Meteo Weather |
 
-3. **Deploy with Docker Compose:**
-   ```bash
-   docker-compose up -d
-   ```
+### Smart Caching
+- 6-hour Django cache → ForecastHour DB → Open-Meteo fallback
+- Background scheduler refreshes forecasts every 30 minutes
+- Graceful degradation: stale data served when APIs are down
 
-4. **Initial Data Migration:**
-   ```bash
-   docker-compose exec snorkelforecast uv run python snorkelforecast/manage.py migrate_popular_locations
-   ```
+### SEO & Embedding
+- Dedicated sea-temperature pages at `/<country>/<city>/sea-temperature/`
+- Embeddable iframe widget at `/<country>/<city>/embed/sea-temperature/` with dofollow backlink
+- Auto-generated sitemaps and IndexNow submission
 
-5. **Health Check:**
-   ```bash
-   curl https://yourdomain.com/health/
-   ```
+## Try It Live
 
-New Features in Production
---------------------------
+https://snorkelforecast.com
 
-### Global Location Support
-- **Lazy Loading**: Locations are discovered and cached on-demand
-- **OpenStreetMap Integration**: Access to worldwide snorkeling locations
-- **6-Hour Weather Caching**: Reduced API calls and rate limit handling
-- **Smart Search**: Find locations by name, type, or region
+| Location | Example Page |
+|---|---|
+| 🇺🇸 Honolua Bay, Maui | [snorkelforecast.com/usa/honolua-bay/](https://snorkelforecast.com/usa/honolua-bay/) |
+| 🇦🇺 Byron Bay, Australia | [snorkelforecast.com/australia/byron-bay/](https://snorkelforecast.com/australia/byron-bay/) |
+| 🇪🇸 Carboneras, Spain | [snorkelforecast.com/spain/carboneras/](https://snorkelforecast.com/spain/carboneras/) |
+| 🇵🇭 Coron, Philippines | [snorkelforecast.com/philippines/coron/](https://snorkelforecast.com/philippines/coron/) |
 
-### Production Optimizations
-- **Persistent Database**: SQLite with persistent volume in production
-- **Health Checks**: Docker health monitoring endpoint
-- **Configurable Caching**: Environment-based cache TTL settings
-- **Error Handling**: Graceful degradation with stale data fallbacks
+## Project Layout
 
-### Monitoring
-- Health check endpoint: `/health/`
-- Database and cache status monitoring
-- Automatic migration of popular locations
-- Background scheduler for data updates
-- Coolify (or similar) can watch the repo and deploy on push. Ensure env vars are set in the platform.
+```
+snorkelforecast/
+├── snorkelforecast/         # Django project (settings, wsgi)
+│   └── manage.py
+├── conditions/              # Main app (views, urls, templates)
+├── static/                  # Tailwind output, JS, shared assets
+├── staticfiles/             # Collected static (CI/build only)
+├── screenshots/             # UI screenshots for docs
+├── Dockerfile               # Production container
+├── startup.sh               # Container entrypoint
+├── tailwind.config.mjs      # Tailwind CSS v4 config
+└── pyproject.toml           # Python dependencies (uv)
+```
 
-Security
-- Do not commit real secrets. `SECRET_KEY` must be provided via environment in production.
-- `DEBUG=false` and a strict `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS` in production.
+## Environment
+
+Copy `.env.example` to your runtime environment:
+
+| Variable | Required | Description |
+|---|---|---|
+| `SECRET_KEY` | Production | Django secret key |
+| `DEBUG` | Production | Set `false` in production |
+| `ALLOWED_HOSTS` | Production | Comma-separated hostnames |
+| `CSRF_TRUSTED_ORIGINS` | Production | Comma-separated origins |
+| `PRODUCTION` | No | Enables persistent `/db.sqlite3` |
+| `CACHE_TTL` | No | View cache TTL in seconds |
+| `ENABLE_OSM_IMPORT` | No | Enable OSM tile-based import |
+| `USE_POSTGIS` | No | Use PostGIS instead of SQLite |
+
+## Deployment
+
+### Docker (production)
+
+```bash
+docker build -t snorkelforecast .
+docker run -p 8000:8000 --env-file .env snorkelforecast
+```
+
+The container runs migrations, populates locations, collects static files, and starts Gunicorn via `startup.sh`.
+
+### Docker Compose
+
+```bash
+docker-compose up -d
+docker-compose exec snorkelforecast uv run python snorkelforecast/manage.py migrate_popular_locations
+```
+
+### CI/CD
+
+GitHub Actions runs lint + tests on every push. Production deploys via Coolify (Docker build on push). A backstop webhook in `.github/workflows/ci.yml` pings Coolify after tests pass on `main`.
+
+### OSM Import
+
+Automatically discover snorkeling spots from OpenStreetMap:
+
+```bash
+# Create tile queue for a region
+uv run python snorkelforecast/manage.py import_osm_tiles --create-tiles --zoom 8 --country-bbox "35,-10,45,5"
+
+# Import in batches
+uv run python snorkelforecast/manage.py import_osm_tiles --batch-size 10
+```
+
+Health check: `https://yourdomain.com/health/`
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `uv sync` | Install Python deps |
+| `uv run ruff check .` | Lint |
+| `uv run ruff format .` | Format |
+| `uv run python snorkelforecast/manage.py test` | Run tests |
+| `uv run python snorkelforecast/manage.py makemigrations && uv run python snorkelforecast/manage.py migrate` | DB migrations |
+| `npm run tailwind:watch` | Tailwind dev (watch) |
+| `npm run tailwind:build` | Tailwind production build |
+
+## Security
+
+- Never commit real secrets. Provide `SECRET_KEY` via environment in production.
+- Set `DEBUG=false` and configure `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS` in production.
 - WhiteNoise serves static files; run `collectstatic` in builds.
-- `.gitignore` includes `.env`, `*.sqlite*`, and `staticfiles/`.
-- If `db.sqlite3` is tracked locally, avoid using it for real data; prefer ephemeral dev data only.
+- `.gitignore` excludes `.env`, `*.sqlite*`, and `staticfiles/`.
 
-Contributing
-- Keep changes small and focused. Run Ruff before pushing.
-- Write tests in `conditions/tests/` for new functionality.
-- Conventional commits (e.g., `feat: ...`, `fix: ...`) encouraged.
+## Contributing
 
-License
-- See repository license or contact maintainers if unspecified.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT © SnorkelForecast

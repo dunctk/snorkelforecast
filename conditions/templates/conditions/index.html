@@ -63,9 +63,11 @@
             We consider snorkeling conditions to be ideal when all of the following criteria, fetched from the Open-Meteo API, are met during daylight hours (between sunrise and sunset):
         </p>
         <ul class="list-disc list-inside mt-2">
-            <li><strong>Wave height</strong> is less than 0.36 meters.</li>
-            <li><strong>Wind speed</strong> is below 5.4 meters/second.</li>
-            <li><strong>Sea surface temperature</strong> is between 20.6°C and 30.4°C.</li>
+            <li><strong>Wave height</strong> is less than 0.36 meters (35% weight).</li>
+            <li><strong>Wind speed</strong> is below 5.4 meters/second (25% weight).</li>
+            <li><strong>Sea surface temperature</strong> is between 20.6°C and 30.4°C (15% weight).</li>
+            <li><strong>Tide &amp; currents</strong> — best near high slack tide (15% weight).</li>
+            <li><strong>Daylight hours</strong> — scored only during daylight (10% weight).</li>
         </ul>
     </div>
 

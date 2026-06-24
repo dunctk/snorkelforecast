@@ -8,8 +8,9 @@ import logging
 import httpx
 from dateutil import tz
 from django.core.cache import cache
+from django.utils import timezone as dj_timezone
 from django.conf import settings
-from .models import ForecastHour
+from .models import ForecastHour, LocationForecastSnapshot, SnorkelLocation
 
 CARBONERAS = {"lat": 36.997, "lon": -1.896}
 THRESHOLDS = {
@@ -33,6 +34,24 @@ DEFAULT_FORECAST_STALE_TTL = getattr(settings, "FORECAST_CACHE_STALE_TTL", 86400
 DEFAULT_FORECAST_NEGATIVE_TTL = getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", 1800)  # 30 minutes
 DEFAULT_FORECAST_REQUEST_TIMEOUT = getattr(settings, "FORECAST_REQUEST_TIMEOUT", 5.0)
 FORECAST_CACHE_VERSION = 1
+SNAPSHOT_VERSION = 1
+
+
+def _to_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return None
+
+
+def _from_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 class Hour(TypedDict):
@@ -53,12 +72,69 @@ class Hour(TypedDict):
     light_ok: bool
     sunrise: datetime
     sunset: datetime
+    tide_score: float
+
+
+def _tide_score(
+    sea_level_height: float | None,
+    current_velocity: float | None,
+    is_slack: bool,
+    is_rising: bool | None,
+    tidal_range: float | None,
+) -> float:
+    """Return a tide/current score in [0.0, 1.0].
+
+    Maps the user-facing scoring model (‑20 to +20) into a 0–1 scale:
+
+      raw 20 → 1.0   high slack, low current
+      raw 12 → 0.8   near high tide (slack but some current)
+      raw  8 → 0.7   approaching high tide (rising)
+      raw  5 → 0.625 after high tide (falling)
+      raw  0 → 0.5   neutral / no data
+      raw -10 → 0.25 strong current
+      raw -20 → 0.0  very low tide / exposed rocks
+      raw -30 → 0.0  combined penalties (clamped)
+    """
+    raw = 0  # → 0.5 after normalisation
+
+    if sea_level_height is not None:
+        if is_slack and current_velocity is not None and current_velocity <= THRESHOLDS["current_velocity"]:
+            raw = 20
+        elif is_slack:
+            raw = 12
+        elif is_rising is True:
+            raw = 8
+        elif is_rising is False:
+            raw = 5
+
+        # Strong current penalty (overrides weaker positive scores)
+        if current_velocity is not None and current_velocity > 0.5:
+            raw = -10
+
+        # Very low tide — severe penalty
+        if sea_level_height < -0.5:
+            raw = -20
+
+        # Spring-tide / large tidal-range penalty
+        if tidal_range is not None and tidal_range > 2.0:
+            raw -= 10
+
+    return max(0.0, min(1.0, (raw + 20) / 40))
 
 
 def _calculate_score(
-    wave: float | None, wind: float | None, sst: float | None, light_ok: bool
+    wave: float | None,
+    wind: float | None,
+    sst: float | None,
+    tide_score: float,
+    light_ok: bool,
 ) -> float:
-    """Calculate a snorkel score from 0 to 1 based on conditions."""
+    """Calculate a snorkel score from 0 to 1 based on conditions.
+
+    Factors are combined as a weighted sum (tide/current included as a
+    modifier) rather than a pure product.  Daylight remains a hard gate
+    for safety.
+    """
     if not light_ok or wave is None or wind is None or sst is None:
         return 0.0
 
@@ -75,12 +151,19 @@ def _calculate_score(
     else:  # sst > sst_max
         sst_score = max(0.0, 1 - ((sst - sst_max) / 5))
 
-    # Final score is the product of individual scores
-    return wave_score * wind_score * sst_score
+    # Weighted sum with tide as modifier, daylight as hard gate (bonus 0.10)
+    score = (
+        wave_score * 0.35
+        + wind_score * 0.25
+        + sst_score * 0.15
+        + tide_score * 0.15
+        + 0.10  # daylight bonus (already gated on light_ok)
+    )
+    return max(0.0, min(1.0, score))
 
 
-def _rating_from_score(score: float, slack_ok: bool) -> str:
-    """Map a numeric score and slack-tide state to a rating tier.
+def _rating_from_score(score: float) -> str:
+    """Map a numeric score to a rating tier.
 
     Tiers:
     - excellent: score >= 0.8
@@ -88,20 +171,16 @@ def _rating_from_score(score: float, slack_ok: bool) -> str:
     - fair:      score >= 0.4
     - poor:      otherwise
 
-    If not within the slack tide/current window, cap at 'fair'.
+    Tide/current is baked into the score, so no separate cap is needed.
     """
     if score >= 0.8:
-        rating = "excellent"
+        return "excellent"
     elif score >= 0.6:
-        rating = "good"
+        return "good"
     elif score >= 0.4:
-        rating = "fair"
+        return "fair"
     else:
-        rating = "poor"
-
-    if not slack_ok and rating in {"excellent", "good"}:
-        rating = "fair"
-    return rating
+        return "poor"
 
 
 def _fallback_from_db(
@@ -142,6 +221,10 @@ def _fallback_from_db(
                 if abs(t - center) <= window:
                     slack_mask[j] = True
 
+        # Tidal range for spring-tide penalty
+        valid_sea = [s for s in sea if s is not None]
+        tidal_range = (max(valid_sea) - min(valid_sea)) if len(valid_sea) > 1 else None
+
         local = tz.gettz(timezone_str)
         result: list[Hour] = []
         for i, r in enumerate(rows):
@@ -160,11 +243,21 @@ def _fallback_from_db(
             slack_ok = (
                 slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
             )
+
+            # Tide direction: rising vs falling
+            prev_sea = sea[i - 1] if i > 0 else None
+            is_rising = None
+            if prev_sea is not None and sea[i] is not None:
+                is_rising = sea[i] > prev_sea
+
+            tide_score = _tide_score(sea[i], current, slack_mask[i], is_rising, tidal_range)
+            score = _calculate_score(wave, wind, sst, tide_score, True)
+
             result.append(
                 {
                     "time": r.time.astimezone(local),
                     "ok": r.ok,
-                    "score": float(r.score),
+                    "score": score,
                     "rating": r.rating,
                     "wave_height": wave,
                     "wind_speed": wind,
@@ -179,6 +272,7 @@ def _fallback_from_db(
                     "light_ok": True,
                     "sunrise": None,
                     "sunset": None,
+                    "tide_score": tide_score,
                 }
             )
         return result
@@ -187,21 +281,192 @@ def _fallback_from_db(
         return []
 
 
-def fetch_forecast(
-    hours: int = 72,
-    coordinates: dict | None = None,
-    timezone_str: str | None = None,
+def _snapshot_key(
     *,
-    country_slug: str | None = None,
-    city_slug: str | None = None,
-) -> list[Hour]:
-    """Return list of hours with snorkel suitability flag for any location."""
-    # Use provided coordinates or default to Carboneras
-    if coordinates is None:
-        coordinates = CARBONERAS
-    if timezone_str is None:
-        timezone_str = "Europe/Madrid"
+    coordinates: dict | None,
+    hours: int,
+    country_slug: str | None,
+    city_slug: str | None,
+    location: SnorkelLocation | None,
+) -> str:
+    """Build a stable cache key for snapshot rows."""
+    if location is not None and location.pk:
+        return (
+            f"forecast-snapshot:v{SNAPSHOT_VERSION}:loc={location.pk}:h={hours}"
+        )
 
+    if country_slug and city_slug:
+        return (
+            f"forecast-snapshot:v{SNAPSHOT_VERSION}:{country_slug}:{city_slug}:h={hours}"
+        )
+
+    # Last resort: use rounded coordinates to avoid churn on high-precision values.
+    if coordinates is None:
+        return f"forecast-snapshot:v{SNAPSHOT_VERSION}:default:h={hours}"
+    return (
+        f"forecast-snapshot:v{SNAPSHOT_VERSION}:lat={coordinates['lat']:.5f}:"
+        f"lon={coordinates['lon']:.5f}:h={hours}"
+    )
+
+
+def _serialize_snapshot_hours(hours: list[Hour]) -> list[dict]:
+    payload: list[dict] = []
+    for h in hours:
+        t = h.get("time")
+        if not isinstance(t, datetime):
+            continue
+        payload.append(
+            {
+                "time": _to_iso(t),
+                "ok": bool(h.get("ok")),
+                "score": h.get("score"),
+                "rating": h.get("rating"),
+                "wave_height": h.get("wave_height"),
+                "wind_speed": h.get("wind_speed"),
+                "sea_surface_temperature": h.get("sea_surface_temperature"),
+                "sea_level_height": h.get("sea_level_height"),
+                "current_velocity": h.get("current_velocity"),
+                "wave_ok": h.get("wave_ok"),
+                "wind_ok": h.get("wind_ok"),
+                "sst_ok": h.get("sst_ok"),
+                "slack_ok": h.get("slack_ok"),
+                "is_high_tide": h.get("is_high_tide"),
+                "light_ok": h.get("light_ok"),
+                "sunrise": _to_iso(h.get("sunrise")),
+                "sunset": _to_iso(h.get("sunset")),
+                "tide_score": h.get("tide_score"),
+            }
+        )
+    return payload
+
+
+def _deserialize_snapshot_rows(snapshot_hours: list[object]) -> list[Hour]:
+    hours: list[Hour] = []
+    for row in snapshot_hours:
+        if not isinstance(row, dict):
+            continue
+
+        time = _from_iso(row.get("time"))
+        if not isinstance(time, datetime):
+            continue
+
+        hours.append(
+            {
+                "time": time,
+                "ok": bool(row.get("ok")),
+                "score": row.get("score") if isinstance(row.get("score"), (float, int)) else 0.0,
+                "rating": row.get("rating") or "poor",
+                "wave_height": row.get("wave_height"),
+                "wind_speed": row.get("wind_speed"),
+                "sea_surface_temperature": row.get("sea_surface_temperature"),
+                "sea_level_height": row.get("sea_level_height"),
+                "current_velocity": row.get("current_velocity"),
+                "wave_ok": row.get("wave_ok") if row.get("wave_ok") is not None else False,
+                "wind_ok": row.get("wind_ok") if row.get("wind_ok") is not None else False,
+                "sst_ok": row.get("sst_ok") if row.get("sst_ok") is not None else False,
+                "slack_ok": row.get("slack_ok") if row.get("slack_ok") is not None else False,
+                "is_high_tide": row.get("is_high_tide") if row.get("is_high_tide") is not None else False,
+                "light_ok": row.get("light_ok") if row.get("light_ok") is not None else False,
+                "sunrise": _from_iso(row.get("sunrise")),
+                "sunset": _from_iso(row.get("sunset")),
+                "tide_score": row.get("tide_score")
+                if isinstance(row.get("tide_score"), (float, int))
+                else 0.0,
+            }
+        )
+    return hours
+
+
+def _load_forecast_snapshot(snapshot_key: str) -> tuple[list[Hour], datetime | None, datetime | None]:
+    try:
+        snapshot = LocationForecastSnapshot.objects.get(snapshot_key=snapshot_key)
+    except LocationForecastSnapshot.DoesNotExist:
+        return [], None, None
+
+    payload = _deserialize_snapshot_rows(snapshot.snapshot_hours)
+    if not payload:
+        return [], snapshot.generated_at, snapshot.valid_until
+    return payload, snapshot.generated_at, snapshot.valid_until
+
+
+def _save_forecast_snapshot(
+    snapshot_key: str,
+    *,
+    coordinates: dict | None,
+    timezone_str: str,
+    country_slug: str | None,
+    city_slug: str | None,
+    location: SnorkelLocation | None,
+    hours: int,
+    payload: list[Hour],
+) -> None:
+    try:
+        stale_ttl = int(getattr(settings, "FORECAST_CACHE_STALE_TTL", DEFAULT_FORECAST_STALE_TTL))
+        generated_at = dj_timezone.now()
+        valid_until = generated_at + timedelta(seconds=stale_ttl)
+
+        LocationForecastSnapshot.objects.update_or_create(
+            snapshot_key=snapshot_key,
+            defaults={
+                "location": location,
+                "country_slug": country_slug or "",
+                "city_slug": city_slug or "",
+                "timezone": timezone_str,
+                "horizon_hours": hours,
+                "snapshot_hours": _serialize_snapshot_hours(payload),
+                "generated_at": generated_at,
+                "valid_until": valid_until,
+            },
+        )
+    except Exception as e:  # pragma: no cover - defensive for DB issues
+        logger.debug("Failed to save forecast snapshot: key=%s error=%r", snapshot_key, e)
+
+
+def _build_cache_keys(
+    *, coordinates: dict, hours: int, timezone_str: str
+) -> tuple[str, str, str]:
+    base_key = (
+        f"forecast:v{FORECAST_CACHE_VERSION}:lat={coordinates['lat']:.5f}:"
+        f"lon={coordinates['lon']:.5f}:h={hours}:tz={timezone_str}"
+    )
+    return base_key, base_key + ":stale", base_key + ":neg"
+
+
+def _fallback_payload(hours: int, timezone_str: str, country_slug: str | None, city_slug: str | None) -> dict:
+    db = _fallback_from_db(
+        country_slug=country_slug,
+        city_slug=city_slug,
+        timezone_str=timezone_str,
+        hours=hours,
+    )
+    if db:
+        return {
+            "hours": db,
+            "source": "db_fallback",
+            "generated_at": dj_timezone.now(),
+            "next_refresh_at": None,
+            "is_stale": True,
+        }
+    return {
+        "hours": [],
+        "source": "unavailable",
+        "generated_at": None,
+        "next_refresh_at": None,
+        "is_stale": True,
+    }
+
+
+def _api_fetch_hours(
+    *,
+    coordinates: dict,
+    hours: int,
+    timezone_str: str,
+    country_slug: str | None,
+    city_slug: str | None,
+    cache_key: str,
+    stale_key: str,
+    neg_key: str,
+) -> dict:
     marine_url = (
         "https://marine-api.open-meteo.com/v1/marine"
         f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
@@ -216,47 +481,6 @@ def fetch_forecast(
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
-
-    # Cache key includes location, horizon, timezone, and a version for busting
-    base_key = (
-        f"forecast:v{FORECAST_CACHE_VERSION}:lat={coordinates['lat']:.5f}:lon={coordinates['lon']:.5f}:"
-        f"h={hours}:tz={timezone_str}"
-    )
-
-    cache_key = base_key
-    stale_key = base_key + ":stale"
-    neg_key = base_key + ":neg"
-
-    # Backoff if we recently saw an error; prefer stale if available
-    if cache.get(neg_key):
-        stale = cache.get(stale_key)
-        if stale is not None:
-            return stale
-        # No stale available: try DB fallback
-        db = _fallback_from_db(
-            country_slug=country_slug,
-            city_slug=city_slug,
-            timezone_str=timezone_str,
-            hours=hours,
-        )
-        if db:
-            return db
-        # Otherwise short-circuit to avoid hammering
-        return []
-
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    # Serve from DB before hitting the API — the scheduler keeps history fresh
-    db = _fallback_from_db(
-        country_slug=country_slug,
-        city_slug=city_slug,
-        timezone_str=timezone_str,
-        hours=hours,
-    )
-    if db:
-        return db
 
     try:
         request_timeout = float(
@@ -291,26 +515,7 @@ def fetch_forecast(
                     e,
                     body,
                 )
-                # Set negative cache/backoff and return stale if present
-                try:
-                    neg_ttl = int(
-                        getattr(
-                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
-                        )
-                    )
-                    cache.set(neg_key, True, timeout=neg_ttl)
-                except Exception:
-                    pass
-                stale = cache.get(stale_key)
-                if stale is not None:
-                    return stale
-                db = _fallback_from_db(
-                    country_slug=country_slug,
-                    city_slug=city_slug,
-                    timezone_str=timezone_str,
-                    hours=hours,
-                )
-                return db if db else []
+                raise
 
             try:
                 wx_response.raise_for_status()
@@ -327,87 +532,16 @@ def fetch_forecast(
                     e,
                     body,
                 )
-                try:
-                    neg_ttl = int(
-                        getattr(
-                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
-                        )
-                    )
-                    cache.set(neg_key, True, timeout=neg_ttl)
-                except Exception:
-                    pass
-                stale = cache.get(stale_key)
-                if stale is not None:
-                    return stale
-                db = _fallback_from_db(
-                    country_slug=country_slug,
-                    city_slug=city_slug,
-                    timezone_str=timezone_str,
-                    hours=hours,
-                )
-                return db if db else []
+                raise
 
             try:
                 marine, wx = marine_response.json(), wx_response.json()
             except ValueError as e:
                 logger.warning("Failed to decode API JSON: error=%r", e)
-                try:
-                    neg_ttl = int(
-                        getattr(
-                            settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL
-                        )
-                    )
-                    cache.set(neg_key, True, timeout=neg_ttl)
-                except Exception:
-                    pass
-                stale = cache.get(stale_key)
-                if stale is not None:
-                    return stale
-                db = _fallback_from_db(
-                    country_slug=country_slug,
-                    city_slug=city_slug,
-                    timezone_str=timezone_str,
-                    hours=hours,
-                )
-                return db if db else []
-    except httpx.TimeoutException as e:
-        logger.warning("Forecast fetch timed out: error=%r", e)
-        try:
-            neg_ttl = int(
-                getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL)
-            )
-            cache.set(neg_key, True, timeout=neg_ttl)
-        except Exception:
-            pass
-        stale = cache.get(stale_key)
-        if stale is not None:
-            return stale
-        db = _fallback_from_db(
-            country_slug=country_slug,
-            city_slug=city_slug,
-            timezone_str=timezone_str,
-            hours=hours,
-        )
-        return db if db else []
-    except httpx.HTTPError as e:
-        logger.warning("HTTP error during forecast fetch: error=%r", e)
-        try:
-            neg_ttl = int(
-                getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL)
-            )
-            cache.set(neg_key, True, timeout=neg_ttl)
-        except Exception:
-            pass
-        stale = cache.get(stale_key)
-        if stale is not None:
-            return stale
-        db = _fallback_from_db(
-            country_slug=country_slug,
-            city_slug=city_slug,
-            timezone_str=timezone_str,
-            hours=hours,
-        )
-        return db if db else []
+                raise
+    except (httpx.TimeoutException, httpx.HTTPError) as e:
+        logger.warning("Forecast fetch failed: error=%r", e)
+        raise
 
     local = tz.gettz(timezone_str)
     # Process daily sunrise/sunset data
@@ -415,7 +549,8 @@ def fetch_forecast(
         daily_times_utc = [datetime.fromisoformat(t).date() for t in wx["daily"]["time"]]
     except Exception as e:
         logger.warning("Malformed daily times from weather API: error=%r", e)
-        return []
+        raise ValueError("Malformed daily times")
+
     sunrises = [
         datetime.fromisoformat(s).replace(tzinfo=timezone.utc).astimezone(local)
         for s in wx["daily"]["sunrise"]
@@ -433,11 +568,18 @@ def fetch_forecast(
         times_raw = marine["hourly"]["time"]
         if not times_raw:
             logger.warning("Marine API returned no hourly times: url=%s", marine_url)
-            return []
+            return {
+                "hours": [],
+                "source": "api_empty",
+                "generated_at": dj_timezone.now(),
+                "next_refresh_at": None,
+                "is_stale": False,
+            }
         times_utc = [datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in times_raw]
     except Exception as e:
         logger.warning("Malformed hourly times from marine API: error=%r", e)
-        return []
+        raise
+
     sea = marine["hourly"].get("sea_level_height_msl", [])
     curr = marine["hourly"].get("ocean_current_velocity", [])
 
@@ -445,7 +587,7 @@ def fetch_forecast(
     high_ix: list[int] = []
     for i in range(1, len(sea) - 1):
         prev, now, nxt = sea[i - 1], sea[i], sea[i + 1]
-        if None not in (prev, now, nxt) and now > prev and now > nxt:
+        if None not in (prev, now, nxt) and now is not None and now > prev and now > nxt:
             high_ix.append(i)
 
     window = timedelta(minutes=THRESHOLDS["slack_window_minutes"])
@@ -455,6 +597,10 @@ def fetch_forecast(
         for j, t in enumerate(times_utc):
             if abs(t - center) <= window:
                 slack_mask[j] = True
+
+    # Tidal range for spring-tide penalty
+    valid_sea = [s for s in sea if s is not None]
+    tidal_range = (max(valid_sea) - min(valid_sea)) if len(valid_sea) > 1 else None
 
     result: list[Hour] = []
     for i, t in enumerate(times_utc):
@@ -481,13 +627,18 @@ def fetch_forecast(
             sunrise, sunset = solar_map[day]["sunrise"], solar_map[day]["sunset"]
             light_ok = sunrise <= t.astimezone(sunrise.tzinfo) <= sunset
 
-        score = _calculate_score(wave, wind, sst, light_ok)
+        # Tide direction: rising vs falling
+        prev_sea = sea[i - 1] if i > 0 else None
+        is_rising = None
+        if prev_sea is not None and tide is not None:
+            is_rising = tide > prev_sea
 
-        slack_ok = (
-            slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
-        )
+        tide_score_val = _tide_score(tide, current, slack_mask[i], is_rising, tidal_range)
+        score = _calculate_score(wave, wind, sst, tide_score_val, light_ok)
 
-        rating = _rating_from_score(score, slack_ok)
+        slack_ok = slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
+
+        rating = _rating_from_score(score)
         ok = rating in {"excellent", "good"}
 
         result.append(
@@ -509,20 +660,206 @@ def fetch_forecast(
                 "light_ok": light_ok,
                 "sunrise": sunrise,
                 "sunset": sunset,
+                "tide_score": tide_score_val,
             }
         )
-    # Store in cache (fresh and stale) before returning
-    try:
-        import random
 
-        ttl = int(getattr(settings, "FORECAST_CACHE_TTL", DEFAULT_FORECAST_CACHE_TTL))
-        # Jitter the fresh TTL by ±12% so that, across many locations, caches do
-        # not all expire at the same instant and trigger a synchronized burst of
-        # Open-Meteo requests (rate-limit protection as the location count grows).
-        ttl = max(60, int(ttl * random.uniform(0.88, 1.12)))
-        stale_ttl = int(getattr(settings, "FORECAST_CACHE_STALE_TTL", DEFAULT_FORECAST_STALE_TTL))
+    # Store in cache and snapshot before returning
+    generated_at = dj_timezone.now()
+    ttl = int(getattr(settings, "FORECAST_CACHE_TTL", DEFAULT_FORECAST_CACHE_TTL))
+    stale_ttl = int(
+        getattr(settings, "FORECAST_CACHE_STALE_TTL", DEFAULT_FORECAST_STALE_TTL)
+    )
+
+    # Add cache jitter so workers don't all expire together and burst upstream.
+    import random
+
+    ttl = max(60, int(ttl * random.uniform(0.88, 1.12)))
+
+    try:
         cache.set(cache_key, result, timeout=ttl)
         cache.set(stale_key, result, timeout=stale_ttl)
     except Exception as e:
         logger.debug("Failed to set forecast cache: key=%s error=%r", cache_key, e)
-    return result
+
+    return {
+        "hours": result,
+        "source": "api",
+        "generated_at": generated_at,
+        "next_refresh_at": generated_at + timedelta(seconds=stale_ttl),
+        "is_stale": False,
+    }
+
+
+def _snapshot_payload_on_failure(
+    snapshot_key: str,
+    snapshot_hours: list[Hour],
+    db_payload: dict,
+    neg_key: str,
+) -> dict:
+    stale_cache = cache.get(snapshot_key + ":stale")
+    if stale_cache is not None:
+        return {
+            "hours": stale_cache,
+            "source": "stale_cache",
+            "generated_at": None,
+            "next_refresh_at": None,
+            "is_stale": True,
+        }
+    if snapshot_hours:
+        return {
+            "hours": snapshot_hours,
+            "source": "stale_snapshot",
+            "generated_at": None,
+            "next_refresh_at": None,
+            "is_stale": True,
+        }
+    if db_payload["hours"]:
+        return db_payload | {"source": "db_fallback", "is_stale": True}
+
+    neg_ttl = int(getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL))
+    cache.set(neg_key, True, timeout=neg_ttl)
+    return {
+        "hours": [],
+        "source": "unavailable",
+        "generated_at": None,
+        "next_refresh_at": None,
+        "is_stale": True,
+    }
+
+
+def fetch_forecast_payload(
+    hours: int = 72,
+    coordinates: dict | None = None,
+    timezone_str: str | None = None,
+    *,
+    country_slug: str | None = None,
+    city_slug: str | None = None,
+    location: SnorkelLocation | None = None,
+    allow_api: bool = True,
+    snapshot_ttl: int | None = None,
+) -> dict:
+    """Return forecast hours and metadata."""
+    if coordinates is None:
+        coordinates = CARBONERAS
+    if timezone_str is None:
+        timezone_str = "Europe/Madrid"
+
+    cache_key, stale_key, neg_key = _build_cache_keys(
+        coordinates=coordinates, hours=hours, timezone_str=timezone_str
+    )
+    snapshot_key = _snapshot_key(
+        coordinates=coordinates,
+        hours=hours,
+        country_slug=country_slug,
+        city_slug=city_slug,
+        location=location,
+    )
+
+    # Backoff if we recently saw a request error.
+    if cache.get(neg_key):
+        snapshot_hours, _, _ = _load_forecast_snapshot(snapshot_key)
+        db_payload = _fallback_payload(hours, timezone_str, country_slug, city_slug)
+        return _snapshot_payload_on_failure(snapshot_key, snapshot_hours, db_payload, neg_key)
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return {
+            "hours": cached,
+            "source": "cache",
+            "generated_at": None,
+            "next_refresh_at": None,
+            "is_stale": False,
+        }
+
+    snapshot_hours, generated_at, next_refresh_at = _load_forecast_snapshot(snapshot_key)
+    now = dj_timezone.now()
+    snapshot_is_fresh = False
+    if generated_at is not None and next_refresh_at is not None:
+        snapshot_is_fresh = next_refresh_at > now
+
+    if snapshot_hours:
+        payload = {
+            "hours": snapshot_hours,
+            "source": "snapshot",
+            "generated_at": generated_at,
+            "next_refresh_at": next_refresh_at,
+            "is_stale": not snapshot_is_fresh,
+        }
+        if snapshot_is_fresh or not allow_api:
+            return payload
+
+    # Serve from DB first before hitting API when allowed.
+    db_payload = _fallback_payload(hours, timezone_str, country_slug, city_slug)
+    if db_payload["hours"]:
+        return db_payload
+
+    if not allow_api:
+        if snapshot_hours:
+            return {
+                "hours": snapshot_hours,
+                "source": "stale_snapshot",
+                "generated_at": generated_at,
+                "next_refresh_at": next_refresh_at,
+                "is_stale": True,
+            }
+        return db_payload
+
+    try:
+        payload = _api_fetch_hours(
+            coordinates=coordinates,
+            hours=hours,
+            timezone_str=timezone_str,
+            country_slug=country_slug,
+            city_slug=city_slug,
+            cache_key=cache_key,
+            stale_key=stale_key,
+            neg_key=neg_key,
+        )
+    except Exception as e:  # pragma: no cover - fallback coverage belongs to caller
+        neg_ttl = int(
+            getattr(settings, "FORECAST_CACHE_NEGATIVE_TTL", DEFAULT_FORECAST_NEGATIVE_TTL)
+        )
+        try:
+            cache.set(neg_key, True, timeout=neg_ttl)
+        except Exception:
+            pass
+        logger.warning("Forecast API path failed, using fallback: error=%r", e)
+        return _snapshot_payload_on_failure(snapshot_key, snapshot_hours, db_payload, neg_key)
+
+    if payload["hours"]:
+        _save_forecast_snapshot(
+            snapshot_key,
+            coordinates=coordinates,
+            timezone_str=timezone_str,
+            country_slug=country_slug,
+            city_slug=city_slug,
+            location=location,
+            hours=hours,
+            payload=payload["hours"],
+        )
+
+    return payload
+
+
+def fetch_forecast(
+    hours: int = 72,
+    coordinates: dict | None = None,
+    timezone_str: str | None = None,
+    *,
+    country_slug: str | None = None,
+    city_slug: str | None = None,
+    location: SnorkelLocation | None = None,
+    allow_api: bool = True,
+) -> list[Hour]:
+    """Return list of hours with snorkel suitability flag for any location."""
+    payload = fetch_forecast_payload(
+        hours=hours,
+        coordinates=coordinates,
+        timezone_str=timezone_str,
+        country_slug=country_slug,
+        city_slug=city_slug,
+        location=location,
+        allow_api=allow_api,
+    )
+    return payload.get("hours", [])
