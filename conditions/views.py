@@ -326,12 +326,20 @@ def _best_available_hours(hours: list[dict], limit: int = 3) -> list[dict]:
     if not hours:
         return []
 
+    candidate_hours = [
+        hour
+        for hour in hours
+        if hour.get("light_ok") is not False
+    ]
+    if not candidate_hours:
+        return []
+
     def sort_key(record: dict) -> tuple:
         score = record.get("score")
         score_value = -1.0 if score is None else float(score)
         return (score_value, record["time"])
 
-    ranked = sorted(hours, key=sort_key, reverse=True)
+    ranked = sorted(candidate_hours, key=sort_key, reverse=True)
     picks: list[dict] = []
     for hour in ranked:
         blockers = []
@@ -358,6 +366,30 @@ def _best_available_hours(hours: list[dict], limit: int = 3) -> list[dict]:
             break
 
     return picks
+
+
+def _find_next_safe_window(hours: list[dict]) -> dict | None:
+    """Find the next contiguous, future window of acceptable daytime hours."""
+    candidate_hours = [
+        hour
+        for hour in hours
+        if hour.get("light_ok") is not False
+    ]
+
+    for idx, h in enumerate(candidate_hours):
+        if h.get("ok"):
+            start = h["time"]
+            end = start
+            j = idx + 1
+            while (
+                j < len(candidate_hours)
+                and candidate_hours[j].get("ok")
+                and candidate_hours[j]["time"] - candidate_hours[j - 1]["time"] == timedelta(hours=1)
+            ):
+                end = candidate_hours[j]["time"]
+                j += 1
+            return {"start": start, "end": end}
+    return None
 
 
 def _format_best_window(hours: list[dict], next_window: dict | None) -> dict | None:
@@ -562,22 +594,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     else:
         earliest_ok = latest_ok = None
 
-    # find next continuous block of suitable conditions
-    next_window = None
-    for idx, h in enumerate(hours):
-        if h.get("ok"):
-            start = h["time"]
-            end = start
-            j = idx + 1
-            while (
-                j < len(hours)
-                and hours[j].get("ok")
-                and hours[j]["time"] - hours[j - 1]["time"] == timedelta(hours=1)
-            ):
-                end = hours[j]["time"]
-                j += 1
-            next_window = {"start": start, "end": end}
-            break
+    next_window = _find_next_safe_window(hours)
 
     decision_summary = {
         "total_hours": total,

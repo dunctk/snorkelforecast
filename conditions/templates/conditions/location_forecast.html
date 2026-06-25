@@ -167,15 +167,21 @@
           Next safe window starts at {{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} until {{ summary.next_window.end|date:"H:i" }}{% endif %}.
         </p>
       {% else %}
-        <ul class="space-y-2">
-          {% for item in best_available %}
-            <li class="text-sm sm:text-base">
-              <span class="font-semibold">{{ item.time|date:"D H:i" }}</span> —
-              {{ item.status|title }} ({{ item.score|floatformat:2 }})
-              {% if item.blockers %} · still limited by {{ item.blockers|join:", " }}{% endif %}
-            </li>
-          {% endfor %}
-        </ul>
+        {% if best_available %}
+          <ul class="space-y-2">
+            {% for item in best_available %}
+              <li class="text-sm sm:text-base">
+                <span class="font-semibold">{{ item.time|date:"D H:i" }}</span> —
+                {{ item.status|title }} ({{ item.score|floatformat:2 }})
+                {% if item.blockers %} · still limited by {{ item.blockers|join:", " }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm sm:text-base text-amber-800 ui-night:text-amber-200">
+            No daylight-safe hour is available in the next 72&nbsp;hours. Check the hourly table for details.
+          </p>
+        {% endif %}
       {% endif %}
     </section>
 

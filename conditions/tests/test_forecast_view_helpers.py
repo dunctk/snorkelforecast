@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil import tz
 
 from django.test import SimpleTestCase
@@ -8,6 +8,7 @@ from conditions.views import (
     _build_day_summaries,
     _count_blockers,
     _format_best_window,
+    _find_next_safe_window,
 )
 
 
@@ -38,6 +39,31 @@ class ForecastViewHelperTests(SimpleTestCase):
         self.assertEqual(len(best), 2)
         self.assertEqual(best[0]["time"], now.replace(hour=13))
         self.assertEqual(best[1]["time"], now.replace(hour=11))
+
+    def test_best_available_excludes_night_hours(self):
+        now = datetime(2026, 6, 24, 20, tzinfo=tz.UTC)
+        hours = [
+            {"time": now, "score": 0.95, "rating": "good", "light_ok": False},
+            {"time": now + timedelta(hours=2), "score": 0.60, "rating": "good", "light_ok": True},
+        ]
+
+        best = _best_available_hours(hours, limit=1)
+
+        self.assertEqual(len(best), 1)
+        self.assertEqual(best[0]["time"], now + timedelta(hours=2))
+
+    def test_find_next_safe_window_ignores_darkness(self):
+        now = datetime(2026, 6, 24, 19, tzinfo=tz.UTC)
+        hours = [
+            {"time": now, "ok": True, "light_ok": False},
+            {"time": now + timedelta(hours=1), "ok": True, "light_ok": False},
+            {"time": now + timedelta(hours=2), "ok": True, "light_ok": True},
+            {"time": now + timedelta(hours=3), "ok": True, "light_ok": True},
+        ]
+
+        window = _find_next_safe_window(hours)
+
+        self.assertEqual(window, {"start": now + timedelta(hours=2), "end": now + timedelta(hours=3)})
 
     def test_build_day_summaries_returns_top_status_per_day(self):
         local_tz = tz.gettz("Europe/Paris")
