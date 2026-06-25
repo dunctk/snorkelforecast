@@ -73,6 +73,7 @@ class Hour(TypedDict):
     sunrise: datetime
     sunset: datetime
     tide_score: float
+    cloud_cover: float | None
 
 
 def _tide_score(
@@ -128,6 +129,7 @@ def _calculate_score(
     sst: float | None,
     tide_score: float,
     light_ok: bool,
+    cloud_cover: float | None = None,
 ) -> float:
     """Calculate a snorkel score from 0 to 1 based on conditions.
 
@@ -151,14 +153,18 @@ def _calculate_score(
     else:  # sst > sst_max
         sst_score = max(0.0, 1 - ((sst - sst_max) / 5))
 
+    cloud_score = _cloud_score(cloud_cover)
     # Weighted sum with tide as modifier, daylight as hard gate (bonus 0.10)
-    score = (
+    base_score = (
         wave_score * 0.35
         + wind_score * 0.25
         + sst_score * 0.15
         + tide_score * 0.15
         + 0.10  # daylight bonus (already gated on light_ok)
     )
+    # Clear skies should help visibility and heavily overcast windows should
+    # reduce snorkelability even when other metrics are acceptable.
+    score = base_score - ((1.0 - cloud_score) * 0.30)
     return max(0.0, min(1.0, score))
 
 
@@ -181,6 +187,23 @@ def _rating_from_score(score: float) -> str:
         return "fair"
     else:
         return "poor"
+
+
+
+def _cloud_score(cloud_cover: float | None) -> float:
+    """Map cloud cover percentage to a visibility score from 1.0 to 0.0."""
+    if cloud_cover is None:
+        return 1.0
+    try:
+        cloud_pct = float(cloud_cover)
+    except (TypeError, ValueError):
+        return 1.0
+
+    if cloud_pct <= 0:
+        return 1.0
+    if cloud_pct >= 100:
+        return 0.0
+    return max(0.0, 1 - (cloud_pct / 100.0))
 
 
 def _fallback_from_db(
@@ -243,6 +266,7 @@ def _fallback_from_db(
             slack_ok = (
                 slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
             )
+            cloud_cover = None
 
             # Tide direction: rising vs falling
             prev_sea = sea[i - 1] if i > 0 else None
@@ -251,7 +275,7 @@ def _fallback_from_db(
                 is_rising = sea[i] > prev_sea
 
             tide_score = _tide_score(sea[i], current, slack_mask[i], is_rising, tidal_range)
-            score = _calculate_score(wave, wind, sst, tide_score, True)
+            score = _calculate_score(wave, wind, sst, tide_score, True, cloud_cover)
 
             result.append(
                 {
@@ -273,6 +297,7 @@ def _fallback_from_db(
                     "sunrise": None,
                     "sunset": None,
                     "tide_score": tide_score,
+                    "cloud_cover": cloud_cover,
                 }
             )
         return result
@@ -335,6 +360,7 @@ def _serialize_snapshot_hours(hours: list[Hour]) -> list[dict]:
                 "sunrise": _to_iso(h.get("sunrise")),
                 "sunset": _to_iso(h.get("sunset")),
                 "tide_score": h.get("tide_score"),
+                "cloud_cover": h.get("cloud_cover"),
             }
         )
     return payload
@@ -372,6 +398,7 @@ def _deserialize_snapshot_rows(snapshot_hours: list[object]) -> list[Hour]:
                 "tide_score": row.get("tide_score")
                 if isinstance(row.get("tide_score"), (float, int))
                 else 0.0,
+                "cloud_cover": row.get("cloud_cover"),
             }
         )
     return hours
@@ -477,7 +504,7 @@ def _api_fetch_hours(
     wx_url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
-        "&hourly=wind_speed_10m&daily=sunrise,sunset"
+        "&hourly=wind_speed_10m,cloud_cover&daily=sunrise,sunset"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
@@ -582,6 +609,7 @@ def _api_fetch_hours(
 
     sea = marine["hourly"].get("sea_level_height_msl", [])
     curr = marine["hourly"].get("ocean_current_velocity", [])
+    cloud_cover = wx["hourly"].get("cloud_cover", [])
 
     # Identify high tides (local maxima)
     high_ix: list[int] = []
@@ -609,6 +637,7 @@ def _api_fetch_hours(
         wind = wx["hourly"]["wind_speed_10m"][i]
         tide = sea[i] if i < len(sea) else None
         current = curr[i] if i < len(curr) else None
+        this_cloud_cover = cloud_cover[i] if i < len(cloud_cover) else None
 
         wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
         wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
@@ -634,7 +663,14 @@ def _api_fetch_hours(
             is_rising = tide > prev_sea
 
         tide_score_val = _tide_score(tide, current, slack_mask[i], is_rising, tidal_range)
-        score = _calculate_score(wave, wind, sst, tide_score_val, light_ok)
+        score = _calculate_score(
+            wave,
+            wind,
+            sst,
+            tide_score_val,
+            light_ok,
+            this_cloud_cover,
+        )
 
         slack_ok = slack_mask[i] and current is not None and current <= THRESHOLDS["current_velocity"]
 
@@ -661,6 +697,7 @@ def _api_fetch_hours(
                 "sunrise": sunrise,
                 "sunset": sunset,
                 "tide_score": tide_score_val,
+                "cloud_cover": this_cloud_cover,
             }
         )
 

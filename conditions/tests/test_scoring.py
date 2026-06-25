@@ -57,23 +57,35 @@ class TideScoreTest(SimpleTestCase):
 
 class CalculateScoreTest(SimpleTestCase):
     def test_perfect_conditions(self):
-        score = _calculate_score(0.0, 0.0, 25.0, 1.0, True)
+        score = _calculate_score(0.0, 0.0, 25.0, 1.0, light_ok=True)
         self.assertAlmostEqual(score, 1.0)
 
     def test_no_data_returns_zero(self):
-        self.assertEqual(_calculate_score(None, 2.0, 25.0, 0.5, True), 0.0)
-        self.assertEqual(_calculate_score(0.3, None, 25.0, 0.5, True), 0.0)
-        self.assertEqual(_calculate_score(0.3, 2.0, None, 0.5, True), 0.0)
+        self.assertEqual(_calculate_score(None, 2.0, 25.0, 0.5, light_ok=True), 0.0)
+        self.assertEqual(_calculate_score(0.3, None, 25.0, 0.5, light_ok=True), 0.0)
+        self.assertEqual(_calculate_score(0.3, 2.0, None, 0.5, light_ok=True), 0.0)
 
     def test_darkness_returns_zero(self):
-        self.assertEqual(_calculate_score(0.3, 2.0, 25.0, 0.5, False), 0.0)
+        self.assertEqual(_calculate_score(0.3, 2.0, 25.0, 0.5, light_ok=False), 0.0)
 
     def test_bad_tide_lowers_score(self):
-        good_tide = _calculate_score(0.3, 2.0, 25.0, 1.0, True)
-        bad_tide = _calculate_score(0.3, 2.0, 25.0, 0.0, True)
+        good_tide = _calculate_score(0.3, 2.0, 25.0, 1.0, True, None)
+        bad_tide = _calculate_score(0.3, 2.0, 25.0, 0.0, True, None)
         self.assertGreater(good_tide, bad_tide)
 
     def test_weighted_sum_bounds(self):
-        score = _calculate_score(0.3, 2.0, 25.0, 0.5, True)
+        score = _calculate_score(0.3, 2.0, 25.0, 0.5, True, None)
         self.assertGreaterEqual(score, 0.0)
         self.assertLessEqual(score, 1.0)
+
+    def test_clear_sky_has_no_cloud_penalty(self):
+        baseline = _calculate_score(0.3, 2.0, 25.0, 1.0, light_ok=True)
+        cloudy = _calculate_score(0.3, 2.0, 25.0, 1.0, True, 0.0)
+        missing_cloud = _calculate_score(0.3, 2.0, 25.0, 1.0, True, None)
+        self.assertAlmostEqual(baseline, cloudy)
+        self.assertAlmostEqual(baseline, missing_cloud)
+
+    def test_cloudy_conditions_penalize_score(self):
+        clear = _calculate_score(0.3, 2.0, 25.0, 1.0, True, 0.0)
+        overcast = _calculate_score(0.3, 2.0, 25.0, 1.0, True, 100.0)
+        self.assertLess(overcast, clear)
