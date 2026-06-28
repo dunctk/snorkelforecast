@@ -864,28 +864,30 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         .order_by("name")[:6]
     )
     nearby_locations = []
+    nearby_status_by_id: dict[int, str] = {}
+    nearby_ids = [spot.id for spot in nearby_spots[:4]]
+    if nearby_ids:
+        nearby_rows = (
+            ForecastHour.objects.filter(
+                location_id__in=nearby_ids,
+                time__gte=django_timezone.now(),
+            )
+            .order_by("location_id", "time")
+            .values_list("location_id", "ok", "rating")
+        )
+        first_rating_by_id: dict[int, str] = {}
+        for location_id, ok, rating in nearby_rows:
+            first_rating_by_id.setdefault(location_id, rating or "poor")
+            if ok:
+                nearby_status_by_id[location_id] = "good"
+
+        for location_id, rating in first_rating_by_id.items():
+            nearby_status_by_id.setdefault(location_id, rating)
+
     for spot in nearby_spots[:4]:
         nearby_status = "unknown"
-        if nearby_spots:
-            spot_payload = fetch_forecast_payload(
-                coordinates=spot.coordinates_dict,
-                timezone_str=spot.timezone,
-                country_slug=spot.country_slug,
-                city_slug=spot.city_slug,
-                location=spot,
-                allow_api=False,
-            )
-            spot_hours = spot_payload.get("hours", [])
-            if spot_hours:
-                local = tz.gettz(spot.timezone)
-                spot_now = datetime.now(tz=local)
-                upcoming = [h for h in spot_hours if h["time"] >= spot_now]
-                if upcoming:
-                    first_ok = next((h for h in upcoming if h.get("ok")), None)
-                    if first_ok:
-                        nearby_status = "good"
-                    else:
-                        nearby_status = upcoming[0].get("rating", "poor")
+        if spot.id in nearby_status_by_id:
+            nearby_status = nearby_status_by_id[spot.id]
 
         nearby_locations.append(
             {

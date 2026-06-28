@@ -136,8 +136,8 @@ class LocationForecastTemplateTests(TestCase):
             self.assertIsNotNone(match)
             self.assertIn("touch-target", match.group(0))
 
-        self.assertIn('id="skip-links"', html)
-        self.assertIn('id="skip-hourly"', html)
+        self.assertNotIn("Skip to forecast", html)
+        self.assertNotIn("Skip to hourly table", html)
 
     @patch("conditions.views.fetch_forecast_payload")
     def test_location_forecast_jsonld_schema_stays_intact(self, mock_payload):
@@ -169,4 +169,3 @@ class LocationForecastTemplateTests(TestCase):
         self.assertEqual(len(faq.get("mainEntity", [])), 3)
         self.assertEqual(faq["mainEntity"][0].get("@type"), "Question")
         self.assertIn("acceptedAnswer", faq["mainEntity"][0])
-

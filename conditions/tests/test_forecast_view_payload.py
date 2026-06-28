@@ -56,12 +56,10 @@ class ForecastPayloadViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(mock_payload.call_count, 2)
-        main_call, nearby_call = mock_payload.call_args_list
+        self.assertEqual(mock_payload.call_count, 1)
+        main_call = mock_payload.call_args_list[0]
         self.assertFalse(main_call.kwargs["allow_api"])
-        self.assertFalse(nearby_call.kwargs["allow_api"])
         self.assertEqual(main_call.kwargs["location"].pk, self.location_main.pk)
-        self.assertEqual(nearby_call.kwargs["location"].pk, self.location_nearby.pk)
         self.assertIn("Source: Snapshot", response.content.decode())
 
     @patch("conditions.views.fetch_forecast_payload")
