@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import secrets
+
 from django.db import models
+from django.utils import timezone
 
 
 class SnorkelLocation(models.Model):
@@ -33,6 +36,11 @@ class SnorkelLocation(models.Model):
     name = models.CharField(max_length=200, help_text="Display name of the location")
     country = models.CharField(max_length=100, help_text="Country name")
     region = models.CharField(max_length=100, blank=True, help_text="Region/state/province")
+    local_region = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Local coast/neighborhood, e.g. Kaanapali or South Maui",
+    )
 
     # Geographic data
     latitude = models.FloatField(help_text="Latitude in decimal degrees")
@@ -70,6 +78,10 @@ class SnorkelLocation(models.Model):
     source = models.CharField(
         max_length=50, default="osm", help_text="Data source (osm, user, etc.)"
     )
+    difficulty = models.CharField(max_length=50, blank=True)
+    best_time = models.CharField(max_length=120, blank=True)
+    exposure = models.CharField(max_length=120, blank=True)
+    shore_type = models.CharField(max_length=120, blank=True)
     osm_tags = models.JSONField(default=dict, help_text="Raw OpenStreetMap tags")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -100,6 +112,50 @@ class SnorkelLocation(models.Model):
     def city(self) -> str:
         """Return the city/location name for template compatibility."""
         return self.name
+
+
+def _alert_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+class AlertSubscription(models.Model):
+    """Email alert for a location when snorkel conditions reach a threshold."""
+
+    RATING_CHOICES = [
+        ("fair", "Fair or better"),
+        ("good", "Good or better"),
+        ("excellent", "Excellent only"),
+    ]
+
+    objects = models.Manager()
+
+    email = models.EmailField(db_index=True)
+    location = models.ForeignKey(
+        SnorkelLocation,
+        on_delete=models.CASCADE,
+        related_name="alert_subscriptions",
+    )
+    min_rating = models.CharField(max_length=16, choices=RATING_CHOICES, default="good")
+    is_active = models.BooleanField(default=True)
+    token = models.CharField(max_length=96, unique=True, default=_alert_token)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["email", "location"],
+                name="uniq_alert_subscription_email_location",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["is_active", "min_rating"], name="cond_alert_active_rating_idx"),
+            models.Index(fields=["location", "is_active"], name="cond_alert_location_idx"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - convenience only
+        return f"{self.email} -> {self.location} ({self.min_rating})"
 
 
 class ForecastHour(models.Model):

@@ -20,9 +20,23 @@ from ...models import SnorkelLocation
 # country_slug stays "usa" to match the existing /usa/<spot>/ URL structure.
 HAWAII_SPOTS = [
     {
+        "name": "Hawaii",
+        "city_slug": "hawaii",
+        "area_slug": "",
+        "region": "Hawaii",
+        "latitude": 20.7500,
+        "longitude": -156.5000,
+        "location_type": "marine_park",
+        "is_popular": True,
+        "description": (
+            "Hawaii snorkel report hub for comparing Maui, Oahu, Kauai and Big "
+            "Island conditions before choosing a beach."
+        ),
+    },
+    {
         "name": "Maui",
         "city_slug": "maui",
-        "area_slug": "",
+        "area_slug": "hawaii",
         "region": "Hawaii",
         "latitude": 20.7984,
         "longitude": -156.3319,
@@ -231,6 +245,11 @@ class Command(BaseCommand):
                 "timezone": "Pacific/Honolulu",
                 "description": spot["description"],
                 "location_type": spot["location_type"],
+                "local_region": spot.get("local_region", ""),
+                "difficulty": spot.get("difficulty", ""),
+                "best_time": spot.get("best_time", ""),
+                "exposure": spot.get("exposure", ""),
+                "shore_type": spot.get("shore_type", ""),
                 "is_popular": spot.get("is_popular", False),
                 "is_verified": True,
                 "quality_score": 0.9,

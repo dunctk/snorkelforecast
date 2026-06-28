@@ -74,6 +74,21 @@ def _run_once() -> None:
     except Exception as e:  # noqa: BLE001
         print(f"[scheduler] ranking cache warm failed: {e}", file=sys.stderr)
 
+    try:
+        from django.conf import settings
+
+        if getattr(settings, "ALERT_EMAILS_ENABLED", False):
+            from .alerts import send_due_alerts
+
+            result = send_due_alerts()
+            print(
+                "[scheduler] alerts checked={checked} matched={matched} sent={sent}".format(
+                    **result
+                )
+            )
+    except Exception as e:  # noqa: BLE001
+        print(f"[scheduler] alert send failed: {e}", file=sys.stderr)
+
 
 def main() -> None:
     _setup_django()

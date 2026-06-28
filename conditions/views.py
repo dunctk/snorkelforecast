@@ -5,6 +5,8 @@ from io import BytesIO
 
 from dateutil import tz
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
@@ -17,7 +19,8 @@ import os
 import math
 
 from .snorkel import RATING_THRESHOLDS, THRESHOLDS, fetch_forecast, fetch_forecast_payload
-from .models import ForecastHour, SnorkelLocation
+from .alerts import subscribe_to_location
+from .models import AlertSubscription, ForecastHour, SnorkelLocation
 from .history import (
     get_recent_averages,
     get_monthly_scores,
@@ -1401,7 +1404,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         context_location = MockLocation(location_data)
 
     area_slug = getattr(context_location, "area_slug", "") or ""
-    if not area_slug and SnorkelLocation.objects.filter(country_slug=country, area_slug=city).exists():
+    if SnorkelLocation.objects.filter(country_slug=country, area_slug=city).exists():
         area_slug = city
 
     area_spot_reports = _build_area_spot_reports(
@@ -1500,6 +1503,85 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "coldest_temp": coldest_temp,
     }
     return render(request, "conditions/location_forecast.html", context)
+
+
+def _get_or_create_location_for_url(country: str, city: str) -> SnorkelLocation:
+    try:
+        return SnorkelLocation.objects.get(country_slug=country, city_slug=city)
+    except SnorkelLocation.DoesNotExist:
+        if country not in LOCATIONS or city not in LOCATIONS[country]:
+            raise Http404("Location not found")
+        data = LOCATIONS[country][city]
+        location, _ = SnorkelLocation.objects.update_or_create(
+            country_slug=country,
+            city_slug=city,
+            defaults={
+                "osm_id": -abs(hash(f"legacy:{country}:{city}")) % 90000000 - 1000000,
+                "osm_type": "manual",
+                "name": data.get("city", city.replace("-", " ").title()),
+                "country": data.get("country", country.upper()),
+                "latitude": data["coordinates"]["lat"],
+                "longitude": data["coordinates"]["lon"],
+                "timezone": data.get("timezone", "UTC"),
+                "description": data.get("description", ""),
+                "location_type": "other",
+                "is_verified": True,
+                "source": "manual",
+            },
+        )
+        return location
+
+
+def location_alert_subscribe(request: HttpRequest, country: str, city: str) -> HttpResponse:
+    location = _get_or_create_location_for_url(country, city)
+    rating_options = AlertSubscription.RATING_CHOICES
+    context = {
+        "location": location,
+        "rating_options": rating_options,
+        "selected_rating": "good",
+        "email": "",
+        "error": "",
+    }
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+        min_rating = request.POST.get("min_rating", "good")
+        context["email"] = email
+        context["selected_rating"] = min_rating
+        if min_rating not in {value for value, _label in rating_options}:
+            context["error"] = "Choose a valid alert threshold."
+        else:
+            try:
+                validate_email(email)
+            except ValidationError:
+                context["error"] = "Enter a valid email address."
+            else:
+                subscription, created = subscribe_to_location(
+                    email=email,
+                    location=location,
+                    min_rating=min_rating,
+                )
+                return render(
+                    request,
+                    "conditions/alert_subscribed.html",
+                    {
+                        "location": location,
+                        "subscription": subscription,
+                        "created": created,
+                    },
+                )
+    return render(request, "conditions/alert_subscribe.html", context)
+
+
+def alert_unsubscribe(request: HttpRequest, token: str) -> HttpResponse:
+    subscription = AlertSubscription.objects.filter(token=token).select_related("location").first()
+    if subscription:
+        subscription.is_active = False
+        subscription.save(update_fields=["is_active", "updated_at"])
+    return render(
+        request,
+        "conditions/alert_unsubscribed.html",
+        {"subscription": subscription},
+    )
 
 
 def location_search(request: HttpRequest) -> HttpResponse:

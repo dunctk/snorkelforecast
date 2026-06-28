@@ -223,3 +223,29 @@ FORECAST_REQUEST_TIMEOUT = float(os.getenv("FORECAST_REQUEST_TIMEOUT", "5.0"))
 # environment with INDEXNOW_KEY.
 INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "be177cbd2ec82163c3306faf2a57923d")
 SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://snorkelforecast.com")
+
+# Email alerts. In production this is intended for AWS SES SMTP. Configure:
+# AWS_SES_SMTP_USERNAME, AWS_SES_SMTP_PASSWORD, DEFAULT_FROM_EMAIL and optionally
+# AWS_SES_REGION / AWS_SES_SMTP_HOST.
+AWS_SES_REGION = os.getenv("AWS_SES_REGION", "us-east-1")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv(
+    "EMAIL_HOST",
+    os.getenv("AWS_SES_SMTP_HOST", f"email-smtp.{AWS_SES_REGION}.amazonaws.com"),
+)
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = str(os.getenv("EMAIL_USE_TLS", "true")).lower() in {"1", "true", "yes", "on"}
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", os.getenv("AWS_SES_SMTP_USERNAME", ""))
+EMAIL_HOST_PASSWORD = os.getenv(
+    "EMAIL_HOST_PASSWORD", os.getenv("AWS_SES_SMTP_PASSWORD", "")
+)
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", "SnorkelForecast alerts <alerts@snorkelforecast.com>"
+)
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+ALERT_EMAIL_COOLDOWN_HOURS = int(os.getenv("ALERT_EMAIL_COOLDOWN_HOURS", "18"))
+ALERT_FORECAST_LOOKAHEAD_HOURS = int(os.getenv("ALERT_FORECAST_LOOKAHEAD_HOURS", "24"))
+_alerts_enabled_default = "true" if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD else "false"
+ALERT_EMAILS_ENABLED = str(
+    os.getenv("ALERT_EMAILS_ENABLED", _alerts_enabled_default)
+).lower() in {"1", "true", "yes", "on"}

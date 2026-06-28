@@ -156,6 +156,12 @@
             <p>{{ daily_report.morning_note }}</p>
             <p>{{ daily_report.afternoon_note }}</p>
           </div>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <a href="{% url 'location_alert_subscribe' location.country_slug location.city_slug %}" class="inline-flex touch-target rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 ui-night:hover:bg-blue-500">{% if is_spanish %}Avisarme cuando mejore{% else %}Email me when it is good{% endif %}</a>
+            {% if area_spot_reports %}
+              <a href="#area-spots" class="inline-flex touch-target rounded-lg border border-blue-300 bg-white/80 px-4 text-sm font-semibold text-blue-800 hover:bg-white ui-night:border-blue-800 ui-night:bg-blue-950/40 ui-night:text-blue-200">{% if is_spanish %}Comparar lugares{% else %}Compare nearby spots{% endif %}</a>
+            {% endif %}
+          </div>
         </div>
         {% if daily_report.best_area_spots %}
           <div class="w-full lg:max-w-sm">
@@ -183,6 +189,19 @@
         {% endif %}
       </div>
     </section>
+
+    {% if location.local_region or location.difficulty or location.best_time or location.exposure or location.shore_type %}
+      <section class="mt-4 rounded-xl border border-gray-200 bg-white/80 p-4 text-left ui-night:border-gray-800 ui-night:bg-gray-900/70 sm:p-5">
+        <h2 class="text-base font-semibold text-gray-950 ui-night:text-white">{% if is_spanish %}Notas locales{% else %}Local beach intelligence{% endif %}</h2>
+        <div class="mt-3 grid gap-3 text-sm text-gray-700 ui-night:text-gray-200 sm:grid-cols-2 lg:grid-cols-5">
+          {% if location.local_region %}<p><span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Zona{% else %}Area{% endif %}</span>{{ location.local_region }}</p>{% endif %}
+          {% if location.difficulty %}<p><span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Dificultad{% else %}Difficulty{% endif %}</span>{{ location.difficulty }}</p>{% endif %}
+          {% if location.best_time %}<p><span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Mejor hora{% else %}Best time{% endif %}</span>{{ location.best_time }}</p>{% endif %}
+          {% if location.exposure %}<p><span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Exposición{% else %}Exposure{% endif %}</span>{{ location.exposure }}</p>{% endif %}
+          {% if location.shore_type %}<p><span class="block text-xs font-semibold uppercase tracking-wide text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Orilla{% else %}Shore{% endif %}</span>{{ location.shore_type }}</p>{% endif %}
+        </div>
+      </section>
+    {% endif %}
 
     <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
       <div class="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-left ui-night:border-amber-900/70 ui-night:bg-amber-950/30">
@@ -351,6 +370,28 @@
             {{ t|date:"D H:i" }}{% if not forloop.last %}, {% endif %}
           {% endfor %}
         </p>
+      </section>
+    {% endif %}
+
+    {% if area_spot_reports %}
+      <section id="area-spots" class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
+        <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Mapa de lugares cercanos{% else %}Nearby snorkel spot map{% endif %}</h2>
+        <p class="text-sm text-gray-600 ui-night:text-gray-300 mb-3">
+          {% if is_spanish %}Compara lugares cercanos por puntuación, ventana y exposición antes de elegir playa.{% else %}Compare nearby spots by score, forecast window and exposure before choosing a beach.{% endif %}
+        </p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {% for spot in area_spot_reports %}
+            <a href="{% if is_spanish %}/es{% endif %}{{ spot.url }}" class="rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 ui-night:border-gray-700 ui-night:hover:bg-gray-800">
+              <span class="flex items-start justify-between gap-3">
+                <span>
+                  <span class="block font-semibold text-gray-950 ui-night:text-white">{{ spot.name }}</span>
+                  <span class="mt-1 block text-xs text-gray-600 ui-night:text-gray-300">{{ spot.rating_label }}{% if spot.best_time_label %} · {{ spot.best_time_label }}{% endif %}</span>
+                </span>
+                <span class="shrink-0 rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800 ui-night:bg-blue-950/50 ui-night:text-blue-200">{{ spot.score_label }}</span>
+              </span>
+            </a>
+          {% endfor %}
+        </div>
       </section>
     {% endif %}
 

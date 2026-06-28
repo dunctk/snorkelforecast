@@ -11,6 +11,11 @@ urlpatterns = [
     path("guides/", views.guides_index, name="guides_index"),
     path("guides/<slug:slug>/", views.guide_detail, name="guide_detail"),
     path("health/", views.health_check, name="health_check"),
+    path(
+        "alerts/unsubscribe/<str:token>/",
+        views.alert_unsubscribe,
+        name="alert_unsubscribe",
+    ),
     path("", views.homepage, name="homepage"),
     # Site-wide OG image
     path("og.png", views.site_og_image, name="site_og_image"),
@@ -35,6 +40,11 @@ urlpatterns = [
         "<str:country>/<str:city>/embed/sea-temperature/",
         views.location_sea_temperature_embed,
         name="location_sea_temperature_embed",
+    ),
+    path(
+        "<str:country>/<str:city>/alerts/",
+        views.location_alert_subscribe,
+        name="location_alert_subscribe",
     ),
     path(
         "<str:country>/<str:city>/tide.png", views.location_tide_chart, name="location_tide_chart"

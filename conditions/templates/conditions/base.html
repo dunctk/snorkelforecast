@@ -54,6 +54,7 @@
           <a href="{% url 'best_snorkeling' %}"
              aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
              class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_best }}</a>
+          <a href="{{ localized_prefix }}/usa/hawaii/" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Hawaii</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
              class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_search }}</a>
@@ -86,6 +87,7 @@
           <a href="{% url 'best_snorkeling' %}"
              aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
              class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_best }}</a>
+          <a href="{{ localized_prefix }}/usa/hawaii/" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Hawaii</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
              class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_search }}</a>
@@ -109,6 +111,7 @@
             <h2 class="font-semibold text-gray-200 mb-2">{{ ui.footer_popular }}</h2>
             <ul class="space-y-1 text-gray-400">
               <li><a href="{{ localized_prefix }}/usa/maui/" class="hover:text-blue-300">Maui</a></li>
+              <li><a href="{{ localized_prefix }}/usa/hawaii/" class="hover:text-blue-300">Hawaii</a></li>
               <li><a href="{{ localized_prefix }}/usa/hanauma-bay/" class="hover:text-blue-300">Hanauma Bay</a></li>
               <li><a href="{{ localized_prefix }}/mexico/cozumel/" class="hover:text-blue-300">Cozumel</a></li>
               <li><a href="{{ localized_prefix }}/bonaire/kralendijk/" class="hover:text-blue-300">Bonaire</a></li>

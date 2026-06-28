@@ -1,0 +1,47 @@
+{% extends 'conditions/base.html' %}
+
+{% block title %}Email alerts for {{ location.name }} snorkel conditions{% endblock %}
+
+{% block meta %}
+  <meta name="description" content="Get an email when {{ location.name }} reaches good snorkel conditions.">
+{% endblock %}
+
+{% block content %}
+  <section class="max-w-3xl mx-auto px-4 py-10">
+    <nav aria-label="Breadcrumb" class="mb-6 text-sm text-gray-600 ui-night:text-gray-300">
+      <a href="{% url 'homepage' %}" class="hover:underline">Home</a>
+      <span>/</span>
+      <a href="{% url 'location_forecast' location.country_slug location.city_slug %}" class="hover:underline">{{ location.name }}</a>
+      <span>/</span>
+      <span>Email alerts</span>
+    </nav>
+
+    <div class="rounded-xl border border-blue-200 bg-blue-50/80 p-5 ui-night:border-blue-900/70 ui-night:bg-blue-950/25">
+      <p class="text-xs font-semibold uppercase tracking-wide text-blue-800 ui-night:text-blue-200">Snorkel alerts</p>
+      <h1 class="mt-2 text-2xl font-bold text-gray-950 ui-night:text-white">Email me when {{ location.name }} looks good</h1>
+      <p class="mt-2 text-sm text-gray-700 ui-night:text-gray-200">
+        We check the saved forecast and send one email when the next {{ location.name }} window reaches your threshold.
+      </p>
+
+      <form method="post" class="mt-5 grid gap-4">
+        {% csrf_token %}
+        {% if error %}
+          <p class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 ui-night:border-red-900 ui-night:bg-red-950/40 ui-night:text-red-200">{{ error }}</p>
+        {% endif %}
+        <label class="grid gap-1 text-sm font-medium text-gray-800 ui-night:text-gray-100">
+          Email address
+          <input type="email" name="email" value="{{ email }}" required autocomplete="email" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-950 ui-night:border-gray-700 ui-night:bg-gray-900 ui-night:text-white">
+        </label>
+        <label class="grid gap-1 text-sm font-medium text-gray-800 ui-night:text-gray-100">
+          Alert threshold
+          <select name="min_rating" class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-950 ui-night:border-gray-700 ui-night:bg-gray-900 ui-night:text-white">
+            {% for value,label in rating_options %}
+              <option value="{{ value }}" {% if selected_rating == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="inline-flex touch-target w-fit rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">Create alert</button>
+      </form>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'conditions/base.html' %}
+
+{% block title %}Alert saved for {{ location.name }}{% endblock %}
+
+{% block content %}
+  <section class="max-w-2xl mx-auto px-4 py-10">
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 ui-night:border-emerald-900/70 ui-night:bg-emerald-950/25">
+      <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800 ui-night:text-emerald-200">{% if created %}Alert created{% else %}Alert updated{% endif %}</p>
+      <h1 class="mt-2 text-2xl font-bold text-gray-950 ui-night:text-white">{{ location.name }} email alert saved</h1>
+      <p class="mt-2 text-sm text-gray-700 ui-night:text-gray-200">
+        We will email {{ subscription.email }} when {{ location.name }} reaches {{ subscription.get_min_rating_display|lower }}.
+      </p>
+      <div class="mt-5 flex flex-wrap gap-3">
+        <a href="{% url 'location_forecast' location.country_slug location.city_slug %}" class="inline-flex touch-target rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700">Back to report</a>
+        <a href="{% url 'alert_unsubscribe' subscription.token %}" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 ui-night:border-gray-700 ui-night:bg-gray-900 ui-night:text-gray-100">Unsubscribe</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
