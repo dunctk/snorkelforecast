@@ -7,6 +7,7 @@ urlpatterns = [
     re_path(r"^(?P<key>[a-f0-9]{16,64})\.txt$", views.indexnow_key_file, name="indexnow_key_file"),
     path("api/search-locations/", views.location_search_api, name="location_search_api"),
     path("search/", views.location_search, name="location_search"),
+    path("best-snorkeling/", views.best_snorkeling, name="best_snorkeling"),
     path("guides/", views.guides_index, name="guides_index"),
     path("guides/<slug:slug>/", views.guide_detail, name="guide_detail"),
     path("health/", views.health_check, name="health_check"),

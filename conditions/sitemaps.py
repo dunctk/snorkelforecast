@@ -12,7 +12,7 @@ class StaticViewSitemap(Sitemap):
     priority = 1.0
 
     def items(self):
-        return ["homepage", "countries_index", "location_search"]
+        return ["homepage", "best_snorkeling", "countries_index", "location_search"]
 
     def location(self, item):
         return reverse(item)

@@ -47,6 +47,9 @@
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
              class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Countries</a>
+          <a href="{% url 'best_snorkeling' %}"
+             aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Best snorkeling</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
              class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Search</a>
@@ -76,6 +79,9 @@
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
              class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Countries</a>
+          <a href="{% url 'best_snorkeling' %}"
+             aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Best snorkeling</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
              class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Search</a>
@@ -127,6 +133,7 @@
             <h2 class="font-semibold text-gray-200 mb-2">Explore</h2>
             <ul class="space-y-1 text-gray-400">
               <li><a href="{% url 'countries_index' %}" class="hover:text-blue-300">All countries</a></li>
+              <li><a href="{% url 'best_snorkeling' %}" class="hover:text-blue-300">Best snorkeling</a></li>
               <li><a href="{% url 'location_search' %}" class="hover:text-blue-300">Search spots</a></li>
               <li><a href="{% url 'homepage' %}" class="hover:text-blue-300">Home</a></li>
             </ul>

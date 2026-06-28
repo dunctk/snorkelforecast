@@ -7,6 +7,7 @@ from dateutil import tz
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
+from django.db.models import Avg, Count, Max, Q
 from django.views.decorators.cache import cache_page
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone as django_timezone
@@ -29,6 +30,168 @@ from .models_spots import OSMSpot, ImportTile
 
 
 logger = logging.getLogger(__name__)
+
+
+RANKING_MIN_UPCOMING_HOURS = 6
+RANKING_MIN_HISTORICAL_HOURS = 24
+
+
+def _rating_label(score: float | None) -> str:
+    if score is None:
+        return "No data"
+    if score >= 0.8:
+        return "Excellent"
+    if score >= 0.6:
+        return "Good"
+    if score >= 0.4:
+        return "Fair"
+    return "Poor"
+
+
+def _ranking_location_url(country_slug: str, city_slug: str) -> str:
+    return f"/{country_slug}/{city_slug}/"
+
+
+def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str, object]:
+    """Build historical and 72-hour rankings from stored forecast rows."""
+    now = django_timezone.now()
+    next_72h = now + timedelta(hours=72)
+    historical_cutoff = now - timedelta(days=365)
+
+    location_filter = Q(location__isnull=False)
+    if country_slug:
+        location_filter &= Q(location__country_slug=country_slug)
+
+    upcoming_rows = (
+        ForecastHour.objects.filter(location_filter, time__gte=now, time__lte=next_72h)
+        .values(
+            "location_id",
+            "location__name",
+            "location__country",
+            "location__country_slug",
+            "location__city_slug",
+            "location__description",
+        )
+        .annotate(
+            avg_score=Avg("score"),
+            best_score=Max("score"),
+            sample_hours=Count("id"),
+            ok_hours=Count("id", filter=Q(ok=True)),
+            avg_wave=Avg("wave_height"),
+            avg_wind=Avg("wind_speed"),
+            avg_sst=Avg("sea_surface_temperature"),
+        )
+        .filter(sample_hours__gte=RANKING_MIN_UPCOMING_HOURS)
+        .order_by("-avg_score", "-best_score", "location__name")
+    )
+
+    upcoming = []
+    for row in upcoming_rows[:40]:
+        sample_hours = int(row["sample_hours"] or 0)
+        ok_hours = int(row["ok_hours"] or 0)
+        avg_score = row["avg_score"]
+        upcoming.append(
+            {
+                "location_id": row["location_id"],
+                "name": row["location__name"],
+                "country": row["location__country"],
+                "country_slug": row["location__country_slug"],
+                "city_slug": row["location__city_slug"],
+                "description": row["location__description"],
+                "url": _ranking_location_url(
+                    row["location__country_slug"], row["location__city_slug"]
+                ),
+                "avg_score": avg_score,
+                "best_score": row["best_score"],
+                "score_percent": round((avg_score or 0) * 100),
+                "best_score_percent": round((row["best_score"] or 0) * 100),
+                "rating_label": _rating_label(avg_score),
+                "ok_hours": ok_hours,
+                "sample_hours": sample_hours,
+                "ok_percent": round(ok_hours / sample_hours * 100) if sample_hours else 0,
+                "avg_wave": row["avg_wave"],
+                "avg_wind": row["avg_wind"],
+                "avg_sst": row["avg_sst"],
+            }
+        )
+
+    historical_rows = (
+        ForecastHour.objects.filter(location_filter, time__gte=historical_cutoff, time__lt=now)
+        .values(
+            "location_id",
+            "location__name",
+            "location__country",
+            "location__country_slug",
+            "location__city_slug",
+            "location__description",
+        )
+        .annotate(
+            avg_score=Avg("score"),
+            sample_hours=Count("id"),
+            ok_hours=Count("id", filter=Q(ok=True)),
+            avg_wave=Avg("wave_height"),
+            avg_wind=Avg("wind_speed"),
+            avg_sst=Avg("sea_surface_temperature"),
+        )
+        .filter(sample_hours__gte=RANKING_MIN_HISTORICAL_HOURS)
+        .order_by("-avg_score", "location__name")
+    )
+
+    historical = []
+    for row in historical_rows[:80]:
+        sample_hours = int(row["sample_hours"] or 0)
+        ok_hours = int(row["ok_hours"] or 0)
+        avg_score = row["avg_score"]
+        historical.append(
+            {
+                "location_id": row["location_id"],
+                "name": row["location__name"],
+                "country": row["location__country"],
+                "country_slug": row["location__country_slug"],
+                "city_slug": row["location__city_slug"],
+                "description": row["location__description"],
+                "url": _ranking_location_url(
+                    row["location__country_slug"], row["location__city_slug"]
+                ),
+                "avg_score": avg_score,
+                "score_percent": round((avg_score or 0) * 100),
+                "rating_label": _rating_label(avg_score),
+                "ok_hours": ok_hours,
+                "sample_hours": sample_hours,
+                "ok_percent": round(ok_hours / sample_hours * 100) if sample_hours else 0,
+                "avg_wave": row["avg_wave"],
+                "avg_wind": row["avg_wind"],
+                "avg_sst": row["avg_sst"],
+            }
+        )
+
+    countries = []
+    country_rows = (
+        ForecastHour.objects.filter(location__isnull=False, time__gte=historical_cutoff, time__lt=now)
+        .values("location__country_slug", "location__country")
+        .annotate(avg_score=Avg("score"), sample_hours=Count("id"))
+        .filter(sample_hours__gte=RANKING_MIN_HISTORICAL_HOURS)
+        .order_by("-avg_score", "location__country")
+    )
+    for row in country_rows:
+        countries.append(
+            {
+                "slug": row["location__country_slug"],
+                "name": row["location__country"],
+                "url": f"/{row['location__country_slug']}/",
+                "score_percent": round((row["avg_score"] or 0) * 100),
+                "sample_hours": row["sample_hours"],
+            }
+        )
+
+    return {
+        "upcoming": upcoming,
+        "historical": historical,
+        "countries": countries,
+        "generated_at": now,
+        "historical_days": 365,
+        "forecast_hours": 72,
+    }
 
 
 def _current_sst_by_location_id(locations: list[SnorkelLocation]) -> dict[int, float | None]:
@@ -179,8 +342,23 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
         "country_slug": country,
         "country_name": country_name,
         "cities": cities,
+        "rankings": _build_best_snorkeling_rankings(country),
+        "is_country_page": True,
     }
     return render(request, "conditions/country.html", context)
+
+
+@cache_page(getattr(settings, "CACHE_TTL", 300))
+def best_snorkeling(request: HttpRequest) -> HttpResponse:
+    """Editorial ranking page for the best snorkeling places worldwide."""
+    rankings = _build_best_snorkeling_rankings()
+    context = {
+        "rankings": rankings,
+        "country_name": "the World",
+        "country_slug": "",
+        "is_country_page": False,
+    }
+    return render(request, "conditions/best_snorkeling.html", context)
 
 
 @cache_page(getattr(settings, "CACHE_TTL", 300))
