@@ -1,34 +1,34 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}Snorkeling Guides: Best Time, Tides, Water Temperature & Tips{% endblock %}
+{% block title %}{% if is_spanish %}Guías de snorkel: mejor hora, mareas, temperatura y consejos{% else %}Snorkeling Guides: Best Time, Tides, Water Temperature & Tips{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Practical snorkeling guides: the best time to snorkel, the best tide, what water temperature is comfortable, what to wear and how to read conditions.">
-  <meta property="og:title" content="Snorkeling Guides — SnorkelForecast.com" />
-  <meta property="og:description" content="Practical, no-nonsense guides to snorkeling conditions, timing, tides and water temperature." />
+  <meta name="description" content="{% if is_spanish %}Guías prácticas de snorkel: mejor hora, mejor marea, temperatura cómoda del agua, qué llevar y cómo leer las condiciones.{% else %}Practical snorkeling guides: the best time to snorkel, the best tide, what water temperature is comfortable, what to wear and how to read conditions.{% endif %}">
+  <meta property="og:title" content="{% if is_spanish %}Guías de snorkel — SnorkelForecast.com{% else %}Snorkeling Guides — SnorkelForecast.com{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Guías prácticas y directas sobre condiciones, horarios, mareas y temperatura del agua para hacer snorkel.{% else %}Practical, no-nonsense guides to snorkeling conditions, timing, tides and water temperature.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta property="og:url" content="https://snorkelforecast.com/guides/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/" />
 {% endblock %}
 
 {% block content %}
   <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
-      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">Guides</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ ui.nav_guides }}</li>
     </ol>
   </nav>
 
   <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-night:from-slate-800 ui-night:to-gray-900">
     <div class="max-w-6xl mx-auto px-4 py-10 text-center">
-      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling Guides</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold">{% if is_spanish %}Guías de snorkel{% else %}Snorkeling Guides{% endif %}</h1>
       <p class="text-sm sm:text-base mt-2 max-w-2xl mx-auto text-gray-700 ui-night:text-gray-200">
-        Practical answers to the questions that decide whether a snorkel is great or disappointing —
-        timing, tides, water temperature and what to wear.
+        {% if is_spanish %}Respuestas prácticas a las preguntas que deciden si una salida de snorkel será buena o decepcionante: horarios, mareas, temperatura del agua y qué llevar.{% else %}Practical answers to the questions that decide whether a snorkel is great or disappointing —
+        timing, tides, water temperature and what to wear.{% endif %}
       </p>
     </div>
   </section>
@@ -40,7 +40,7 @@
            class="card-enhanced p-5 sm:p-6 block hover:-translate-y-0.5 transition-transform">
           <h2 class="text-lg font-semibold mb-2">{{ guide.title }}</h2>
           <p class="text-sm text-gray-600 ui-night:text-gray-400">{{ guide.summary }}</p>
-          <span class="inline-block mt-3 text-sm text-blue-600 ui-night:text-blue-400">Read guide →</span>
+          <span class="inline-block mt-3 text-sm text-blue-600 ui-night:text-blue-400">{% if is_spanish %}Leer guía{% else %}Read guide{% endif %} →</span>
         </a>
       {% endfor %}
     </div>

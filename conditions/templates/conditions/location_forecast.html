@@ -1,17 +1,17 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static l10n %}
 
-{% block title %}{{ location.name }} Snorkel Report Today | Conditions & 3-Day Forecast{% endblock %}
+{% block title %}{% if is_spanish %}Pronóstico de snorkel en {{ location.name }} hoy | Condiciones y 3 días{% else %}{{ location.name }} Snorkel Report Today | Conditions & 3-Day Forecast{% endif %}{% endblock %}
 
 {% block font_links %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Snorkeling in {{ location.name }}, {{ location.country }} today? {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h look good. {% endif %}Live wave, wind, water-temp and tide forecast, updated hourly.">
+  <meta name="description" content="{% if is_spanish %}¿Snorkel en {{ location.name }}, {{ location.country }} hoy? {% if summary.total_hours %}El {{ summary.percent_ok }}% de las próximas 72h pinta bien. {% endif %}Pronóstico de oleaje, viento, temperatura y mareas actualizado cada hora.{% else %}Snorkeling in {{ location.name }}, {{ location.country }} today? {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h look good. {% endif %}Live wave, wind, water-temp and tide forecast, updated hourly.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="{{ location.name }} Snorkel Report Today — Conditions & Forecast" />
-  <meta property="og:description" content="Live snorkeling conditions for {{ location.name }}, {{ location.country }}: wave height, wind, water temperature and tides. {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h are suitable.{% endif %}" />
-  <meta name="twitter:title" content="{{ location.name }} Snorkel Report Today — Conditions & Forecast" />
-  <meta name="twitter:description" content="Live snorkeling conditions for {{ location.name }}, {{ location.country }}{% if summary.total_hours %} — {{ summary.percent_ok }}% of the next 72h are suitable{% endif %}." />
+  <meta property="og:title" content="{% if is_spanish %}Pronóstico de snorkel en {{ location.name }} hoy{% else %}{{ location.name }} Snorkel Report Today — Conditions & Forecast{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Condiciones de snorkel en vivo para {{ location.name }}, {{ location.country }}: oleaje, viento, temperatura del agua y mareas. {% if summary.total_hours %}{{ summary.percent_ok }}% de las próximas 72h son aptas.{% endif %}{% else %}Live snorkeling conditions for {{ location.name }}, {{ location.country }}: wave height, wind, water temperature and tides. {% if summary.total_hours %}{{ summary.percent_ok }}% of the next 72h are suitable.{% endif %}{% endif %}" />
+  <meta name="twitter:title" content="{% if is_spanish %}Pronóstico de snorkel en {{ location.name }} hoy{% else %}{{ location.name }} Snorkel Report Today — Conditions & Forecast{% endif %}" />
+  <meta name="twitter:description" content="{% if is_spanish %}Condiciones de snorkel en vivo para {{ location.name }}, {{ location.country }}{% if summary.total_hours %}: {{ summary.percent_ok }}% de las próximas 72h son aptas{% endif %}.{% else %}Live snorkeling conditions for {{ location.name }}, {{ location.country }}{% if summary.total_hours %} — {{ summary.percent_ok }}% of the next 72h are suitable{% endif %}.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com{% url 'location_og_image' country=location.country_slug city=location.city_slug %}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -25,15 +25,15 @@
       "@type": "TouristDestination",
       "name": "{{ location.city }}, {{ location.country }}",
       "description": "{{ location.description }}",
-      "url": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/",
+      "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/{{ location.city_slug }}/",
       "address": {
         "@type": "PostalAddress",
         "addressCountry": "{{ location.country }}"
       },
       "geo": {
         "@type": "GeoCoordinates",
-        "latitude": {{ location.latitude }},
-        "longitude": {{ location.longitude }}
+        "latitude": {{ location.latitude|unlocalize }},
+        "longitude": {{ location.longitude|unlocalize }}
       },
       "touristType": "Snorkeling destination",
       "offers": {
@@ -45,9 +45,9 @@
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://snorkelforecast.com/"},
-        {"@type": "ListItem", "position": 2, "name": "{{ location.country }}", "item": "https://snorkelforecast.com/{{ location.country_slug }}/"},
-        {"@type": "ListItem", "position": 3, "name": "{{ location.city }}", "item": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/"}
+        {"@type": "ListItem", "position": 1, "name": "{% if is_spanish %}Inicio{% else %}Home{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es/{% else %}/{% endif %}"},
+        {"@type": "ListItem", "position": 2, "name": "{{ location.country }}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/"},
+        {"@type": "ListItem", "position": 3, "name": "{{ location.city }}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/{{ location.city_slug }}/"}
       ]
     },
     {
@@ -56,26 +56,26 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "Can you snorkel in {{ location.name }} today?",
+          "name": "{% if is_spanish %}¿Se puede hacer snorkel en {{ location.name }} hoy?{% else %}Can you snorkel in {{ location.name }} today?{% endif %}",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "{% if summary.ok_count > 0 and summary.can_snorkel %}Yes. The next good snorkeling window in {{ location.name }} starts {{ summary.next_window.start|date:'D H:i' }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} and lasts until {{ summary.next_window.end|date:'H:i' }}{% endif %}. Around {{ summary.percent_ok }}% of the next 72&nbsp;hours are suitable.{% else %}Conditions look marginal right now — no clearly safe snorkeling window is forecast in {{ location.name }} over the next 72&nbsp;hours. Check the hourly table for the calmest period.{% endif %}"
+            "text": "{% if is_spanish %}{% if summary.ok_count > 0 and summary.can_snorkel %}Sí. La próxima buena ventana de snorkel en {{ location.name }} empieza {{ summary.next_window.start|date:'D H:i' }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} y dura hasta {{ summary.next_window.end|date:'H:i' }}{% endif %}. Aproximadamente el {{ summary.percent_ok }}% de las próximas 72&nbsp;horas son aptas.{% else %}Las condiciones parecen justas ahora: no hay una ventana claramente segura para hacer snorkel en {{ location.name }} en las próximas 72&nbsp;horas. Revisa la tabla horaria para encontrar el momento más calmado.{% endif %}{% else %}{% if summary.ok_count > 0 and summary.can_snorkel %}Yes. The next good snorkeling window in {{ location.name }} starts {{ summary.next_window.start|date:'D H:i' }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} and lasts until {{ summary.next_window.end|date:'H:i' }}{% endif %}. Around {{ summary.percent_ok }}% of the next 72&nbsp;hours are suitable.{% else %}Conditions look marginal right now — no clearly safe snorkeling window is forecast in {{ location.name }} over the next 72&nbsp;hours. Check the hourly table for the calmest period.{% endif %}{% endif %}"
           }
         },
         {
           "@type": "Question",
-          "name": "What is the best time of day to snorkel in {{ location.name }}?",
+          "name": "{% if is_spanish %}¿Cuál es la mejor hora del día para hacer snorkel en {{ location.name }}?{% else %}What is the best time of day to snorkel in {{ location.name }}?{% endif %}",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Snorkel during daylight, ideally in the morning before the wind picks up, and around high slack tide when water is clearest and currents are weakest. SnorkelForecast scores every daylight hour in {{ location.name }} so you can pick the calmest window."
+            "text": "{% if is_spanish %}Haz snorkel con luz diurna, idealmente por la mañana antes de que suba el viento, y cerca de la pleamar parada cuando el agua suele estar más clara y las corrientes son más débiles. SnorkelForecast puntúa cada hora con luz en {{ location.name }} para elegir la ventana más tranquila.{% else %}Snorkel during daylight, ideally in the morning before the wind picks up, and around high slack tide when water is clearest and currents are weakest. SnorkelForecast scores every daylight hour in {{ location.name }} so you can pick the calmest window.{% endif %}"
           }
         },
         {
           "@type": "Question",
-          "name": "What is the best tide for snorkeling?",
+          "name": "{% if is_spanish %}¿Cuál es la mejor marea para hacer snorkel?{% else %}What is the best tide for snorkeling?{% endif %}",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "High slack tide — within about an hour of the high-tide peak when currents are weakest — is the safest, clearest window. Strong low tides, strong tidal flow near channels or headlands, and large tidal-range days reduce score."
+            "text": "{% if is_spanish %}La pleamar parada, aproximadamente dentro de una hora del pico de marea alta, suele ser la ventana más segura y clara. Mareas bajas fuertes, corrientes cerca de canales o cabos y grandes rangos de marea reducen la puntuación.{% else %}High slack tide — within about an hour of the high-tide peak when currents are weakest — is the safest, clearest window. Strong low tides, strong tidal flow near channels or headlands, and large tidal-range days reduce score.{% endif %}"
           }
         }
       ]
@@ -88,11 +88,11 @@
 
   <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
-      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">{{ ui.nav_countries }}</a></li>
       <li>/</li>
-      <li><a href="/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li><a href="{% if is_spanish %}/es{% endif %}/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
       <li>/</li>
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ location.city }}</li>
     </ol>
@@ -100,11 +100,11 @@
 
   <section id="forecast-verdict" class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Snorkel Conditions</h1>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{% if is_spanish %}Condiciones de snorkel en {{ location.city }}{% else %}{{ location.city }} Snorkel Conditions{% endif %}</h1>
       <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">
-        {{ location.country }} · Updated {{ summary.updated_at|date:'D H:i' }} ({{ timezone }})
-        · Source: {{ summary.forecast_source_label|default:summary.forecast_source|title }}
-        {% if summary.is_stale %} · Showing fallback/stale data{% endif %}
+        {{ location.country }} · {% if is_spanish %}Actualizado{% else %}Updated{% endif %} {{ summary.updated_at|date:'D H:i' }} ({{ timezone }})
+        · {% if is_spanish %}Fuente{% else %}Source{% endif %}: {{ summary.forecast_source_label|default:summary.forecast_source|title }}
+        {% if summary.is_stale %} · {% if is_spanish %}Mostrando datos de respaldo o antiguos{% else %}Showing fallback/stale data{% endif %}{% endif %}
       </p>
     </div>
 
@@ -113,56 +113,56 @@
         {% if summary.total_hours > 0 %}
           {% if summary.can_snorkel %}
             <p class="text-base sm:text-lg font-semibold text-emerald-800 ui-night:text-emerald-200 mb-1">
-              ✅ Good window is available today
+              {% if is_spanish %}Buena ventana disponible hoy{% else %}Good window is available today{% endif %}
             </p>
             <p class="text-sm sm:text-base text-emerald-900/90 ui-night:text-emerald-100/90">
-              Next safe window:
+              {% if is_spanish %}Próxima ventana segura:{% else %}Next safe window:{% endif %}
               <span class="font-semibold">{{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %}–{{ summary.next_window.end|date:"H:i" }}{% endif %}</span>
-              ({{ summary.percent_ok }}% of next 72h are suitable)
+              ({% if is_spanish %}{{ summary.percent_ok }}% de las próximas 72h son aptas{% else %}{{ summary.percent_ok }}% of next 72h are suitable{% endif %})
             </p>
           {% else %}
             <p class="text-base sm:text-lg font-semibold text-amber-800 ui-night:text-amber-200 mb-1">
-              ⚠️ No safe window in the next 72&nbsp;hours
+              {% if is_spanish %}Sin ventana segura en las próximas 72&nbsp;horas{% else %}No safe window in the next 72&nbsp;hours{% endif %}
             </p>
             <p class="text-sm sm:text-base text-amber-900/90 ui-night:text-amber-100/90">
-              Use the best-available section for the least-bad times.
+              {% if is_spanish %}Usa la sección de mejores horas disponibles para encontrar los momentos menos malos.{% else %}Use the best-available section for the least-bad times.{% endif %}
             </p>
           {% endif %}
         {% else %}
-          <p class="text-sm sm:text-base text-red-700">Forecast data is currently unavailable.</p>
+          <p class="text-sm sm:text-base text-red-700">{% if is_spanish %}Los datos del pronóstico no están disponibles ahora mismo.{% else %}Forecast data is currently unavailable.{% endif %}</p>
         {% endif %}
       </section>
     </div>
 
     <div class="flex flex-wrap gap-3 justify-center mb-6">
-      <a href="#day-planner" class="inline-flex touch-target rounded-lg bg-blue-600 px-4 text-white text-sm font-medium hover:bg-blue-700 ui-night:hover:bg-blue-500">3-day planner</a>
-      <a href="#best-available" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">Best available</a>
-      <a href="#advanced-data" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">Show data</a>
+      <a href="#day-planner" class="inline-flex touch-target rounded-lg bg-blue-600 px-4 text-white text-sm font-medium hover:bg-blue-700 ui-night:hover:bg-blue-500">{% if is_spanish %}Plan 3 días{% else %}3-day planner{% endif %}</a>
+      <a href="#best-available" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">{% if is_spanish %}Mejores horas{% else %}Best available{% endif %}</a>
+      <a href="#advanced-data" class="inline-flex touch-target rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 ui-night:bg-gray-800 ui-night:border-gray-600 ui-night:text-gray-200">{% if is_spanish %}Ver datos{% else %}Show data{% endif %}</a>
     </div>
 
     <section id="day-planner" class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">3-day planner</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Planificador de 3 días{% else %}3-day planner{% endif %}</h2>
       <div class="grid gap-3 sm:grid-cols-3">
         {% for day in day_planner %}
             <article class="rounded-lg border border-gray-200 ui-night:border-gray-700 p-3 sm:p-4">
             <p class="font-semibold">{{ day.label }}</p>
               <p class="mt-1 text-sm">
                 {% if day.status == "excellent" or day.status == "good" %}✅{% elif day.status == "fair" %}⚠️{% else %}❌{% endif %}
-                <span class="capitalize">{{ day.status }} conditions</span>
+                <span class="capitalize">{% if is_spanish %}condiciones {{ day.status }}{% else %}{{ day.status }} conditions{% endif %}</span>
               </p>
-            <p class="text-sm text-gray-600 ui-night:text-gray-400">Main blocker: {{ day.main_blocker }}</p>
+            <p class="text-sm text-gray-600 ui-night:text-gray-400">{% if is_spanish %}Principal límite{% else %}Main blocker{% endif %}: {{ day.main_blocker }}</p>
           </article>
         {% empty %}
-          <p class="text-sm text-gray-600 ui-night:text-gray-400">No planner data available yet.</p>
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">{% if is_spanish %}Aún no hay datos para el planificador.{% else %}No planner data available yet.{% endif %}</p>
         {% endfor %}
       </div>
     </section>
 
     <section id="best-available" class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Best available hours</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Mejores horas disponibles{% else %}Best available hours{% endif %}</h2>
       {% if summary.can_snorkel %}
         <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-200 mb-2">
-          Next safe window starts at {{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} until {{ summary.next_window.end|date:"H:i" }}{% endif %}.
+          {% if is_spanish %}La próxima ventana segura empieza {{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} hasta {{ summary.next_window.end|date:"H:i" }}{% endif %}.{% else %}Next safe window starts at {{ summary.next_window.start|date:"D H:i" }}{% if summary.next_window.end and summary.next_window.end != summary.next_window.start %} until {{ summary.next_window.end|date:"H:i" }}{% endif %}.{% endif %}
         </p>
       {% else %}
         {% if best_available %}
@@ -171,37 +171,37 @@
               <li class="text-sm sm:text-base">
                 <span class="font-semibold">{{ item.time|date:"D H:i" }}</span> —
                 {{ item.status|title }} ({{ item.score|floatformat:2 }})
-                {% if item.blockers %} · still limited by {{ item.blockers|join:", " }}{% endif %}
+                {% if item.blockers %} · {% if is_spanish %}limitado por{% else %}still limited by{% endif %} {{ item.blockers|join:", " }}{% endif %}
               </li>
             {% endfor %}
           </ul>
         {% else %}
           <p class="text-sm sm:text-base text-amber-800 ui-night:text-amber-200">
-            No daylight-safe hour is available in the next 72&nbsp;hours. Check the hourly table for details.
+            {% if is_spanish %}No hay ninguna hora segura con luz en las próximas 72&nbsp;horas. Revisa la tabla horaria para más detalle.{% else %}No daylight-safe hour is available in the next 72&nbsp;hours. Check the hourly table for details.{% endif %}
           </p>
         {% endif %}
       {% endif %}
     </section>
 
     <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Why this verdict</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Por qué este veredicto{% else %}Why this verdict{% endif %}</h2>
       <p class="text-sm sm:text-base mb-2">
-        Main blockers across the next 72&nbsp;hours:
+        {% if is_spanish %}Principales límites en las próximas 72&nbsp;horas:{% else %}Main blockers across the next 72&nbsp;hours:{% endif %}
       </p>
       <ul class="list-disc list-inside text-sm sm:text-base space-y-1 text-left">
         {% for blocker in summary.primary_blockers %}
           <li>{{ blocker.label }} ({{ blocker.count }} hours)</li>
         {% empty %}
-          <li>No major blockers identified.</li>
+          <li>{% if is_spanish %}No se detectaron límites importantes.{% else %}No major blockers identified.{% endif %}</li>
         {% endfor %}
       </ul>
     </section>
 
     {% if tide_times %}
       <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
-        <h2 class="text-base sm:text-lg font-semibold mb-2">Upcoming high tides</h2>
+        <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Próximas pleamares{% else %}Upcoming high tides{% endif %}</h2>
         {% if next_early_high_tide %}
-          <p class="text-sm sm:text-base mb-2">Next early morning high tide: {{ next_early_high_tide|date:"D H:i" }}</p>
+          <p class="text-sm sm:text-base mb-2">{% if is_spanish %}Próxima pleamar temprano:{% else %}Next early morning high tide:{% endif %} {{ next_early_high_tide|date:"D H:i" }}</p>
         {% endif %}
         <p class="text-sm sm:text-base">
           {% for t in tide_times %}
@@ -212,23 +212,23 @@
     {% endif %}
 
     <section class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-4xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Nearby alternatives in {{ location.country }}</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Alternativas cercanas en {{ location.country }}{% else %}Nearby alternatives in {{ location.country }}{% endif %}</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {% for spot in nearby_locations %}
-          <a href="/{{ spot.country_slug }}/{{ spot.city_slug }}/" class="block rounded-lg border border-gray-200 ui-night:border-gray-700 p-3 hover:bg-gray-50 ui-night:hover:bg-gray-800 transition-colors">
+          <a href="{% if is_spanish %}/es{% endif %}/{{ spot.country_slug }}/{{ spot.city_slug }}/" class="block rounded-lg border border-gray-200 ui-night:border-gray-700 p-3 hover:bg-gray-50 ui-night:hover:bg-gray-800 transition-colors">
             <p class="font-semibold">{{ spot.name }}</p>
             <p class="text-sm text-gray-600 ui-night:text-gray-400">
-              {% if spot.status == "good" %}✅ Good{% elif spot.status == "fair" %}⚠️ Fair{% elif spot.status == "excellent" %}🌟 Excellent{% elif spot.status == "poor" %}❌ Poor{% else %}Not enough fresh data{% endif %}
+              {% if spot.status == "good" %}✅ {% if is_spanish %}Bueno{% else %}Good{% endif %}{% elif spot.status == "fair" %}⚠️ {% if is_spanish %}Regular{% else %}Fair{% endif %}{% elif spot.status == "excellent" %}🌟 {% if is_spanish %}Excelente{% else %}Excellent{% endif %}{% elif spot.status == "poor" %}❌ {% if is_spanish %}Malo{% else %}Poor{% endif %}{% else %}{% if is_spanish %}No hay suficientes datos recientes{% else %}Not enough fresh data{% endif %}{% endif %}
             </p>
           </a>
         {% empty %}
-          <p class="text-sm text-gray-600 ui-night:text-gray-400">No nearby alternatives available.</p>
+          <p class="text-sm text-gray-600 ui-night:text-gray-400">{% if is_spanish %}No hay alternativas cercanas disponibles.{% else %}No nearby alternatives available.{% endif %}</p>
         {% endfor %}
       </div>
     </section>
 
     <details id="advanced-data" class="w-full max-w-4xl mx-auto card-enhanced p-4 sm:p-5">
-      <summary class="inline-flex items-center min-h-[44px] cursor-pointer text-base sm:text-lg font-semibold select-none">Advanced forecast data</summary>
+      <summary class="inline-flex items-center min-h-[44px] cursor-pointer text-base sm:text-lg font-semibold select-none">{% if is_spanish %}Datos avanzados del pronóstico{% else %}Advanced forecast data{% endif %}</summary>
       <div class="space-y-8 mt-4">
         <section aria-label="Score chart">
           <h3 class="text-sm sm:text-base font-semibold mb-2">Snorkel Score (next 24h)</h3>
@@ -340,11 +340,11 @@
         const chartState = { loaded: false, loadedCharts: new Set() };
         const labels = [{% for h in hours %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
         const labels24 = [{% for h in hours_24 %}'{{ h.time|date:"D H:i" }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const score24 = [{% for h in hours_24 %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const wave24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const wind24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const tide24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const scoreData = [{% for h in hours %}{{ h.score|floatformat:2 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const score24 = [{% for h in hours_24 %}{{ h.score|floatformat:2|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const wave24 = [{% for h in hours_24 %}{{ h.wave_height|floatformat:2|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const wind24 = [{% for h in hours_24 %}{{ h.wind_speed|floatformat:2|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const tide24 = [{% for h in hours_24 %}{{ h.sea_level_height|floatformat:2|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const scoreData = [{% for h in hours %}{{ h.score|floatformat:2|unlocalize }}{% if not forloop.last %}, {% endif %}{% endfor %}];
 
         const axisColor = document.body.classList.contains('ui-night') ? 'rgb(209,213,219)' : 'rgb(55,65,81)';
         const gridColor = document.body.classList.contains('ui-night') ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';

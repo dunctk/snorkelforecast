@@ -1,9 +1,9 @@
 {% load static %}<!doctype html>
-<html lang="en">
+<html lang="{{ html_language|default:'en' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ location_name }} Sea Temperature</title>
+<title>{% if is_spanish %}Temperatura del mar en {{ location_name }}{% else %}{{ location_name }} Sea Temperature{% endif %}</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; }
@@ -34,11 +34,11 @@ canvas { width: 100% !important; height: 100% !important; }
   <canvas id="sstChart"></canvas>
 </div>
 <p class="attribution">
-  Sea temperature data by
-  <a href="https://snorkelforecast.com/{{ country_slug }}/{{ city_slug }}/sea-temperature/" target="_top" rel="dofollow">
+  {% if is_spanish %}Datos de temperatura del mar por{% else %}Sea temperature data by{% endif %}
+  <a href="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ country_slug }}/{{ city_slug }}/sea-temperature/" target="_top" rel="dofollow">
     SnorkelForecast.com
   </a>
-  {% if current_sst %} · Current: {{ current_sst|floatformat:1 }}°C{% endif %}
+  {% if current_sst %} · {% if is_spanish %}Actual{% else %}Current{% endif %}: {{ current_sst|floatformat:1 }}°C{% endif %}
 </p>
 <script src="{% static 'js/chart.umd.min.js' %}"></script>
 <script>
@@ -54,7 +54,7 @@ canvas { width: 100% !important; height: 100% !important; }
       labels: labels,
       datasets: [
         { label: 'Max', data: max, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', pointRadius: 2, tension: 0.3, fill: false },
-        { label: 'Average', data: avg, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', pointRadius: 3, tension: 0.3, fill: false },
+        { label: '{% if is_spanish %}Media{% else %}Average{% endif %}', data: avg, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', pointRadius: 3, tension: 0.3, fill: false },
         { label: 'Min', data: min, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', pointRadius: 2, tension: 0.3, fill: '-1' }
       ]
     },

@@ -1,34 +1,34 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}SnorkelForecast.com – Snorkeling Conditions Worldwide{% endblock %}
+{% block title %}{% if is_spanish %}SnorkelForecast.com - Pronóstico de snorkel en todo el mundo{% else %}SnorkelForecast.com – Snorkeling Conditions Worldwide{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Get accurate snorkeling forecasts worldwide. Check wave height, wind speed, tides and water temperature for your next snorkeling adventure.">
+  <meta name="description" content="{% if is_spanish %}Consulta pronósticos de snorkel en todo el mundo. Revisa oleaje, viento, mareas y temperatura del agua antes de entrar al mar.{% else %}Get accurate snorkeling forecasts worldwide. Check wave height, wind speed, tides and water temperature for your next snorkeling adventure.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="SnorkelForecast.com - Snorkeling Conditions Worldwide" />
-  <meta property="og:description" content="Get accurate snorkeling forecasts for the best underwater conditions around the world." />
+  <meta property="og:title" content="{% if is_spanish %}SnorkelForecast.com - Condiciones de snorkel en todo el mundo{% else %}SnorkelForecast.com - Snorkeling Conditions Worldwide{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Pronósticos de snorkel precisos para encontrar las mejores condiciones bajo el agua.{% else %}Get accurate snorkeling forecasts for the best underwater conditions around the world.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:image" content="https://snorkelforecast.com/og.png" />
-  <meta property="og:url" content="https://snorkelforecast.com" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es/{% else %}/{% endif %}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "SnorkelForecast.com",
-    "description": "Real-time snorkeling forecasts worldwide with wave height, wind speed, tides and water temperature",
-    "url": "https://snorkelforecast.com",
+    "description": "{% if is_spanish %}Pronósticos de snorkel en tiempo real con oleaje, viento, mareas y temperatura del agua{% else %}Real-time snorkeling forecasts worldwide with wave height, wind speed, tides and water temperature{% endif %}",
+    "url": "https://snorkelforecast.com{% if is_spanish %}/es/{% endif %}",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://snorkelforecast.com/search/?q={search_term_string}",
+      "target": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/search/?q={search_term_string}",
       "query-input": "required name=search_term_string"
     },
     "mainEntity": {
       "@type": "ItemList",
-      "name": "Popular Snorkeling Destinations",
+      "name": "{% if is_spanish %}Destinos populares para hacer snorkel{% else %}Popular Snorkeling Destinations{% endif %}",
       "numberOfItems": {{ popular_locations|length }},
       "itemListElement": [
         {% for location in popular_locations %}
@@ -38,7 +38,7 @@
           "item": {
             "@type": "TouristDestination",
             "name": "{{ location.city }}",
-            "url": "https://snorkelforecast.com/{{ location.country_slug }}/{{ location.city_slug }}/",
+            "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/{{ location.city_slug }}/",
             "address": {
               "@type": "PostalAddress",
               "addressCountry": "{{ location.country }}"
@@ -61,10 +61,10 @@
   <!-- Hero Section -->
   <section class="hero homepage-hero">
     <div class="hero-inner max-w-6xl mx-auto px-4 pt-20 pb-20 sm:pt-28 sm:pb-32 text-center relative">
-      <p class="eyebrow reveal reveal-1 mb-6">Snorkeling forecasts, worldwide</p>
-      <h1 class="reveal reveal-1 mb-6">Know exactly when the<br><em>water turns clear.</em></h1>
+      <p class="eyebrow reveal reveal-1 mb-6">{% if is_spanish %}Pronósticos de snorkel, en todo el mundo{% else %}Snorkeling forecasts, worldwide{% endif %}</p>
+      <h1 class="reveal reveal-1 mb-6">{% if is_spanish %}Sabe exactamente cuándo<br><em>el agua estará clara.</em>{% else %}Know exactly when the<br><em>water turns clear.</em>{% endif %}</h1>
       <p class="hero-copy reveal reveal-2 text-lg sm:text-xl max-w-xl mx-auto px-2 leading-relaxed" style="color:var(--muted)">
-        Hour-by-hour snorkeling conditions for {{ country_count }}+ destinations — wave height, wind, tides and water temperature, scored so you can pick the perfect window.
+        {% if is_spanish %}Condiciones de snorkel hora por hora para {{ country_count }}+ destinos: oleaje, viento, mareas y temperatura del agua, puntuadas para elegir el mejor momento.{% else %}Hour-by-hour snorkeling conditions for {{ country_count }}+ destinations — wave height, wind, tides and water temperature, scored so you can pick the perfect window.{% endif %}
       </p>
        <div class="hero-search mt-10 max-w-lg mx-auto reveal reveal-3">
          <div class="search-container flex gap-3">
@@ -76,8 +76,8 @@
              </div>
            <input id="autoComplete" type="search" dir="ltr" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off"
              class="w-full pl-12 pr-4 py-4 text-lg rounded-xl shadow-xl bg-white/90 ui-night:bg-gray-800/90 backdrop-blur-sm border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 ui-night:focus:ring-blue-400 transition-all duration-200 placeholder-gray-500 ui-night:placeholder-gray-400"
-             placeholder="Search for a location..."
-             aria-label="Search for snorkeling locations"
+             placeholder="{% if is_spanish %}Buscar un lugar...{% else %}Search for a location...{% endif %}"
+             aria-label="{% if is_spanish %}Buscar lugares para hacer snorkel{% else %}Search for snorkeling locations{% endif %}"
              role="combobox"
              aria-expanded="false"
              aria-haspopup="listbox">
@@ -89,24 +89,24 @@
              </div>
            </div>
            <button id="search-button" class="px-6 py-4 bg-blue-600 hover:bg-blue-700 ui-night:bg-blue-700 ui-night:hover:bg-blue-800 text-white font-medium rounded-xl shadow-xl transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-             aria-label="Search for locations"
+             aria-label="{% if is_spanish %}Buscar lugares{% else %}Search for locations{% endif %}"
              type="button">
              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
              </svg>
-             <span class="hidden sm:inline">Search</span>
+             <span class="hidden sm:inline">{{ ui.nav_search }}</span>
            </button>
          </div>
        </div>
       <div class="hero-actions mt-7 flex flex-col sm:flex-row items-center justify-center gap-3 reveal reveal-4">
-        <a href="#popular" class="btn btn-primary">Explore popular spots</a>
-        <a href="{% url 'countries_index' %}" class="btn btn-ghost">Browse {{ country_count }} countries</a>
+        <a href="#popular" class="btn btn-primary">{% if is_spanish %}Ver lugares populares{% else %}Explore popular spots{% endif %}</a>
+        <a href="{% url 'countries_index' %}" class="btn btn-ghost">{% if is_spanish %}Ver {{ country_count }} países{% else %}Browse {{ country_count }} countries{% endif %}</a>
       </div>
       <div class="mobile-proof-strip reveal reveal-4" aria-label="Forecast factors">
-        <span>Waves</span>
-        <span>Wind</span>
-        <span>Tides</span>
-        <span>Temp</span>
+        <span>{% if is_spanish %}Olas{% else %}Waves{% endif %}</span>
+        <span>{% if is_spanish %}Viento{% else %}Wind{% endif %}</span>
+        <span>{% if is_spanish %}Mareas{% else %}Tides{% endif %}</span>
+        <span>{% if is_spanish %}Temp{% else %}Temp{% endif %}</span>
       </div>
     </div>
   </section>
@@ -115,12 +115,12 @@
     <!-- Browse by Country -->
     <div class="homepage-section mb-10">
         <div class="section-heading-row">
-          <h2 class="text-xl sm:text-2xl font-bold">Browse by Country</h2>
-          <a href="{% url 'countries_index' %}" class="section-heading-link">All countries</a>
+          <h2 class="text-xl sm:text-2xl font-bold">{% if is_spanish %}Explorar por país{% else %}Browse by Country{% endif %}</h2>
+          <a href="{% url 'countries_index' %}" class="section-heading-link">{{ ui.footer_all_countries }}</a>
         </div>
         <div class="country-chip-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {% for c in countries %}
-                <a href="/{% firstof c.slug %}/"
+                <a href="{{ localized_prefix }}/{% firstof c.slug %}/"
                    class="country-chip block p-4 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 transition-colors border border-gray-200 ui-night:border-gray-700">
                     <span class="country-chip-emoji">{{ c.emoji }}</span>
                     <span class="country-chip-name">{{ c.name }}</span>
@@ -131,8 +131,8 @@
     <!-- Popular Locations Grid -->
     <div id="popular" class="homepage-section mb-12 sm:mb-16">
       <div class="section-heading-row">
-        <h2 class="text-xl sm:text-2xl font-bold">Popular Snorkeling Destinations</h2>
-        <a href="{% url 'best_snorkeling' %}" class="section-heading-link">Best now</a>
+        <h2 class="text-xl sm:text-2xl font-bold">{% if is_spanish %}Destinos populares para hacer snorkel{% else %}Popular Snorkeling Destinations{% endif %}</h2>
+        <a href="{% url 'best_snorkeling' %}" class="section-heading-link">{% if is_spanish %}Mejores ahora{% else %}Best now{% endif %}</a>
       </div>
       <div class="popular-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
              {% for location in popular_locations %}
@@ -159,7 +159,7 @@
              <p class="text-sm mt-3">{{ location.description }}</p>
             {% endif %}
             <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
-               class="btn btn-ghost w-full mt-4">View Forecast</a>
+               class="btn btn-ghost w-full mt-4">{% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %}</a>
           </div>
         </div>
         {% endfor %}
@@ -174,8 +174,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
           </svg>
         </div>
-        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">Wave Height Analysis</h3>
-        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Monitor wave conditions to ensure calm, clear waters perfect for snorkeling.</p>
+        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">{% if is_spanish %}Análisis del oleaje{% else %}Wave Height Analysis{% endif %}</h3>
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Comprueba si el mar estará calmado y claro para hacer snorkel.{% else %}Monitor wave conditions to ensure calm, clear waters perfect for snorkeling.{% endif %}</p>
       </div>
       <div class="feature-item text-center px-2">
         <div class="feature-icon w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 ui-twilight:bg-indigo-200 ui-night:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors duration-300">
@@ -183,8 +183,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </div>
-        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">Wind Speed Tracking</h3>
-        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Check wind conditions to find the calmest times for underwater exploration.</p>
+        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">{% if is_spanish %}Seguimiento del viento{% else %}Wind Speed Tracking{% endif %}</h3>
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Encuentra las horas con menos viento para ver mejor bajo el agua.{% else %}Check wind conditions to find the calmest times for underwater exploration.{% endif %}</p>
       </div>
       <div class="feature-item text-center px-2">
         <div class="feature-icon w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 ui-twilight:bg-indigo-200 ui-night:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors duration-300">
@@ -192,23 +192,23 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
           </svg>
         </div>
-        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">Water Temperature</h3>
-        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">Find comfortable water temperatures for the best snorkeling experience.</p>
+        <h3 class="text-base sm:text-lg font-semibold mb-2 text-gray-900 ui-night:text-white">{% if is_spanish %}Temperatura del agua{% else %}Water Temperature{% endif %}</h3>
+        <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Consulta si el agua estará cómoda antes de planear la salida.{% else %}Find comfortable water temperatures for the best snorkeling experience.{% endif %}</p>
       </div>
     </div>
 
     <!-- How It Works Section -->
     <div id="how" class="card-enhanced p-6 sm:p-8">
-      <h2 class="text-xl sm:text-2xl font-bold mb-4">How We Calculate Snorkeling Conditions</h2>
+      <h2 class="text-xl sm:text-2xl font-bold mb-4">{% if is_spanish %}Cómo calculamos las condiciones de snorkel{% else %}How We Calculate Snorkeling Conditions{% endif %}</h2>
       <p class="text-sm sm:text-base mb-4">
-        Our forecasts combine multiple weather factors to determine the best snorkeling conditions:
+        {% if is_spanish %}Nuestros pronósticos combinan varios factores del mar y del tiempo:{% else %}Our forecasts combine multiple weather factors to determine the best snorkeling conditions:{% endif %}
       </p>
       <ul class="space-y-2 text-sm sm:text-base">
-        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>Wave Height (35%):</strong> calm waters under 0.36 meters.</span></li>
-        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>Wind Speed (25%):</strong> light winds under 5.4 m/s.</span></li>
-        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>Water Temperature (15%):</strong> between 20.6°C and 30.4°C.</span></li>
-        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>Tide &amp; Currents (15%):</strong> best near high slack when currents are weakest.</span></li>
-        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>Daylight Hours (10%):</strong> scored only during daylight for safety and visibility.</span></li>
+        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>{% if is_spanish %}Oleaje (35%):{% else %}Wave Height (35%):{% endif %}</strong> {% if is_spanish %}mar calmado por debajo de 0,36 metros.{% else %}calm waters under 0.36 meters.{% endif %}</span></li>
+        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>{% if is_spanish %}Viento (25%):{% else %}Wind Speed (25%):{% endif %}</strong> {% if is_spanish %}vientos suaves por debajo de 5,4 m/s.{% else %}light winds under 5.4 m/s.{% endif %}</span></li>
+        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>{% if is_spanish %}Temperatura del agua (15%):{% else %}Water Temperature (15%):{% endif %}</strong> {% if is_spanish %}entre 20,6 °C y 30,4 °C.{% else %}between 20.6°C and 30.4°C.{% endif %}</span></li>
+        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>{% if is_spanish %}Marea y corrientes (15%):{% else %}Tide &amp; Currents (15%):{% endif %}</strong> {% if is_spanish %}mejor cerca de la pleamar con corriente débil.{% else %}best near high slack when currents are weakest.{% endif %}</span></li>
+        <li class="flex items-start"><span class="text-blue-600 font-bold mr-2">•</span><span><strong>{% if is_spanish %}Horas de luz (10%):{% else %}Daylight Hours (10%):{% endif %}</strong> {% if is_spanish %}solo puntuamos horas con luz por seguridad y visibilidad.{% else %}scored only during daylight for safety and visibility.{% endif %}</span></li>
       </ul>
     </div>
   </section>

@@ -10,6 +10,10 @@ class StaticViewSitemap(Sitemap):
     protocol = "https"
     changefreq = "daily"
     priority = 1.0
+    i18n = True
+    languages = ["en", "es"]
+    alternates = True
+    x_default = True
 
     def items(self):
         return ["homepage", "best_snorkeling", "countries_index", "location_search"]
@@ -24,6 +28,10 @@ class GuideSitemap(Sitemap):
     protocol = "https"
     changefreq = "monthly"
     priority = 0.7
+    i18n = True
+    languages = ["en", "es"]
+    alternates = True
+    x_default = True
 
     def items(self):
         from .guides import GUIDES
@@ -40,6 +48,10 @@ class CountrySitemap(Sitemap):
     protocol = "https"
     changefreq = "weekly"
     priority = 0.8
+    i18n = True
+    languages = ["en", "es"]
+    alternates = True
+    x_default = True
 
     def items(self):
         # Get unique country slugs from database
@@ -60,6 +72,10 @@ class LocationSitemap(Sitemap):
     protocol = "https"
     changefreq = "daily"
     priority = 0.9
+    i18n = True
+    languages = ["en", "es"]
+    alternates = True
+    x_default = True
 
     def items(self):
         locations = []
@@ -78,3 +94,12 @@ class LocationSitemap(Sitemap):
 
     def lastmod(self, item):
         return item["updated_at"]
+
+
+class LocationSeaTemperatureSitemap(LocationSitemap):
+    """Dedicated sea-temperature SEO pages for each forecast location."""
+
+    priority = 0.8
+
+    def location(self, item):
+        return reverse("location_sea_temperature", args=[item["country_slug"], item["city_slug"]])

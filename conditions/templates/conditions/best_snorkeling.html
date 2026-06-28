@@ -1,22 +1,22 @@
 {% extends 'conditions/base.html' %}
 
-{% block title %}Best Places to Snorkel: Live Global Rankings & 72-Hour Forecast{% endblock %}
+{% block title %}{% if is_spanish %}Mejores lugares para hacer snorkel: ranking mundial y pronóstico 72h{% else %}Best Places to Snorkel: Live Global Rankings & 72-Hour Forecast{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="The best places to snorkel worldwide, ranked from SnorkelForecast historical data and the next 72-hour forecast. Compare destinations by waves, wind, water temperature, tides and snorkelability.">
+  <meta name="description" content="{% if is_spanish %}Los mejores lugares para hacer snorkel en el mundo, clasificados con datos históricos de SnorkelForecast y el pronóstico de las próximas 72 horas.{% else %}The best places to snorkel worldwide, ranked from SnorkelForecast historical data and the next 72-hour forecast. Compare destinations by waves, wind, water temperature, tides and snorkelability.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Best Places to Snorkel - Live Global Rankings" />
-  <meta property="og:description" content="A data-led guide to the world's best snorkeling spots, auto-updated from historical conditions and the next 72-hour forecast." />
+  <meta property="og:title" content="{% if is_spanish %}Mejores lugares para hacer snorkel - Ranking mundial en vivo{% else %}Best Places to Snorkel - Live Global Rankings{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Guía basada en datos de los mejores lugares para hacer snorkel, actualizada con condiciones históricas y el pronóstico de 72 horas.{% else %}A data-led guide to the world's best snorkeling spots, auto-updated from historical conditions and the next 72-hour forecast.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
-  <meta property="og:url" content="https://snorkelforecast.com/best-snorkeling/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/best-snorkeling/" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "Best Places to Snorkel",
-    "description": "Global snorkeling rankings based on historical and upcoming forecast data.",
-    "url": "https://snorkelforecast.com/best-snorkeling/",
+    "name": "{% if is_spanish %}Mejores lugares para hacer snorkel{% else %}Best Places to Snorkel{% endif %}",
+    "description": "{% if is_spanish %}Ranking mundial de snorkel basado en datos históricos y pronósticos próximos.{% else %}Global snorkeling rankings based on historical and upcoming forecast data.{% endif %}",
+    "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/best-snorkeling/",
     "mainEntity": {
       "@type": "ItemList",
       "numberOfItems": {{ rankings.historical|length }},
@@ -28,7 +28,7 @@
           "item": {
             "@type": "TouristDestination",
             "name": "{{ location.name|escapejs }}",
-            "url": "https://snorkelforecast.com{{ location.url }}",
+            "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}{{ location.url }}",
             "address": {"@type": "PostalAddress", "addressCountry": "{{ location.country|escapejs }}"}
           }
         }{% if not forloop.last %},{% endif %}
@@ -42,30 +42,30 @@
 {% block content %}
   <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
-      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">Best snorkeling</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ ui.nav_best }}</li>
     </ol>
   </nav>
 
   <section class="bg-sky-50 ui-night:bg-slate-900 border-b border-sky-100 ui-night:border-slate-800">
     <div class="max-w-6xl mx-auto px-4 py-10 sm:py-14">
-      <p class="font-mono text-xs uppercase tracking-wide text-blue-700 ui-night:text-blue-300">Auto-updating snorkeling rankings</p>
-      <h1 class="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-gray-950 ui-night:text-white">Best places to snorkel in the world</h1>
+      <p class="font-mono text-xs uppercase tracking-wide text-blue-700 ui-night:text-blue-300">{% if is_spanish %}Rankings de snorkel actualizados automáticamente{% else %}Auto-updating snorkeling rankings{% endif %}</p>
+      <h1 class="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-gray-950 ui-night:text-white">{% if is_spanish %}Mejores lugares del mundo para hacer snorkel{% else %}Best places to snorkel in the world{% endif %}</h1>
       <p class="mt-4 max-w-3xl text-base sm:text-lg text-gray-700 ui-night:text-gray-200">
-        This is a live editorial guide built from SnorkelForecast data, not a static bucket list. Rankings combine stored historical conditions with the next 72 hours of forecast data so calm, warm, low-current destinations rise when they are actually good.
+        {% if is_spanish %}Esta guía editorial se construye con datos de SnorkelForecast, no con una lista fija. Combinamos condiciones históricas con el pronóstico de las próximas 72 horas para destacar destinos con mar tranquilo, agua cómoda y corrientes débiles cuando realmente están buenos.{% else %}This is a live editorial guide built from SnorkelForecast data, not a static bucket list. Rankings combine stored historical conditions with the next 72 hours of forecast data so calm, warm, low-current destinations rise when they are actually good.{% endif %}
       </p>
       <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">Forecast ranking</span>
-          <strong class="text-xl">Next {{ rankings.forecast_hours }} hours</strong>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Ranking de pronóstico{% else %}Forecast ranking{% endif %}</span>
+          <strong class="text-xl">{% if is_spanish %}Próximas {{ rankings.forecast_hours }} horas{% else %}Next {{ rankings.forecast_hours }} hours{% endif %}</strong>
         </div>
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">Historical ranking</span>
-          <strong class="text-xl">Past {{ rankings.historical_days }} days</strong>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Ranking histórico{% else %}Historical ranking{% endif %}</span>
+          <strong class="text-xl">{% if is_spanish %}Últimos {{ rankings.historical_days }} días{% else %}Past {{ rankings.historical_days }} days{% endif %}</strong>
         </div>
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">Updated</span>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Actualizado{% else %}Updated{% endif %}</span>
           <strong class="text-xl">{{ rankings.generated_at|date:"M j, H:i" }}</strong>
         </div>
       </div>
@@ -75,46 +75,46 @@
   <section class="max-w-6xl mx-auto px-4 py-10">
     <div class="grid grid-cols-1 lg:grid-cols-[1.25fr_.75fr] gap-8">
       <div>
-        <h2 class="text-2xl font-bold mb-4">Top 10 best places to snorkel over the next 72 hours</h2>
+        <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Top 10 mejores lugares para hacer snorkel en las próximas 72 horas{% else %}Top 10 best places to snorkel over the next 72 hours{% endif %}</h2>
         {% if rankings.upcoming %}
           <div class="space-y-3">
             {% for location in rankings.upcoming|slice:":10" %}
-              <a href="{{ location.url }}" class="card-enhanced block p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
+              <a href="{% if is_spanish %}/es{% endif %}{{ location.url }}" class="card-enhanced block p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
                 <div class="flex items-start justify-between gap-4">
                   <div>
-                    <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} forecast pick</p>
+                    <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} {% if is_spanish %}según el pronóstico{% else %}forecast pick{% endif %}</p>
                     <h3 class="text-xl font-semibold">{{ location.name }}</h3>
-                    <p class="text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} - {{ location.ok_percent }}% snorkelable hours</p>
+                    <p class="text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} - {{ location.ok_percent }}% {% if is_spanish %}de horas aptas{% else %}snorkelable hours{% endif %}</p>
                   </div>
                   <span class="badge badge-ok">{{ location.score_percent }}/100</span>
                 </div>
                 <div class="mt-4 grid grid-cols-3 gap-2 text-xs sm:text-sm text-gray-700 ui-night:text-gray-300">
-                  <span>Waves {{ location.avg_wave|floatformat:2 }}m</span>
-                  <span>Wind {{ location.avg_wind|floatformat:1 }}m/s</span>
-                  <span>Water {{ location.avg_sst|floatformat:1 }}C</span>
+                  <span>{% if is_spanish %}Olas{% else %}Waves{% endif %} {{ location.avg_wave|floatformat:2 }}m</span>
+                  <span>{% if is_spanish %}Viento{% else %}Wind{% endif %} {{ location.avg_wind|floatformat:1 }}m/s</span>
+                  <span>{% if is_spanish %}Agua{% else %}Water{% endif %} {{ location.avg_sst|floatformat:1 }}C</span>
                 </div>
               </a>
             {% endfor %}
           </div>
         {% else %}
-          <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">The 72-hour global leaderboard will appear when enough current forecast rows have been stored.</div>
+          <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}El ranking mundial de 72 horas aparecerá cuando haya suficientes datos actuales guardados.{% else %}The 72-hour global leaderboard will appear when enough current forecast rows have been stored.{% endif %}</div>
         {% endif %}
       </div>
 
       <aside>
-        <h2 class="text-2xl font-bold mb-4">Best countries</h2>
+        <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Mejores países{% else %}Best countries{% endif %}</h2>
         <div class="card-enhanced p-5">
           {% if rankings.countries %}
             <ol class="space-y-3">
               {% for country in rankings.countries|slice:":12" %}
                 <li class="flex items-center justify-between gap-3 text-sm">
-                  <a href="{{ country.url }}" class="font-medium text-blue-700 ui-night:text-blue-300 hover:underline">Best snorkeling in {{ country.name }}</a>
+                  <a href="{% if is_spanish %}/es{% endif %}{{ country.url }}" class="font-medium text-blue-700 ui-night:text-blue-300 hover:underline">{% if is_spanish %}Mejor snorkel en {{ country.name }}{% else %}Best snorkeling in {{ country.name }}{% endif %}</a>
                   <span class="text-gray-500 ui-night:text-gray-400">{{ country.score_percent }}</span>
                 </li>
               {% endfor %}
             </ol>
           {% else %}
-            <p class="text-sm text-gray-700 ui-night:text-gray-300">Country rankings need more historical rows before they can be shown.</p>
+            <p class="text-sm text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Los rankings por país necesitan más datos históricos antes de mostrarse.{% else %}Country rankings need more historical rows before they can be shown.{% endif %}</p>
           {% endif %}
         </div>
       </aside>
@@ -123,16 +123,16 @@
 
   <section class="max-w-6xl mx-auto px-4 pb-12">
     <div class="mb-5 max-w-3xl">
-      <h2 class="text-2xl font-bold">Historically best snorkeling spots</h2>
-      <p class="mt-2 text-sm text-gray-600 ui-night:text-gray-300">Historical rank is based on the average snorkel score from stored forecast hours. It favors consistently calm, warm, daylight-friendly places over destinations that only occasionally spike.</p>
+      <h2 class="text-2xl font-bold">{% if is_spanish %}Mejores lugares históricos para hacer snorkel{% else %}Historically best snorkeling spots{% endif %}</h2>
+      <p class="mt-2 text-sm text-gray-600 ui-night:text-gray-300">{% if is_spanish %}El ranking histórico usa la puntuación media de las horas de pronóstico guardadas. Favorece lugares que suelen ser tranquilos, cálidos y aptos con luz diurna.{% else %}Historical rank is based on the average snorkel score from stored forecast hours. It favors consistently calm, warm, daylight-friendly places over destinations that only occasionally spike.{% endif %}</p>
     </div>
     {% if rankings.historical %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for location in rankings.historical|slice:":30" %}
-          <a href="{{ location.url }}" class="card-enhanced p-5 block transition-transform hover:-translate-y-0.5">
+          <a href="{% if is_spanish %}/es{% endif %}{{ location.url }}" class="card-enhanced p-5 block transition-transform hover:-translate-y-0.5">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} historical</p>
+                <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} {% if is_spanish %}histórico{% else %}historical{% endif %}</p>
                 <h3 class="text-lg font-semibold">{{ location.name }}</h3>
                 <p class="text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }}</p>
               </div>
@@ -141,12 +141,12 @@
             {% if location.description %}
               <p class="mt-3 text-sm text-gray-600 ui-night:text-gray-300">{{ location.description|truncatechars:130 }}</p>
             {% endif %}
-            <p class="mt-4 text-xs text-gray-500 ui-night:text-gray-400">{{ location.sample_hours }} sampled hours, {{ location.ok_percent }}% snorkelable</p>
+            <p class="mt-4 text-xs text-gray-500 ui-night:text-gray-400">{{ location.sample_hours }} {% if is_spanish %}horas analizadas, {{ location.ok_percent }}% aptas{% else %}sampled hours, {{ location.ok_percent }}% snorkelable{% endif %}</p>
           </a>
         {% endfor %}
       </div>
     {% else %}
-      <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">Historical rankings will appear after enough forecast history has been collected.</div>
+      <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Los rankings históricos aparecerán cuando se haya recopilado suficiente historial.{% else %}Historical rankings will appear after enough forecast history has been collected.{% endif %}</div>
     {% endif %}
   </section>
 {% endblock %}

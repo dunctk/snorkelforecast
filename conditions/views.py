@@ -1104,17 +1104,17 @@ def location_search(request: HttpRequest) -> HttpResponse:
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def guides_index(request: HttpRequest) -> HttpResponse:
     """Hub page listing all evergreen snorkeling guides."""
-    from .guides import GUIDES
+    from .guides import get_guides
 
-    return render(request, "conditions/guides_index.html", {"guides": GUIDES})
+    return render(request, "conditions/guides_index.html", {"guides": get_guides()})
 
 
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def guide_detail(request: HttpRequest, slug: str) -> HttpResponse:
     """Render a single evergreen snorkeling guide, with a few popular spots."""
-    from .guides import GUIDES_BY_SLUG
+    from .guides import get_guide
 
-    guide = GUIDES_BY_SLUG.get(slug)
+    guide = get_guide(slug)
     if not guide:
         raise Http404("Guide not found")
 

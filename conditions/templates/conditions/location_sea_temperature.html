@@ -1,41 +1,40 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static l10n %}
 
-{% block title %}{{ location.city }} Sea Temperature Today & Monthly Averages | {{ location.country }}{% endblock %}
+{% block title %}{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy y medias mensuales | {{ location.country }}{% else %}{{ location.city }} Sea Temperature Today & Monthly Averages | {{ location.country }}{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Sea surface temperature in {{ location.name }}, {{ location.country }} today. {% if current_sst %}Currently {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly water temperature averages, historical min/max and seasonal chart — updated hourly.">
+  <meta name="description" content="{% if is_spanish %}Temperatura superficial del mar en {{ location.name }}, {{ location.country }} hoy. {% if current_sst %}Ahora {{ current_sst|floatformat:1 }} °C. {% endif %}Medias mensuales, mínimos, máximos y gráfico estacional.{% else %}Sea surface temperature in {{ location.name }}, {{ location.country }} today. {% if current_sst %}Currently {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly water temperature averages, historical min/max and seasonal chart — updated hourly.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="{{ location.city }} Sea Temperature Today & Monthly Averages" />
-  <meta property="og:description" content="{% if current_sst %}Current sea temperature in {{ location.name }}: {{ current_sst|floatformat:1 }}°C. {% endif %}View monthly water temperature averages, historical trends, and the best time of year for warm water." />
+  <meta property="og:title" content="{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy y medias mensuales{% else %}{{ location.city }} Sea Temperature Today & Monthly Averages{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}{% if current_sst %}Temperatura actual del mar en {{ location.name }}: {{ current_sst|floatformat:1 }} °C. {% endif %}Consulta medias mensuales, tendencias históricas y la mejor época para agua cálida.{% else %}{% if current_sst %}Current sea temperature in {{ location.name }}: {{ current_sst|floatformat:1 }}°C. {% endif %}View monthly water temperature averages, historical trends, and the best time of year for warm water.{% endif %}" />
   <meta property="og:url" content="https://snorkelforecast.com{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" />
-  <meta name="twitter:title" content="{{ location.city }} Sea Temperature Today" />
-  <meta name="twitter:description" content="{% if current_sst %}Current sea temperature: {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly averages and historical water temperature data for {{ location.name }}." />
-  <link rel="canonical" href="https://snorkelforecast.com{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}">
+  <meta name="twitter:title" content="{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy{% else %}{{ location.city }} Sea Temperature Today{% endif %}" />
+  <meta name="twitter:description" content="{% if is_spanish %}{% if current_sst %}Temperatura actual: {{ current_sst|floatformat:1 }} °C. {% endif %}Medias mensuales y datos históricos de temperatura para {{ location.name }}.{% else %}{% if current_sst %}Current sea temperature: {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly averages and historical water temperature data for {{ location.name }}.{% endif %}" />
 {% endblock %}
 
 {% block content %}
   <nav aria-label="Breadcrumb" class="max-w-6xl mx-auto px-4 pt-4">
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
-      <li><a href="{% url 'homepage' %}" class="hover:underline">Home</a></li>
+      <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'countries_index' %}" class="hover:underline">Countries</a></li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">{{ ui.nav_countries }}</a></li>
       <li>/</li>
-      <li><a href="/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li><a href="{% if is_spanish %}/es{% endif %}/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
       <li>/</li>
       <li><a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="hover:underline">{{ location.city }}</a></li>
       <li>/</li>
-      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">Sea Temperature</li>
+      <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{% if is_spanish %}Temperatura del mar{% else %}Sea Temperature{% endif %}</li>
     </ol>
   </nav>
 
   <section class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">{{ location.city }} Sea Temperature</h1>
-      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · Updated hourly from satellite and marine data</p>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{% if is_spanish %}Temperatura del mar en {{ location.city }}{% else %}{{ location.city }} Sea Temperature{% endif %}</h1>
+      <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · {% if is_spanish %}Actualizado cada hora con datos satelitales y marinos{% else %}Updated hourly from satellite and marine data{% endif %}</p>
       <p class="mt-2 text-sm">
         <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
-          ← Snorkel forecast for {{ location.city }}
+          ← {% if is_spanish %}Pronóstico de snorkel para {{ location.city }}{% else %}Snorkel forecast for {{ location.city }}{% endif %}
         </a>
       </p>
     </div>
@@ -43,15 +42,15 @@
     {% if current_sst is not None %}
       <div class="w-full max-w-md mx-auto mt-6 mb-6 text-center">
         <div class="inline-flex flex-col items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 ui-night:bg-blue-900/20 ui-night:border-blue-800 px-8 py-6">
-          <p class="text-xs sm:text-sm text-gray-500 ui-night:text-gray-400 uppercase tracking-wide font-medium">Current Sea Temperature</p>
+          <p class="text-xs sm:text-sm text-gray-500 ui-night:text-gray-400 uppercase tracking-wide font-medium">{% if is_spanish %}Temperatura actual del mar{% else %}Current Sea Temperature{% endif %}</p>
           <p class="text-5xl sm:text-6xl font-bold text-blue-700 ui-night:text-blue-300 my-2">{{ current_sst|floatformat:1 }}<span class="text-3xl sm:text-4xl">°C</span></p>
           <p class="text-sm text-gray-600 ui-night:text-gray-400">
             {% if current_sst >= 20.6 and current_sst <= 30.4 %}
-              <span class="text-emerald-600 ui-night:text-emerald-400 font-medium">Comfortable for snorkeling</span>
+              <span class="text-emerald-600 ui-night:text-emerald-400 font-medium">{% if is_spanish %}Cómoda para hacer snorkel{% else %}Comfortable for snorkeling{% endif %}</span>
             {% elif current_sst >= 18 %}
-              <span class="text-amber-600 ui-night:text-amber-400 font-medium">Cool — wetsuit recommended</span>
+              <span class="text-amber-600 ui-night:text-amber-400 font-medium">{% if is_spanish %}Fresca: neopreno recomendado{% else %}Cool — wetsuit recommended{% endif %}</span>
             {% else %}
-              <span class="text-blue-600 ui-night:text-blue-400 font-medium">Cold — wetsuit required</span>
+              <span class="text-blue-600 ui-night:text-blue-400 font-medium">{% if is_spanish %}Fría: neopreno necesario{% else %}Cold — wetsuit required{% endif %}</span>
             {% endif %}
           </p>
         </div>
@@ -59,30 +58,33 @@
     {% endif %}
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Sea Surface Temperature Over the Year</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Temperatura superficial del mar durante el año{% else %}Sea Surface Temperature Over the Year{% endif %}</h2>
       <div class="h-48 sm:h-64 mb-4">
         <canvas id="sstChart" class="w-full h-full"></canvas>
       </div>
       {% if warmest_month and coldest_month %}
         <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
-          Sea surface temperature in {{ location.city }} ranges from about
+          {% if is_spanish %}La temperatura superficial del mar en {{ location.city }} va aproximadamente de
+          {{ coldest_temp }}°C en {{ coldest_month }} a
+          {{ warmest_temp }}°C en {{ warmest_month }}.
+          El agua suele estar más cálida al final del verano y más fría en invierno.{% else %}Sea surface temperature in {{ location.city }} ranges from about
           {{ coldest_temp }}°C in {{ coldest_month }} to
           {{ warmest_temp }}°C in {{ warmest_month }}.
-          The water is warmest in late summer and coolest in winter.
+          The water is warmest in late summer and coolest in winter.{% endif %}
         </p>
       {% endif %}
       {% if recent_averages.avg_sea_temp %}
         <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
-          Over the past 30 days, the average sea temperature in {{ location.city }} has been
-          {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.
+          {% if is_spanish %}En los últimos 30 días, la temperatura media del mar en {{ location.city }} ha sido {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.{% else %}Over the past 30 days, the average sea temperature in {{ location.city }} has been
+          {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.{% endif %}
         </p>
       {% endif %}
       <div class="mt-3 pt-3 border-t border-gray-100 ui-night:border-gray-700">
         <button onclick="copyEmbedCode()" class="text-xs text-gray-500 ui-night:text-gray-400 hover:text-blue-600 ui-night:hover:text-blue-400 underline cursor-pointer">
-          Embed this chart on your site
+          {% if is_spanish %}Insertar este gráfico en tu sitio{% else %}Embed this chart on your site{% endif %}
         </button>
         <input type="text" id="embedCodeInput" value='&lt;iframe src="https://snorkelforecast.com{% url 'location_sea_temperature_embed' country=location.country_slug city=location.city_slug %}" width="100%" height="400" frameborder="0"&gt;&lt;/iframe&gt;' readonly class="sr-only">
-        <p id="embedCopied" class="text-xs text-emerald-600 ui-night:text-emerald-400 mt-1 hidden">Copied!</p>
+        <p id="embedCopied" class="text-xs text-emerald-600 ui-night:text-emerald-400 mt-1 hidden">{% if is_spanish %}Copiado{% else %}Copied!{% endif %}</p>
       </div>
     </div>
 
@@ -101,13 +103,13 @@
 
     {% if sst_labels %}
       <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto overflow-x-auto">
-        <h2 class="text-base sm:text-lg font-semibold mb-3">Monthly Water Temperature Averages</h2>
+        <h2 class="text-base sm:text-lg font-semibold mb-3">{% if is_spanish %}Medias mensuales de temperatura del agua{% else %}Monthly Water Temperature Averages{% endif %}</h2>
         <table class="w-full text-sm text-left">
           <thead>
             <tr class="border-b border-gray-200 ui-night:border-gray-700">
-              <th class="py-2 pr-4 font-medium">Month</th>
-              <th class="py-2 pr-4 font-medium">Min</th>
-              <th class="py-2 pr-4 font-medium">Average</th>
+              <th class="py-2 pr-4 font-medium">{% if is_spanish %}Mes{% else %}Month{% endif %}</th>
+              <th class="py-2 pr-4 font-medium">{% if is_spanish %}Mín{% else %}Min{% endif %}</th>
+              <th class="py-2 pr-4 font-medium">{% if is_spanish %}Media{% else %}Average{% endif %}</th>
               <th class="py-2 font-medium">Max</th>
             </tr>
           </thead>
@@ -123,61 +125,65 @@
           </tbody>
         </table>
         <p class="text-xs text-gray-500 ui-night:text-gray-400 mt-3">
-          Based on recent forecast data collected for {{ location.city }}.
+          {% if is_spanish %}Basado en datos recientes de pronóstico recogidos para {{ location.city }}.{% else %}Based on recent forecast data collected for {{ location.city }}.{% endif %}
         </p>
       </div>
     {% endif %}
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
       <h2 class="text-base sm:text-lg font-semibold mb-3">
-        {{ location.city }} Water Temperature — Common Questions
+        {% if is_spanish %}Temperatura del agua en {{ location.city }}: preguntas frecuentes{% else %}{{ location.city }} Water Temperature — Common Questions{% endif %}
       </h2>
       <div class="space-y-4">
         <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">What is the sea temperature in {{ location.city }} today?</h3>
+          <h3 class="font-medium text-sm sm:text-base mb-1">{% if is_spanish %}¿Cuál es la temperatura del mar en {{ location.city }} hoy?{% else %}What is the sea temperature in {{ location.city }} today?{% endif %}</h3>
           <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
             {% if current_sst is not None %}
-              The current sea surface temperature in {{ location.city }} is
-              <strong>{{ current_sst|floatformat:1 }}°C</strong>.
+              {% if is_spanish %}La temperatura superficial actual del mar en {{ location.city }} es <strong>{{ current_sst|floatformat:1 }}°C</strong>.{% else %}The current sea surface temperature in {{ location.city }} is
+              <strong>{{ current_sst|floatformat:1 }}°C</strong>.{% endif %}
             {% endif %}
             {% if recent_averages.avg_sea_temp %}
-              Over the last 30 days, the average has been
-              {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.
+              {% if is_spanish %}En los últimos 30 días, la media ha sido {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.{% else %}Over the last 30 days, the average has been
+              {{ recent_averages.avg_sea_temp|floatformat:1 }}°C.{% endif %}
             {% endif %}
           </p>
         </div>
         <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">When is the water warmest in {{ location.city }}?</h3>
+          <h3 class="font-medium text-sm sm:text-base mb-1">{% if is_spanish %}¿Cuándo está más cálida el agua en {{ location.city }}?{% else %}When is the water warmest in {{ location.city }}?{% endif %}</h3>
           <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
             {% if warmest_month and warmest_temp %}
-              The warmest sea temperatures in {{ location.city }} occur in
+              {% if is_spanish %}Las temperaturas del mar más cálidas en {{ location.city }} suelen darse en
+              <strong>{{ warmest_month }}</strong>, con una media aproximada de
+              {{ warmest_temp }}°C.{% else %}The warmest sea temperatures in {{ location.city }} occur in
               <strong>{{ warmest_month }}</strong>, averaging around
-              {{ warmest_temp }}°C.
+              {{ warmest_temp }}°C.{% endif %}
             {% endif %}
-            Late summer typically brings the warmest water, ideal for snorkeling without a wetsuit.
+            {% if is_spanish %}El final del verano suele traer el agua más cálida, ideal para hacer snorkel sin neopreno.{% else %}Late summer typically brings the warmest water, ideal for snorkeling without a wetsuit.{% endif %}
           </p>
         </div>
         <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">When is the water coldest in {{ location.city }}?</h3>
+          <h3 class="font-medium text-sm sm:text-base mb-1">{% if is_spanish %}¿Cuándo está más fría el agua en {{ location.city }}?{% else %}When is the water coldest in {{ location.city }}?{% endif %}</h3>
           <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
             {% if coldest_month and coldest_temp %}
-              The coldest sea temperatures are in
+              {% if is_spanish %}Las temperaturas del mar más frías suelen darse en
+              <strong>{{ coldest_month }}</strong>, con una media aproximada de
+              {{ coldest_temp }}°C.{% else %}The coldest sea temperatures are in
               <strong>{{ coldest_month }}</strong>, averaging around
-              {{ coldest_temp }}°C.
+              {{ coldest_temp }}°C.{% endif %}
             {% endif %}
-            {% if coldest_temp and coldest_temp < 20 %}A wetsuit is recommended during this time.{% endif %}
+            {% if coldest_temp and coldest_temp < 20 %}{% if is_spanish %}Se recomienda neopreno durante esta época.{% else %}A wetsuit is recommended during this time.{% endif %}{% endif %}
           </p>
         </div>
         <div>
-          <h3 class="font-medium text-sm sm:text-base mb-1">Can you swim in {{ location.city }} today?</h3>
+          <h3 class="font-medium text-sm sm:text-base mb-1">{% if is_spanish %}¿Se puede nadar en {{ location.city }} hoy?{% else %}Can you swim in {{ location.city }} today?{% endif %}</h3>
           <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300">
             {% if current_sst is not None %}
               {% if current_sst >= 20 %}
-                Yes — at {{ current_sst|floatformat:1 }}°C the water is warm enough for comfortable swimming and snorkeling.
+                {% if is_spanish %}Sí: con {{ current_sst|floatformat:1 }}°C, el agua es suficientemente cálida para nadar y hacer snorkel con comodidad.{% else %}Yes — at {{ current_sst|floatformat:1 }}°C the water is warm enough for comfortable swimming and snorkeling.{% endif %}
               {% elif current_sst >= 16 %}
-                The water is {{ current_sst|floatformat:1 }}°C — cool but manageable with a wetsuit or for short dips.
+                {% if is_spanish %}El agua está a {{ current_sst|floatformat:1 }}°C: fresca, pero manejable con neopreno o para baños cortos.{% else %}The water is {{ current_sst|floatformat:1 }}°C — cool but manageable with a wetsuit or for short dips.{% endif %}
               {% else %}
-                At {{ current_sst|floatformat:1 }}°C the water is cold. A thick wetsuit is strongly recommended.
+                {% if is_spanish %}Con {{ current_sst|floatformat:1 }}°C, el agua está fría. Se recomienda un neopreno grueso.{% else %}At {{ current_sst|floatformat:1 }}°C the water is cold. A thick wetsuit is strongly recommended.{% endif %}
               {% endif %}
             {% endif %}
           </p>
@@ -186,20 +192,20 @@
     </div>
 
     <div class="card-enhanced p-4 sm:p-5 mb-6 w-full max-w-2xl mx-auto">
-      <h2 class="text-base sm:text-lg font-semibold mb-2">Full Snorkeling Forecast</h2>
+        <h2 class="text-base sm:text-lg font-semibold mb-2">{% if is_spanish %}Pronóstico completo de snorkel{% else %}Full Snorkeling Forecast{% endif %}</h2>
       <p class="text-sm sm:text-base text-gray-700 ui-night:text-gray-300 mb-3">
-        See how today's sea temperature, wave height, wind, and tides combine into a
-        detailed snorkeling score for {{ location.city }}.
+        {% if is_spanish %}Consulta cómo se combinan la temperatura del mar, el oleaje, el viento y las mareas de hoy en una puntuación detallada para {{ location.city }}.{% else %}See how today's sea temperature, wave height, wind, and tides combine into a
+        detailed snorkeling score for {{ location.city }}.{% endif %}
       </p>
       <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
          class="inline-block rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-sm font-medium transition-colors">
-        View Snorkel Forecast →
+        {% if is_spanish %}Ver pronóstico de snorkel{% else %}View Snorkel Forecast{% endif %} →
       </a>
     </div>
 
     {% if nearby_locations %}
       <nav aria-label="More snorkeling spots" class="mt-8 sm:mt-10 w-full max-w-4xl mx-auto">
-        <h2 class="text-base sm:text-lg font-semibold mb-3">Sea temperatures nearby</h2>
+        <h2 class="text-base sm:text-lg font-semibold mb-3">{% if is_spanish %}Temperaturas del mar cercanas{% else %}Sea temperatures nearby{% endif %}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {% for spot in nearby_locations %}
             <a href="{% url 'location_sea_temperature' country=spot.country_slug city=spot.city_slug %}"
@@ -210,7 +216,7 @@
           {% endfor %}
         </div>
         <p class="mt-3 text-sm">
-          <a href="/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">See all spots in {{ location.country }} →</a>
+          <a href="{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">{% if is_spanish %}Ver todos los lugares en {{ location.country }}{% else %}See all spots in {{ location.country }}{% endif %} →</a>
         </p>
       </nav>
     {% endif %}
@@ -223,9 +229,9 @@
           const gridColor = isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
 
           const sstLabels = [{% for l in sst_labels %}'{{ l }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstAvgData = [{% for v in sst_avg %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstMinData = [{% for v in sst_min %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
-          const sstMaxData = [{% for v in sst_max %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstAvgData = [{% for v in sst_avg %}{% if v is not None %}{{ v|unlocalize }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMinData = [{% for v in sst_min %}{% if v is not None %}{{ v|unlocalize }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
+          const sstMaxData = [{% for v in sst_max %}{% if v is not None %}{{ v|unlocalize }}{% else %}null{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}];
 
           new Chart(document.getElementById('sstChart'), {
             type: 'line',

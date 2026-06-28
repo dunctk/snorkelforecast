@@ -1,23 +1,23 @@
 {% extends "conditions/base.html" %}
-{% block title %}History • {{ location.city }}, {{ location.country }}{% endblock %}
+{% block title %}{% if is_spanish %}Historial • {{ location.city }}, {{ location.country }}{% else %}History • {{ location.city }}, {{ location.country }}{% endif %}{% endblock %}
 
 {% block content %}
 <section class="max-w-5xl mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold mb-2">Historical Trends</h1>
-  <p class="text-slate-600 ui-night:text-gray-300 mb-6">{{ location.city }}, {{ location.country }} — last 7 days</p>
+  <h1 class="text-3xl font-bold mb-2">{% if is_spanish %}Tendencias históricas{% else %}Historical Trends{% endif %}</h1>
+  <p class="text-slate-600 ui-night:text-gray-300 mb-6">{{ location.city }}, {{ location.country }} — {% if is_spanish %}últimos 7 días{% else %}last 7 days{% endif %}</p>
 
   <div id="chart" class="w-full h-64 bg-slate-100 rounded-md"></div>
   <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Sea Surface Temperature</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">{% if is_spanish %}Temperatura superficial del mar{% else %}Sea Surface Temperature{% endif %}</div>
       <div id="sst-latest" class="text-xl font-semibold">–</div>
     </div>
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wave Height</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">{% if is_spanish %}Altura de ola{% else %}Wave Height{% endif %}</div>
       <div id="wave-latest" class="text-xl font-semibold">–</div>
     </div>
     <div class="p-4 bg-white rounded shadow">
-      <div class="text-slate-500 ui-night:text-gray-300 text-sm">Wind Speed</div>
+      <div class="text-slate-500 ui-night:text-gray-300 text-sm">{% if is_spanish %}Velocidad del viento{% else %}Wind Speed{% endif %}</div>
       <div id="wind-latest" class="text-xl font-semibold">–</div>
     </div>
   </div>

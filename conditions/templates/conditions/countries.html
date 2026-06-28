@@ -1,32 +1,32 @@
 {% extends 'conditions/base.html' %}
 {% load static %}
 
-{% block title %}Snorkeling by Country: {{ countries|length }} Destinations Worldwide{% endblock %}
+{% block title %}{% if is_spanish %}Snorkel por país: {{ countries|length }} destinos en el mundo{% else %}Snorkeling by Country: {{ countries|length }} Destinations Worldwide{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Where to snorkel around the world — browse {{ countries|length }} countries and compare live snorkeling conditions (wave height, wind, water temperature and tides) for every spot.">
+  <meta name="description" content="{% if is_spanish %}Dónde hacer snorkel en el mundo: explora {{ countries|length }} países y compara condiciones en vivo de oleaje, viento, temperatura del agua y mareas.{% else %}Where to snorkel around the world — browse {{ countries|length }} countries and compare live snorkeling conditions (wave height, wind, water temperature and tides) for every spot.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Snorkeling by Country: {{ countries|length }} Destinations Worldwide" />
-  <meta property="og:description" content="Browse {{ countries|length }} countries and find the best snorkeling conditions worldwide." />
+  <meta property="og:title" content="{% if is_spanish %}Snorkel por país: {{ countries|length }} destinos{% else %}Snorkeling by Country: {{ countries|length }} Destinations Worldwide{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Explora {{ countries|length }} países y encuentra las mejores condiciones para hacer snorkel.{% else %}Browse {{ countries|length }} countries and find the best snorkeling conditions worldwide.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:image" content="https://snorkelforecast.com/og.png" />
-  <meta property="og:url" content="https://snorkelforecast.com/countries/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/countries/" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "Snorkeling Destinations by Country",
-    "description": "Browse {{ countries|length }} countries with live snorkeling forecasts worldwide.",
-    "url": "https://snorkelforecast.com/countries/",
+    "name": "{% if is_spanish %}Destinos de snorkel por país{% else %}Snorkeling Destinations by Country{% endif %}",
+    "description": "{% if is_spanish %}Explora {{ countries|length }} países con pronósticos de snorkel en vivo.{% else %}Browse {{ countries|length }} countries with live snorkeling forecasts worldwide.{% endif %}",
+    "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/countries/",
     "mainEntity": {
       "@type": "ItemList",
       "numberOfItems": {{ countries|length }},
       "itemListElement": [
         {% for c in countries %}
-        {"@type": "ListItem", "position": {{ forloop.counter }}, "name": "Snorkeling in {{ c.name }}", "url": "https://snorkelforecast.com/{{ c.slug }}/"}{% if not forloop.last %},{% endif %}
+        {"@type": "ListItem", "position": {{ forloop.counter }}, "name": "{% if is_spanish %}Snorkel en {{ c.name }}{% else %}Snorkeling in {{ c.name }}{% endif %}", "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ c.slug }}/"}{% if not forloop.last %},{% endif %}
         {% endfor %}
       ]
     }
@@ -38,24 +38,24 @@
   <!-- Hero -->
   <section class="bg-gradient-to-r from-sky-200 to-blue-100 ui-night:from-slate-800 ui-night:to-gray-900">
     <div class="max-w-6xl mx-auto px-4 py-10 text-center">
-      <h1 class="text-2xl sm:text-3xl font-bold">Snorkeling Destinations by Country</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold">{% if is_spanish %}Destinos de snorkel por país{% else %}Snorkeling Destinations by Country{% endif %}</h1>
       <p class="text-sm sm:text-base mt-2 max-w-2xl mx-auto text-gray-700 ui-night:text-gray-200">
-        Explore snorkeling across {{ countries|length }} countries — from Red Sea reefs and Mediterranean coves
-        to Caribbean cays and Pacific atolls. Pick a country to compare spots and live conditions.
+        {% if is_spanish %}Explora snorkel en {{ countries|length }} países: arrecifes del Mar Rojo, calas mediterráneas, cayos caribeños y atolones del Pacífico. Elige un país para comparar lugares y condiciones en vivo.{% else %}Explore snorkeling across {{ countries|length }} countries — from Red Sea reefs and Mediterranean coves
+        to Caribbean cays and Pacific atolls. Pick a country to compare spots and live conditions.{% endif %}
       </p>
     </div>
   </section>
 
   <!-- Countries Grid -->
   <section class="max-w-6xl mx-auto px-4 py-10">
-    <h2 class="sr-only">All countries</h2>
+    <h2 class="sr-only">{{ ui.footer_all_countries }}</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {% for c in countries %}
-      <a href="/{% firstof c.slug %}/" class="group block">
+      <a href="{% if is_spanish %}/es{% endif %}/{% firstof c.slug %}/" class="group block">
         <div class="card-enhanced p-5 h-full transition-transform group-hover:-translate-y-0.5">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold">{{ c.name }}</h2>
-            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 ui-night:bg-blue-900 ui-night:text-blue-200">{{ c.city_count }} spots</span>
+            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 ui-night:bg-blue-900 ui-night:text-blue-200">{{ c.city_count }} {% if is_spanish %}lugares{% else %}spots{% endif %}</span>
           </div>
           {% if c.sample_cities %}
           <p class="text-sm text-gray-600 ui-night:text-gray-300 mt-2">
@@ -65,7 +65,7 @@
           </p>
           {% endif %}
           <div class="mt-4 flex items-center text-blue-700 ui-night:text-blue-300 text-sm">
-            <span>View locations</span>
+            <span>{% if is_spanish %}Ver lugares{% else %}View locations{% endif %}</span>
             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>

@@ -1,22 +1,22 @@
 {% extends "conditions/base.html" %}
 
-{% block title %}Search Snorkeling Locations Worldwide - SnorkelForecast.com{% endblock %}
+{% block title %}{% if is_spanish %}Buscar lugares para hacer snorkel - SnorkelForecast.com{% else %}Search Snorkeling Locations Worldwide - SnorkelForecast.com{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="Search snorkeling spots worldwide by name, type or country and check live conditions — wave height, wind, water temperature and tides.">
+  <meta name="description" content="{% if is_spanish %}Busca lugares para hacer snorkel por nombre, tipo o país y consulta condiciones en vivo: oleaje, viento, temperatura del agua y mareas.{% else %}Search snorkeling spots worldwide by name, type or country and check live conditions — wave height, wind, water temperature and tides.{% endif %}">
   {# Don't let infinite ?q= result permutations consume crawl budget; keep the bare /search/ landing indexable. #}
   {% if search_performed %}<meta name="robots" content="noindex,follow">{% endif %}
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Search Snorkeling Locations Worldwide" />
-  <meta property="og:url" content="https://snorkelforecast.com/search/" />
+  <meta property="og:title" content="{% if is_spanish %}Buscar lugares para hacer snorkel{% else %}Search Snorkeling Locations Worldwide{% endif %}" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/search/" />
 {% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8">
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 ui-night:text-white mb-4">Search Snorkeling Locations</h1>
+        <h1 class="text-3xl font-bold text-gray-900 ui-night:text-white mb-4">{% if is_spanish %}Buscar lugares para hacer snorkel{% else %}Search Snorkeling Locations{% endif %}</h1>
         <p class="text-gray-600 ui-night:text-gray-300 mb-6">
-            Find snorkeling spots worldwide. Search by name, filter by type, or browse our database of locations.
+            {% if is_spanish %}Encuentra lugares de snorkel en todo el mundo. Busca por nombre, filtra por tipo o explora la base de datos.{% else %}Find snorkeling spots worldwide. Search by name, filter by type, or browse our database of locations.{% endif %}
         </p>
     </div>
 
@@ -27,14 +27,14 @@
                 <!-- Search Query -->
                 <div>
                     <label for="q" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
-                        Location Name
+                        {% if is_spanish %}Nombre del lugar{% else %}Location Name{% endif %}
                     </label>
                     <input
                         type="text"
                         id="q"
                         name="q"
                         value="{{ query }}"
-                        placeholder="e.g. Maui, Santorini, Great Barrier Reef"
+                        placeholder="{% if is_spanish %}ej. Maui, Santorini, Gran Barrera de Coral{% else %}e.g. Maui, Santorini, Great Barrier Reef{% endif %}"
                         class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
                     >
                 </div>
@@ -42,14 +42,14 @@
                 <!-- Location Type -->
                 <div>
                     <label for="type" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
-                        Type
+                        {% if is_spanish %}Tipo{% else %}Type{% endif %}
                     </label>
                     <select
                         id="type"
                         name="type"
                         class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
                     >
-                        <option value="">All Types</option>
+                        <option value="">{% if is_spanish %}Todos los tipos{% else %}All Types{% endif %}</option>
                         {% for type_value, type_label in location_types %}
                         <option value="{{ type_value }}" {% if location_type == type_value %}selected{% endif %}>
                             {{ type_label }}
@@ -61,14 +61,14 @@
                 <!-- Country -->
                 <div>
                     <label for="country" class="block text-sm font-medium text-gray-700 ui-night:text-gray-300 mb-1">
-                        Country
+                        {% if is_spanish %}País{% else %}Country{% endif %}
                     </label>
                     <input
                         type="text"
                         id="country"
                         name="country"
                         value="{{ country_filter }}"
-                        placeholder="e.g. Spain, Greece, USA"
+                        placeholder="{% if is_spanish %}ej. España, Grecia, Estados Unidos{% else %}e.g. Spain, Greece, USA{% endif %}"
                         class="w-full px-3 py-2 border border-gray-300 ui-night:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ui-night:bg-gray-700 ui-night:text-white"
                     >
                 </div>
@@ -79,13 +79,13 @@
                     type="submit"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
                 >
-                    Search
+                    {{ ui.nav_search }}
                 </button>
                 <a
                     href="{% url 'location_search' %}"
                     class="bg-gray-200 ui-night:bg-gray-700 hover:bg-gray-300 ui-night:hover:bg-gray-600 text-gray-700 ui-night:text-gray-300 px-6 py-2 rounded-md font-medium transition-colors"
                 >
-                    Clear
+                    {% if is_spanish %}Limpiar{% else %}Clear{% endif %}
                 </a>
             </div>
         </form>
@@ -96,13 +96,13 @@
         {% if locations %}
             <div class="mb-6">
                 <h2 class="text-xl font-semibold text-gray-900 ui-night:text-white mb-2">
-                    Found {{ result_count }} location{{ result_count|pluralize }}
+                    {% if is_spanish %}{{ result_count }} lugar{{ result_count|pluralize:"es" }} encontrado{{ result_count|pluralize:"s" }}{% else %}Found {{ result_count }} location{{ result_count|pluralize }}{% endif %}
                 </h2>
                 {% if query %}
                     <p class="text-gray-600 ui-night:text-gray-300">
-                        Results for "{{ query }}"
-                        {% if location_type %} • Type: {{ location_type|title }}{% endif %}
-                        {% if country_filter %} • Country: {{ country_filter }}{% endif %}
+                        {% if is_spanish %}Resultados para "{{ query }}"{% else %}Results for "{{ query }}"{% endif %}
+                        {% if location_type %} • {% if is_spanish %}Tipo{% else %}Type{% endif %}: {{ location_type|title }}{% endif %}
+                        {% if country_filter %} • {% if is_spanish %}País{% else %}Country{% endif %}: {{ country_filter }}{% endif %}
                     </p>
                 {% endif %}
             </div>
@@ -116,7 +116,7 @@
                         </h3>
                         {% if location.is_popular %}
                         <span class="bg-blue-100 ui-night:bg-blue-900 text-blue-800 ui-night:text-blue-200 text-xs px-2 py-1 rounded-full font-medium">
-                            Popular
+                            {% if is_spanish %}Popular{% else %}Popular{% endif %}
                         </span>
                         {% endif %}
                     </div>
@@ -139,14 +139,14 @@
                             href="{% url 'location_forecast' location.country_slug location.city_slug %}"
                             class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium text-sm"
                         >
-                            View Forecast →
+                            {% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %} →
                         </a>
                     </div>
 
                     {% if location.source == "osm" %}
                     <div class="mt-3 pt-3 border-t border-gray-200 ui-night:border-gray-700">
                         <p class="text-xs text-gray-500 ui-night:text-gray-400">
-                            New location from OpenStreetMap
+                            {% if is_spanish %}Nuevo lugar de OpenStreetMap{% else %}New location from OpenStreetMap{% endif %}
                         </p>
                     </div>
                     {% endif %}
@@ -160,24 +160,24 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 ui-night:text-white mb-2">No locations found</h3>
+                <h3 class="text-lg font-medium text-gray-900 ui-night:text-white mb-2">{% if is_spanish %}No se encontraron lugares{% else %}No locations found{% endif %}</h3>
                 <p class="text-gray-600 ui-night:text-gray-300 mb-6">
-                    Try adjusting your search terms or browse our popular locations.
+                    {% if is_spanish %}Prueba otros términos de búsqueda o explora los lugares populares.{% else %}Try adjusting your search terms or browse our popular locations.{% endif %}
                 </p>
                 <a
                     href="{% url 'homepage' %}"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors"
                 >
-                    Browse Popular Locations
+                    {% if is_spanish %}Ver lugares populares{% else %}Browse Popular Locations{% endif %}
                 </a>
             </div>
         {% endif %}
     {% else %}
         <!-- Popular Locations -->
         <div class="mb-6">
-            <h2 class="text-xl font-semibold text-gray-900 ui-night:text-white mb-2">Popular Locations</h2>
+            <h2 class="text-xl font-semibold text-gray-900 ui-night:text-white mb-2">{% if is_spanish %}Lugares populares{% else %}Popular Locations{% endif %}</h2>
             <p class="text-gray-600 ui-night:text-gray-300">
-                Start with our most popular snorkeling destinations
+                {% if is_spanish %}Empieza con nuestros destinos de snorkel más populares{% else %}Start with our most popular snorkeling destinations{% endif %}
             </p>
         </div>
 
@@ -194,7 +194,7 @@
                     href="{% url 'location_forecast' location.country_slug location.city_slug %}"
                     class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium"
                 >
-                    View Forecast →
+                    {% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %} →
                 </a>
             </div>
             {% endfor %}

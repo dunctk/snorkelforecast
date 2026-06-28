@@ -10,6 +10,9 @@ require no migrations. Each guide renders through conditions/templates/
 conditions/guide_detail.html.
 """
 
+from copy import deepcopy
+
+from django.utils import translation
 from django.utils.safestring import mark_safe
 
 GUIDES = [
@@ -321,4 +324,282 @@ GUIDES = [
     },
 ]
 
+GUIDES_ES = [
+    {
+        "slug": "best-time-to-snorkel",
+        "title": "Mejor hora para hacer snorkel: marea, momento del día y temporada",
+        "summary": (
+            "La mejor hora para hacer snorkel suele ser una mañana tranquila cerca de la "
+            "pleamar, en una temporada con agua cálida y mar estable. Así influye cada "
+            "factor en la visibilidad y la seguridad."
+        ),
+        "faqs": [
+            {
+                "q": "¿Cuál es la mejor marea para hacer snorkel?",
+                "a": (
+                    "La pleamar suele ser la mejor. Aproximadamente dentro de una hora del "
+                    "pico de marea alta, el agua cubre mejor el arrecife y la corriente es "
+                    "más débil, lo que mejora la visibilidad y hace que nadar sea más fácil."
+                ),
+            },
+            {
+                "q": "¿Qué hora del día es mejor para hacer snorkel?",
+                "a": (
+                    "De primera a media mañana. El viento y el oleaje suelen aumentar por "
+                    "la tarde, así que las mañanas acostumbran a ser más tranquilas y claras."
+                ),
+            },
+            {
+                "q": "¿A qué profundidad se hace snorkel?",
+                "a": (
+                    "La mayoría del snorkel se hace sobre fondos de 1 a 5 metros, donde se "
+                    "puede ver el arrecife o el fondo desde la superficie. No hace falta tocar "
+                    "el fondo, aunque los principiantes suelen preferir zonas someras y calmadas."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>Si preguntas a alguien con experiencia cuándo meterse al agua, casi siempre oirás lo mismo: <strong>una mañana calmada, cerca de la pleamar</strong>. Tres factores deciden si una salida de snorkel será buena o decepcionante: la marea, la hora del día y la temporada.</p>
+
+<h2>Marea: busca la ventana alrededor de la pleamar</h2>
+<p>El mejor snorkel suele darse aproximadamente dentro de una hora de la pleamar. En ese momento hay más profundidad sobre el arrecife y el flujo entre mareas es más débil. Las corrientes suaves levantan menos sedimento y hacen que nadar sea más seguro.</p>
+
+<h2>Hora del día: las mañanas son más tranquilas</h2>
+<p>El viento normalmente aumenta durante el día. Menos viento significa olas más pequeñas, superficie más lisa y mejor visibilidad, por eso la primera mitad de la mañana suele ser la mejor ventana.</p>
+
+<h2>Temporada: agua cálida y tiempo estable</h2>
+<p>La temporada ideal depende del destino, pero conviene buscar agua cómoda, normalmente entre 20 y 30&nbsp;&deg;C, y periodos sin grandes temporales ni mar de fondo. Muchos destinos tienen meses claramente mejores.</p>
+
+<h2>Compruébalo con un pronóstico en vivo</h2>
+<p>No hace falta adivinar. SnorkelForecast puntúa cada hora con luz según oleaje, viento, temperatura del agua, marea y corriente. Abre tu destino para ver la mejor ventana de snorkel de hoy y los mejores meses para visitarlo.</p>
+"""
+        ),
+    },
+    {
+        "slug": "snorkeling-water-temperature",
+        "title": "Qué temperatura del agua es buena para hacer snorkel",
+        "summary": (
+            "La mayoría de personas hacen snorkel cómodamente entre 20 y 30 °C. Por debajo "
+            "de eso, un neopreno corto o una camiseta térmica cambia mucho la experiencia."
+        ),
+        "faqs": [
+            {
+                "q": "¿Qué temperatura del agua es cómoda para hacer snorkel?",
+                "a": (
+                    "La mayoría de snorkelers se sienten cómodos entre 20 y 30 °C. Entre "
+                    "25 y 28 °C suele bastar con bañador. Entre 18 y 22 °C ayuda un shorty "
+                    "o una camiseta térmica, y por debajo de 18 °C conviene neopreno."
+                ),
+            },
+            {
+                "q": "¿El agua a 20 °C es demasiado fría?",
+                "a": (
+                    "20 °C es fresca, pero puede valer para una salida corta, sobre todo con "
+                    "protección térmica. Si empiezas a tiritar, sal del agua y entra en calor."
+                ),
+            },
+            {
+                "q": "¿Cómo compruebo la temperatura del agua antes de ir?",
+                "a": (
+                    "Usa un pronóstico de temperatura superficial del mar para el punto exacto. "
+                    "SnorkelForecast muestra la temperatura actual y reciente junto con olas, viento y mareas."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>La temperatura del agua puede decidir una salida de snorkel. El cuerpo pierde calor mucho más rápido en el agua que en el aire, así que una temperatura que parece aceptable para un baño rápido puede sentirse fría al flotar durante un rato.</p>
+
+<h2>Guía rápida de temperatura</h2>
+<ul>
+  <li><strong>28-30&nbsp;&deg;C</strong>: agua tropical muy cálida; normalmente basta con bañador.</li>
+  <li><strong>25-28&nbsp;&deg;C</strong>: ideal para la mayoría de personas.</li>
+  <li><strong>22-25&nbsp;&deg;C</strong>: cómoda, aunque una lycra añade calor y protección solar.</li>
+  <li><strong>18-22&nbsp;&deg;C</strong>: fresca; un neopreno corto ayuda a estar más tiempo.</li>
+  <li><strong>Menos de 18&nbsp;&deg;C</strong>: fría; usa neopreno y limita la sesión.</li>
+</ul>
+
+<h2>Qué llevar</h2>
+<p>Una camiseta de protección solar reduce quemaduras y quita algo de frío. Un neopreno corto funciona bien en agua templada-fresca, y un neopreno completo de 3&nbsp;mm o más es mejor por debajo de unos 20&nbsp;&deg;C.</p>
+
+<h2>Por qué importa el pronóstico</h2>
+<p>La temperatura cambia mucho por zona y época del año. Consulta la temperatura actual del mar para tu lugar concreto antes de salir, junto con oleaje, viento y marea.</p>
+"""
+        ),
+    },
+    {
+        "slug": "best-snorkeling-destinations",
+        "title": "Los mejores destinos de snorkel del mundo",
+        "summary": (
+            "Del Gran Arrecife de Barrera y Maldivas a Hawái, el mar Rojo y el Caribe: "
+            "una guía de grandes destinos de snorkel y cómo revisar sus condiciones en vivo."
+        ),
+        "faqs": [
+            {
+                "q": "¿Dónde está el mejor snorkel del mundo?",
+                "a": (
+                    "Entre los destinos más conocidos están Australia, Maldivas, el mar Rojo, "
+                    "Hawái, Raja Ampat, Galápagos, Palau y arrecifes del Caribe como Bonaire, Cozumel y Belice."
+                ),
+            },
+            {
+                "q": "¿Qué hace bueno a un destino de snorkel?",
+                "a": (
+                    "Agua clara y cálida, bahías o arrecifes protegidos, vida marina abundante "
+                    "y acceso fácil. En el día a día, lo que más cambia la experiencia son las condiciones."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>El mundo está lleno de lugares extraordinarios para hacer snorkel, pero la diferencia entre una salida inolvidable y una decepcionante suele estar en <strong>elegir el sitio y el momento correctos</strong>.</p>
+
+<h2>Pacífico y Hawái</h2>
+<ul>
+  <li><a href="/es/usa/maui/">Maui, Hawái</a>: tortugas y arrecifes accesibles desde playas fáciles.</li>
+  <li><a href="/es/usa/hanauma-bay/">Hanauma Bay, Oahu</a>: arrecife protegido en un cráter volcánico.</li>
+  <li><a href="/es/french-polynesia/moorea/">Moorea</a> y <a href="/es/french-polynesia/bora-bora/">Bora Bora</a>: lagunas cálidas con rayas y tiburones de arrecife.</li>
+</ul>
+
+<h2>Australia y el Gran Arrecife de Barrera</h2>
+<ul>
+  <li><a href="/es/australia/ningaloo-reef/">Ningaloo Reef</a>: arrecife cerca de la playa y posibilidad de ver tiburones ballena.</li>
+  <li><a href="/es/australia/lady-elliot-island/">Lady Elliot Island</a> y <a href="/es/australia/heron-island/">Heron Island</a>: cayos coralinos con agua clara.</li>
+</ul>
+
+<h2>Sudeste asiático e Índico</h2>
+<ul>
+  <li><a href="/es/indonesia/raja-ampat/">Raja Ampat</a>: una de las zonas con mayor biodiversidad marina del planeta.</li>
+  <li><a href="/es/maldives/maafushi/">Maldivas</a>: arrecifes de casa, mantas y tortugas cerca de muchas islas.</li>
+</ul>
+
+<h2>Mar Rojo y Caribe</h2>
+<ul>
+  <li><a href="/es/egypt/sharm-el-sheikh/">Sharm El Sheikh</a> y <a href="/es/egypt/dahab-blue-hole/">Dahab</a>: coral directo desde la costa.</li>
+  <li><a href="/es/bonaire/kralendijk/">Bonaire</a>, <a href="/es/mexico/cozumel/">Cozumel</a> y <a href="/es/belize/hol-chan/">Hol Chan</a>: arrecifes caribeños de referencia.</li>
+</ul>
+
+<h2>Antes de ir</h2>
+<p>La regla se repite en casi todos los destinos: busca una mañana calmada, cerca de la pleamar, con poco viento y poca ola. Abre cualquier destino para ver su puntuación de snorkel en las próximas 72 horas o <a href="/es/countries/">explora todos los países</a>.</p>
+"""
+        ),
+    },
+    {
+        "slug": "best-snorkeling-in-greece",
+        "title": "Mejor snorkel en Grecia: islas y lugares destacados",
+        "summary": (
+            "Las aguas claras del Egeo y el Jónico hacen de Grecia uno de los mejores "
+            "destinos de snorkel de Europa. Estos son los lugares clave y cómo revisar condiciones."
+        ),
+        "faqs": [
+            {
+                "q": "¿Dónde está el mejor snorkel en Grecia?",
+                "a": (
+                    "Algunos de los mejores lugares están en las islas Jónicas, las Cícladas, "
+                    "Rodas y Creta, con calas rocosas protegidas y buena visibilidad."
+                ),
+            },
+            {
+                "q": "¿Cuándo es mejor hacer snorkel en Grecia?",
+                "a": (
+                    "De junio a septiembre, cuando el mar está más cálido y suele estar más calmado. "
+                    "En las Cícladas conviene ir por la mañana antes del viento meltemi."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p>Con agua cálida, mucha visibilidad y miles de calas protegidas, <strong>Grecia es uno de los mejores destinos de snorkel de Europa</strong>. La mayoría de lugares son calas rocosas y aguas claras donde se ven peces, pulpos y, con suerte, tortugas.</p>
+
+<h2>Islas Jónicas</h2>
+<ul>
+  <li><a href="/es/greece/zakynthos/">Zakynthos</a>: cuevas azules, calas claras y posibilidad de ver tortugas.</li>
+  <li><a href="/es/greece/kefalonia/">Kefalonia</a>: bahías turquesas y playas de guijarros protegidas.</li>
+  <li><a href="/es/greece/lefkada/">Lefkada</a> y <a href="/es/greece/corfu/">Corfu</a>: agua clara y fondos rocosos accesibles.</li>
+</ul>
+
+<h2>Cícladas</h2>
+<ul>
+  <li><a href="/es/greece/milos/">Milos</a>: formaciones volcánicas y calas transparentes.</li>
+  <li><a href="/es/greece/paros/">Paros</a> y <a href="/es/greece/naxos/">Naxos</a>: bahías arenosas y aguas luminosas.</li>
+  <li><a href="/es/greece/santorini/">Santorini</a>: fondos volcánicos y agua cálida en verano.</li>
+</ul>
+
+<h2>Dodecaneso y Creta</h2>
+<ul>
+  <li><a href="/es/greece/rhodes/">Rodas</a>: Anthony Quinn Bay es una cala clásica para snorkel.</li>
+  <li><a href="/es/greece/kos/">Kos</a>, <a href="/es/greece/symi/">Symi</a> y <a href="/es/greece/crete/">Creta</a>: calas claras, cuevas y agua cálida.</li>
+</ul>
+
+<h2>Planifica según las condiciones</h2>
+<p>El verano griego suele ser estable, pero el viento de la tarde puede levantar el mar. Busca la mañana y la pleamar para mejor visibilidad. También puedes <a href="/es/greece/">ver todos los lugares de Grecia que pronosticamos</a>.</p>
+"""
+        ),
+    },
+    {
+        "slug": "best-snorkeling-in-hawaii",
+        "title": "Mejor snorkel en Hawái: lugares por isla",
+        "summary": (
+            "Hawái tiene algunos de los mejores lugares de snorkel para principiantes, con "
+            "tortugas, peces de arrecife y agua clara desde playas de fácil acceso."
+        ),
+        "faqs": [
+            {
+                "q": "¿Cuál es el mejor lugar para hacer snorkel en Hawái?",
+                "a": (
+                    "Destacan Honolua Bay y Molokini en Maui, Hanauma Bay en Oahu, y "
+                    "Kealakekua Bay y Two Step en Big Island. El mejor en cada día depende del oleaje y el viento."
+                ),
+            },
+            {
+                "q": "¿Cuándo es mejor hacer snorkel en Hawái?",
+                "a": (
+                    "Temprano por la mañana y, en general, durante los meses de verano, cuando "
+                    "el mar en las costas norte suele estar más tranquilo."
+                ),
+            },
+        ],
+        "body": mark_safe(
+            """
+<p><strong>Hawái es uno de los mejores lugares del mundo para hacer snorkel</strong>, con agua cálida, tortugas marinas y peces de arrecife accesibles desde la playa. Las condiciones cambian mucho según isla, costa y temporada, así que conviene revisar el pronóstico exacto.</p>
+
+<h2>Maui</h2>
+<ul>
+  <li><a href="/es/usa/honolua-bay/">Honolua Bay</a>: reserva marina con coral vivo, mejor en mañanas calmadas.</li>
+  <li><a href="/es/usa/molokini-crater/">Molokini Crater</a>: cráter volcánico con gran visibilidad.</li>
+  <li><a href="/es/usa/kaanapali-beach/">Kaanapali</a>, <a href="/es/usa/napili-bay/">Napili Bay</a> y <a href="/es/usa/kapalua-bay/">Kapalua Bay</a>: playas fáciles y frecuentes tortugas.</li>
+</ul>
+
+<h2>Oahu y Big Island</h2>
+<ul>
+  <li><a href="/es/usa/hanauma-bay/">Hanauma Bay</a>: arrecife protegido dentro de un cono volcánico.</li>
+  <li><a href="/es/usa/kealakekua-bay/">Kealakekua Bay</a>: santuario marino con coral sano.</li>
+  <li><a href="/es/usa/two-step-honaunau/">Two Step</a>: entrada desde lava y arrecife lleno de vida.</li>
+</ul>
+
+<h2>Comprueba antes de ir</h2>
+<p>La regla de oro en Hawái es hacer snorkel por la mañana, cerca de pleamar y antes de que suban viento y surf. Abre cualquier lugar para ver la puntuación de hoy, la próxima buena ventana y los mejores meses. O <a href="/es/usa/">consulta todos los lugares de Hawái y Estados Unidos que pronosticamos</a>.</p>
+"""
+        ),
+    },
+]
+
 GUIDES_BY_SLUG = {g["slug"]: g for g in GUIDES}
+GUIDES_ES_BY_SLUG = {g["slug"]: g for g in GUIDES_ES}
+
+
+def _active_language() -> str:
+    language_code = translation.get_language() or "en"
+    return "es" if language_code.startswith("es") else "en"
+
+
+def get_guides() -> list[dict]:
+    guides = GUIDES_ES if _active_language() == "es" else GUIDES
+    return [deepcopy(guide) for guide in guides]
+
+
+def get_guide(slug: str) -> dict | None:
+    guides_by_slug = GUIDES_ES_BY_SLUG if _active_language() == "es" else GUIDES_BY_SLUG
+    guide = guides_by_slug.get(slug)
+    return deepcopy(guide) if guide else None

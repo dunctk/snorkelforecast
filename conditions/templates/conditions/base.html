@@ -1,19 +1,23 @@
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html lang="{{ html_language|default:'en' }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}SnorkelForecast.com{% endblock %}</title>
     {% block meta %}{% endblock %}
     <link rel="canonical" href="https://snorkelforecast.com{{ request.path }}">
+    <link rel="alternate" hreflang="en" href="https://snorkelforecast.com{{ english_path }}" />
+    <link rel="alternate" hreflang="es" href="https://snorkelforecast.com{{ spanish_path }}" />
+    <link rel="alternate" hreflang="x-default" href="https://snorkelforecast.com{{ english_path }}" />
     {% block font_links %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
     {% endblock %}
     <meta property="og:site_name" content="SnorkelForecast.com">
-    <meta property="og:locale" content="en_US">
+    <meta property="og:locale" content="{% if is_spanish %}es_ES{% else %}en_US{% endif %}">
+    <meta property="og:locale:alternate" content="{% if is_spanish %}en_US{% else %}es_ES{% endif %}">
     <meta name="twitter:site" content="@snorkelforecast">
     {% comment %}Sitewide brand entity — helps search engines associate the domain with the brand.{% endcomment %}
     <script type="application/ld+json">
@@ -41,24 +45,24 @@
 
     <header class="site-header bg-white/80 ui-night:bg-gray-900/80 backdrop-blur border-b border-gray-200 ui-night:border-gray-800">
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <a href="{% url 'homepage' %}" class="text-blue-900 ui-night:text-blue-200 font-semibold tracking-tight">SnorkelForecast.com</a>
+        <a href="{% url 'homepage' %}" class="text-blue-900 ui-night:text-blue-200 font-semibold tracking-tight">{{ ui.site_name }}</a>
         <!-- Desktop nav -->
         <nav class="primary-nav hidden md:flex items-center gap-4 text-sm">
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
-             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Countries</a>
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_countries }}</a>
           <a href="{% url 'best_snorkeling' %}"
              aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
-             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Best snorkeling</a>
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_best }}</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
-             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Search</a>
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_search }}</a>
           <a href="{% url 'guides_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'guides_index' or request.resolver_match.url_name == 'guide_detail' %}page{% endif %}"
-             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Guides</a>
-          <a href="{% url 'homepage' %}#popular" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">Popular</a>
-          <a href="{% url 'homepage' %}#how" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">How it works</a>
-          <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="text-gray-500 hover:text-gray-700 ui-night:text-gray-400 ui-night:hover:text-gray-200">Open‑Meteo</a>
+             class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_guides }}</a>
+          <a href="{% url 'homepage' %}#popular" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_popular }}</a>
+          <a href="{% url 'homepage' %}#how" class="text-gray-700 ui-night:text-gray-200 hover:text-blue-700 ui-night:hover:text-blue-300">{{ ui.nav_how }}</a>
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="text-gray-500 hover:text-gray-700 ui-night:text-gray-400 ui-night:hover:text-gray-200">{{ ui.nav_open_meteo }}</a>
         </nav>
          <!-- Theme toggle -->
          <button id="theme-toggle" class="inline-flex items-center justify-center p-2 rounded-md text-gray-700 ui-night:text-gray-200 hover:bg-gray-100 ui-night:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" aria-label="Toggle theme">
@@ -78,18 +82,18 @@
         <nav class="px-4 py-3 space-y-1 text-sm">
           <a href="{% url 'countries_index' %}"
              aria-current="{% if request.resolver_match.url_name == 'countries_index' %}page{% endif %}"
-             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Countries</a>
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_countries }}</a>
           <a href="{% url 'best_snorkeling' %}"
              aria-current="{% if request.resolver_match.url_name == 'best_snorkeling' %}page{% endif %}"
-             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Best snorkeling</a>
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_best }}</a>
           <a href="{% url 'location_search' %}"
              aria-current="{% if request.resolver_match.url_name == 'location_search' %}page{% endif %}"
-             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Search</a>
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_search }}</a>
           <a href="{% url 'guides_index' %}"
-             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Guides</a>
-          <a href="{% url 'homepage' %}#popular" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">Popular</a>
-          <a href="{% url 'homepage' %}#how" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">How it works</a>
-          <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-500 ui-night:text-gray-400">Open‑Meteo</a>
+             class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_guides }}</a>
+          <a href="{% url 'homepage' %}#popular" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_popular }}</a>
+          <a href="{% url 'homepage' %}#how" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-700 ui-night:text-gray-200">{{ ui.nav_how }}</a>
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener" class="block px-3 py-2 rounded hover:bg-gray-100 ui-night:hover:bg-gray-800 text-gray-500 ui-night:text-gray-400">{{ ui.nav_open_meteo }}</a>
         </nav>
       </div>
     </header>
@@ -100,56 +104,63 @@
 
     <footer class="bg-gray-800 ui-night:bg-gray-900/95 ui-night:backdrop-blur-sm text-white py-8 mt-16 border-t border-gray-700/50 ui-night:border-gray-800/50 transition-all duration-300">
       <div class="max-w-6xl mx-auto px-4">
-        <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-4 gap-6 text-left text-sm mb-8 pb-8 border-b border-gray-700/50">
+        <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 text-left text-sm mb-8 pb-8 border-b border-gray-700/50">
           <div>
-            <h2 class="font-semibold text-gray-200 mb-2">Popular spots</h2>
+            <h2 class="font-semibold text-gray-200 mb-2">{{ ui.footer_popular }}</h2>
             <ul class="space-y-1 text-gray-400">
-              <li><a href="/usa/maui/" class="hover:text-blue-300">Maui</a></li>
-              <li><a href="/usa/hanauma-bay/" class="hover:text-blue-300">Hanauma Bay</a></li>
-              <li><a href="/mexico/cozumel/" class="hover:text-blue-300">Cozumel</a></li>
-              <li><a href="/bonaire/kralendijk/" class="hover:text-blue-300">Bonaire</a></li>
-              <li><a href="/egypt/dahab-blue-hole/" class="hover:text-blue-300">Dahab Blue Hole</a></li>
+              <li><a href="{{ localized_prefix }}/usa/maui/" class="hover:text-blue-300">Maui</a></li>
+              <li><a href="{{ localized_prefix }}/usa/hanauma-bay/" class="hover:text-blue-300">Hanauma Bay</a></li>
+              <li><a href="{{ localized_prefix }}/mexico/cozumel/" class="hover:text-blue-300">Cozumel</a></li>
+              <li><a href="{{ localized_prefix }}/bonaire/kralendijk/" class="hover:text-blue-300">Bonaire</a></li>
+              <li><a href="{{ localized_prefix }}/egypt/dahab-blue-hole/" class="hover:text-blue-300">Dahab Blue Hole</a></li>
             </ul>
           </div>
           <div>
-            <h2 class="font-semibold text-gray-200 mb-2">More destinations</h2>
+            <h2 class="font-semibold text-gray-200 mb-2">{{ ui.footer_more }}</h2>
             <ul class="space-y-1 text-gray-400">
-              <li><a href="/maldives/maafushi/" class="hover:text-blue-300">Maldives</a></li>
-              <li><a href="/thailand/koh-tao/" class="hover:text-blue-300">Koh Tao</a></li>
-              <li><a href="/greece/milos/" class="hover:text-blue-300">Milos</a></li>
-              <li><a href="/australia/ningaloo-reef/" class="hover:text-blue-300">Ningaloo Reef</a></li>
-              <li><a href="/iceland/silfra/" class="hover:text-blue-300">Silfra</a></li>
+              <li><a href="{{ localized_prefix }}/maldives/maafushi/" class="hover:text-blue-300">Maldives</a></li>
+              <li><a href="{{ localized_prefix }}/thailand/koh-tao/" class="hover:text-blue-300">Koh Tao</a></li>
+              <li><a href="{{ localized_prefix }}/greece/milos/" class="hover:text-blue-300">Milos</a></li>
+              <li><a href="{{ localized_prefix }}/australia/ningaloo-reef/" class="hover:text-blue-300">Ningaloo Reef</a></li>
+              <li><a href="{{ localized_prefix }}/iceland/silfra/" class="hover:text-blue-300">Silfra</a></li>
             </ul>
           </div>
           <div>
-            <h2 class="font-semibold text-gray-200 mb-2">Guides</h2>
+            <h2 class="font-semibold text-gray-200 mb-2">{{ ui.footer_guides }}</h2>
             <ul class="space-y-1 text-gray-400">
-              <li><a href="/guides/best-time-to-snorkel/" class="hover:text-blue-300">Best time to snorkel</a></li>
-              <li><a href="/guides/snorkeling-water-temperature/" class="hover:text-blue-300">Water temperature</a></li>
-              <li><a href="{% url 'guides_index' %}" class="hover:text-blue-300">All guides</a></li>
+              <li><a href="{% url 'guide_detail' slug='best-time-to-snorkel' %}" class="hover:text-blue-300">{{ ui.footer_best_time }}</a></li>
+              <li><a href="{% url 'guide_detail' slug='snorkeling-water-temperature' %}" class="hover:text-blue-300">{{ ui.footer_water_temp }}</a></li>
+              <li><a href="{% url 'guides_index' %}" class="hover:text-blue-300">{{ ui.footer_all_guides }}</a></li>
             </ul>
           </div>
           <div>
-            <h2 class="font-semibold text-gray-200 mb-2">Explore</h2>
+            <h2 class="font-semibold text-gray-200 mb-2">{{ ui.footer_explore }}</h2>
             <ul class="space-y-1 text-gray-400">
-              <li><a href="{% url 'countries_index' %}" class="hover:text-blue-300">All countries</a></li>
-              <li><a href="{% url 'best_snorkeling' %}" class="hover:text-blue-300">Best snorkeling</a></li>
-              <li><a href="{% url 'location_search' %}" class="hover:text-blue-300">Search spots</a></li>
-              <li><a href="{% url 'homepage' %}" class="hover:text-blue-300">Home</a></li>
+              <li><a href="{% url 'countries_index' %}" class="hover:text-blue-300">{{ ui.footer_all_countries }}</a></li>
+              <li><a href="{% url 'best_snorkeling' %}" class="hover:text-blue-300">{{ ui.nav_best }}</a></li>
+              <li><a href="{% url 'location_search' %}" class="hover:text-blue-300">{{ ui.footer_search_spots }}</a></li>
+              <li><a href="{% url 'homepage' %}" class="hover:text-blue-300">{{ ui.footer_home }}</a></li>
+            </ul>
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-200 mb-2">{{ ui.language }}</h2>
+            <ul class="space-y-1 text-gray-400">
+              <li><a href="{{ english_path }}" hreflang="en" lang="en" class="hover:text-blue-300{% if active_language == 'en' %} text-white{% endif %}">{{ ui.english }}</a></li>
+              <li><a href="{{ spanish_path }}" hreflang="es" lang="es" class="hover:text-blue-300{% if active_language == 'es' %} text-white{% endif %}">{{ ui.spanish }}</a></li>
             </ul>
           </div>
         </nav>
       </div>
       <div class="max-w-6xl mx-auto px-4 text-center">
         <p>&copy; MMXXV SnorkelForecast.com</p>
-        <p class="text-gray-400 ui-night:text-gray-500 text-sm mt-1">Powered by Open‑Meteo • Forecasts update hourly</p>
+        <p class="text-gray-400 ui-night:text-gray-500 text-sm mt-1">{{ ui.footer_powered }}</p>
         <div class="mt-4 pt-4 border-t border-gray-700/50">
           <p class="text-gray-300 ui-night:text-gray-400 text-sm">
-            Made by <a href="https://duncant.co.uk" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">🐬 Duncan Trevithick</a>
+            {{ ui.footer_made_by }} <a href="https://duncant.co.uk" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">Duncan Trevithick</a>
           </p>
           <p class="text-gray-400 ui-night:text-gray-500 text-xs mt-1">
-            This site is <a href="https://github.com/dunctk/snorkelforecast" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">open source</a> •
-            <a href="https://github.com/dunctk/snorkelforecast" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">⭐ Star on GitHub</a>
+            {{ ui.footer_open_source }} <a href="https://github.com/dunctk/snorkelforecast" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">{{ ui.footer_open_source_link }}</a> •
+            <a href="https://github.com/dunctk/snorkelforecast" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 ui-night:text-blue-300 ui-night:hover:text-blue-200 transition-colors">{{ ui.footer_star }}</a>
           </p>
         </div>
       </div>

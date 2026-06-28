@@ -17,6 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.conf import settings
+from django.conf.urls.i18n import i18n_patterns
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path, re_path
 from django.views.static import serve
@@ -25,6 +26,7 @@ from conditions.sitemaps import (
     CountrySitemap,
     GuideSitemap,
     LocationSitemap,
+    LocationSeaTemperatureSitemap,
     StaticViewSitemap,
 )
 
@@ -33,12 +35,17 @@ sitemaps = {
     "guides": GuideSitemap,
     "countries": CountrySitemap,
     "locations": LocationSitemap,
+    "sea_temperature": LocationSeaTemperatureSitemap,
 }
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("__reload__/", include("django_browser_reload.urls")),
-    path("", include("conditions.urls")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
     re_path(r'^robots\.txt$', serve, {'path': 'robots.txt', 'document_root': settings.STATIC_ROOT}),
 ]
+
+urlpatterns += i18n_patterns(
+    path("", include("conditions.urls")),
+    prefix_default_language=False,
+)
