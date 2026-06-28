@@ -22,6 +22,12 @@ class SnorkelLocation(models.Model):
     # Location identifiers (for URL compatibility with existing ForecastHour model)
     country_slug = models.CharField(max_length=64, db_index=True)
     city_slug = models.CharField(max_length=64, db_index=True)
+    area_slug = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text="Optional parent area/hub slug, e.g. maui for Maui beach spots",
+    )
 
     # Human-readable names
     name = models.CharField(max_length=200, help_text="Display name of the location")

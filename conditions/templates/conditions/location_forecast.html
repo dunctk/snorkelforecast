@@ -78,8 +78,35 @@
             "text": "{% if is_spanish %}La pleamar parada, aproximadamente dentro de una hora del pico de marea alta, suele ser la ventana más segura y clara. Mareas bajas fuertes, corrientes cerca de canales o cabos y grandes rangos de marea reducen la puntuación.{% else %}High slack tide — within about an hour of the high-tide peak when currents are weakest — is the safest, clearest window. Strong low tides, strong tidal flow near channels or headlands, and large tidal-range days reduce score.{% endif %}"
           }
         }
+        {% if daily_report.best_area_spots %},
+        {
+          "@type": "Question",
+          "name": "{% if is_spanish %}¿Dónde están las mejores condiciones de snorkel cerca de {{ location.name }} hoy?{% else %}Where are the best snorkeling conditions near {{ location.name }} today?{% endif %}",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "{% if is_spanish %}Los mejores lugares cercanos ahora son {% for spot in daily_report.best_area_spots %}{{ spot.name }}{% if not forloop.last %}, {% endif %}{% endfor %}. Revisa cada página de lugar para ver viento, oleaje, marea y temperatura del agua por hora.{% else %}The best nearby spots right now are {% for spot in daily_report.best_area_spots %}{{ spot.name }}{% if not forloop.last %}, {% endif %}{% endfor %}. Check each spot page for hourly wind, wave, tide and water temperature detail.{% endif %}"
+          }
+        }
+        {% endif %}
       ]
     }
+    {% if area_spot_reports %},
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "{% if is_spanish %}Lugares de snorkel cerca de {{ location.name }}{% else %}Snorkel spots near {{ location.name }}{% endif %}",
+      "itemListElement": [
+        {% for spot in area_spot_reports %}
+        {
+          "@type": "ListItem",
+          "position": {{ forloop.counter }},
+          "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}{{ spot.url }}",
+          "name": "{{ spot.name|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+    {% endif %}
   ]
   </script>
 {% endblock %}
@@ -100,13 +127,62 @@
 
   <section id="forecast-verdict" class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
     <div class="text-center">
-      <h1 class="text-xl sm:text-2xl font-bold mb-2">{% if is_spanish %}Condiciones de snorkel en {{ location.city }}{% else %}{{ location.city }} Snorkel Conditions{% endif %}</h1>
+      <h1 class="text-xl sm:text-2xl font-bold mb-2">{% if is_spanish %}Reporte de snorkel en {{ location.city }} hoy{% else %}{{ location.city }} Snorkel Report Today{% endif %}</h1>
       <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">
         {{ location.country }} · {% if is_spanish %}Actualizado{% else %}Updated{% endif %} {{ summary.updated_at|date:'D H:i' }} ({{ timezone }})
         · {% if is_spanish %}Fuente{% else %}Source{% endif %}: {{ summary.forecast_source_label|default:summary.forecast_source|title }}
         {% if summary.is_stale %} · {% if is_spanish %}Mostrando datos de respaldo o antiguos{% else %}Showing fallback/stale data{% endif %}{% endif %}
       </p>
     </div>
+
+    <section class="mt-4 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-left shadow-sm ui-night:border-blue-900/70 ui-night:bg-blue-950/25 sm:p-5">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-3xl">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-800 ui-night:text-blue-200">{% if is_spanish %}El resumen{% else %}The skinny{% endif %}</p>
+            <span class="rounded-full border px-2 py-0.5 text-xs font-semibold
+              {% if daily_report.status == 'good' %}border-emerald-300 bg-emerald-100 text-emerald-800 ui-night:border-emerald-800 ui-night:bg-emerald-950/60 ui-night:text-emerald-200{% elif daily_report.status == 'fair' %}border-amber-300 bg-amber-100 text-amber-800 ui-night:border-amber-800 ui-night:bg-amber-950/60 ui-night:text-amber-200{% else %}border-red-300 bg-red-100 text-red-800 ui-night:border-red-800 ui-night:bg-red-950/60 ui-night:text-red-200{% endif %}">
+              {{ daily_report.verdict }}
+            </span>
+            <span class="text-xs text-blue-900/70 ui-night:text-blue-100/70">{% if is_spanish %}Reporte{% else %}Report{% endif %} {{ daily_report.updated_label }}</span>
+          </div>
+          <p class="mt-2 text-base font-semibold text-gray-950 ui-night:text-white sm:text-lg">{{ daily_report.skinny }}</p>
+          <div class="mt-3 grid gap-2 text-sm text-gray-700 ui-night:text-gray-200 sm:grid-cols-3">
+            <p><span class="font-semibold">{% if is_spanish %}Puntuación{% else %}Score{% endif %}:</span> {{ daily_report.rating_score_label }}</p>
+            <p><span class="font-semibold">{% if is_spanish %}Mejor hora{% else %}Best time{% endif %}:</span> {% firstof daily_report.best_time_label "-" %}</p>
+            <p><span class="font-semibold">{% if is_spanish %}Riesgo principal{% else %}Main risk{% endif %}:</span> {{ daily_report.main_risk }}</p>
+          </div>
+          <div class="mt-3 grid gap-2 text-sm text-gray-700 ui-night:text-gray-200 sm:grid-cols-2">
+            <p>{{ daily_report.morning_note }}</p>
+            <p>{{ daily_report.afternoon_note }}</p>
+          </div>
+        </div>
+        {% if daily_report.best_area_spots %}
+          <div class="w-full lg:max-w-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-800 ui-night:text-blue-200">{% if is_spanish %}Mejores lugares cercanos{% else %}Best nearby spots{% endif %}</p>
+            <div class="mt-2 grid gap-2">
+              {% for spot in daily_report.best_area_spots %}
+                <a href="{% if is_spanish %}/es{% endif %}{{ spot.url }}" class="rounded-lg border border-white/70 bg-white/80 p-3 transition-colors hover:border-blue-300 hover:bg-white ui-night:border-blue-900/70 ui-night:bg-blue-950/40 ui-night:hover:border-blue-700">
+                  <span class="flex items-center justify-between gap-3">
+                    <span class="font-semibold text-gray-950 ui-night:text-white">{{ spot.name }}</span>
+                    <span class="shrink-0 text-xs font-semibold text-blue-800 ui-night:text-blue-200">{{ spot.score_label }}</span>
+                  </span>
+                  <span class="mt-1 block text-xs text-gray-600 ui-night:text-gray-300">{{ spot.rating_label }}{% if spot.best_time_label %} · {{ spot.best_time_label }}{% endif %}</span>
+                </a>
+              {% endfor %}
+            </div>
+            {% if daily_report.avoid_area_spots %}
+              <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-blue-800 ui-night:text-blue-200">{% if is_spanish %}Más expuestos ahora{% else %}Weakest nearby now{% endif %}</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                {% for spot in daily_report.avoid_area_spots %}
+                  <a href="{% if is_spanish %}/es{% endif %}{{ spot.url }}" class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-medium text-red-800 hover:bg-red-100 ui-night:border-red-900 ui-night:bg-red-950/40 ui-night:text-red-200">{{ spot.name }}</a>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </section>
 
     <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
       <div class="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-left ui-night:border-amber-900/70 ui-night:bg-amber-950/30">

@@ -10,14 +10,34 @@ and is included in sitemap.xml.
 Idempotent: safe to run repeatedly (skips spots that already exist).
 """
 
+from zlib import crc32
+
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 
 from ...models import SnorkelLocation
 
 # country_slug stays "usa" to match the existing /usa/<spot>/ URL structure.
 HAWAII_SPOTS = [
     {
+        "name": "Maui",
+        "city_slug": "maui",
+        "area_slug": "",
+        "region": "Hawaii",
+        "latitude": 20.7984,
+        "longitude": -156.3319,
+        "location_type": "island",
+        "is_popular": True,
+        "description": (
+            "Maui is a broad island forecast hub for comparing West, Northwest "
+            "and South Maui snorkel spots. Use the individual beach reports for "
+            "site-level calls, because wind, swell and visibility can vary "
+            "sharply between bays on the same day."
+        ),
+    },
+    {
         "name": "Honolua Bay",
+        "area_slug": "maui",
         "region": "Maui, Hawaii",
         "latitude": 21.0145,
         "longitude": -156.6385,
@@ -32,6 +52,7 @@ HAWAII_SPOTS = [
     },
     {
         "name": "Molokini Crater",
+        "area_slug": "maui",
         "region": "Maui, Hawaii",
         "latitude": 20.6314,
         "longitude": -156.4956,
@@ -44,7 +65,9 @@ HAWAII_SPOTS = [
         ),
     },
     {
-        "name": "Kaanapali Beach",
+        "name": "Kaanapali Black Rock",
+        "city_slug": "kaanapali-black-rock",
+        "area_slug": "maui",
         "region": "Maui, Hawaii",
         "latitude": 20.9290,
         "longitude": -156.6947,
@@ -58,6 +81,7 @@ HAWAII_SPOTS = [
     },
     {
         "name": "Napili Bay",
+        "area_slug": "maui",
         "region": "Maui, Hawaii",
         "latitude": 21.0030,
         "longitude": -156.6670,
@@ -70,6 +94,7 @@ HAWAII_SPOTS = [
     },
     {
         "name": "Kapalua Bay",
+        "area_slug": "maui",
         "region": "Maui, Hawaii",
         "latitude": 21.0008,
         "longitude": -156.6660,
@@ -81,7 +106,50 @@ HAWAII_SPOTS = [
         ),
     },
     {
+        "name": "Ulua Mokapu",
+        "city_slug": "ulua-mokapu",
+        "area_slug": "maui",
+        "region": "Maui, Hawaii",
+        "latitude": 20.6874,
+        "longitude": -156.4437,
+        "location_type": "reef",
+        "description": (
+            "Ulua and Mokapu are adjacent South Maui reef beaches with easy "
+            "entries, coral shelves and frequent turtles. They are usually best "
+            "early in the morning before trade winds roughen the surface."
+        ),
+    },
+    {
+        "name": "Maluaka Turtle Town",
+        "city_slug": "maluaka-turtle-town",
+        "area_slug": "maui",
+        "region": "Maui, Hawaii",
+        "latitude": 20.6496,
+        "longitude": -156.4444,
+        "location_type": "beach",
+        "description": (
+            "Maluaka, often grouped with Turtle Town, is a South Maui snorkel "
+            "beach known for turtles, reef fish and morning visibility. South "
+            "swell and afternoon wind can quickly make entry and visibility worse."
+        ),
+    },
+    {
+        "name": "Ahihi Kinau",
+        "city_slug": "ahihi-kinau",
+        "area_slug": "maui",
+        "region": "Maui, Hawaii",
+        "latitude": 20.6111,
+        "longitude": -156.4367,
+        "location_type": "marine_park",
+        "description": (
+            "Ahihi Kinau Natural Area Reserve protects lava-rock reef habitat on "
+            "South Maui. It can be excellent in calm weather, but exposed rock "
+            "entries and changing surge make low-wind, low-swell windows important."
+        ),
+    },
+    {
         "name": "Hanauma Bay",
+        "area_slug": "oahu",
         "region": "Oahu, Hawaii",
         "latitude": 21.2690,
         "longitude": -157.6938,
@@ -95,6 +163,7 @@ HAWAII_SPOTS = [
     },
     {
         "name": "Kealakekua Bay",
+        "area_slug": "big-island",
         "region": "Big Island, Hawaii",
         "latitude": 19.4790,
         "longitude": -155.9300,
@@ -107,6 +176,7 @@ HAWAII_SPOTS = [
     },
     {
         "name": "Two Step Honaunau",
+        "area_slug": "big-island",
         "region": "Big Island, Hawaii",
         "latitude": 19.4200,
         "longitude": -155.9130,
@@ -136,36 +206,58 @@ class Command(BaseCommand):
         created = skipped = 0
 
         for spot in HAWAII_SPOTS:
-            city_slug = spot["name"].lower().replace(" ", "-").replace("'", "")
+            city_slug = spot.get("city_slug") or slugify(spot["name"])
             existing = SnorkelLocation.objects.filter(
                 country_slug="usa", city_slug=city_slug
             ).first()
+            if not existing:
+                existing = SnorkelLocation.objects.filter(
+                    country_slug="usa", name=spot["name"]
+                ).first()
+
+            unique_id = -int(crc32(f"usa:{city_slug}".encode("utf-8")))
+
+            defaults = {
+                "osm_id": unique_id,
+                "osm_type": "manual",
+                "name": spot["name"],
+                "country": "USA",
+                "region": spot["region"],
+                "country_slug": "usa",
+                "city_slug": city_slug,
+                "area_slug": spot.get("area_slug", ""),
+                "latitude": spot["latitude"],
+                "longitude": spot["longitude"],
+                "timezone": "Pacific/Honolulu",
+                "description": spot["description"],
+                "location_type": spot["location_type"],
+                "is_popular": spot.get("is_popular", False),
+                "is_verified": True,
+                "quality_score": 0.9,
+                "source": "manual",
+                "osm_tags": {},
+            }
+
             if existing:
-                self.stdout.write(f"  Skipping {spot['name']} - already exists")
+                changed = False
+                for field, value in defaults.items():
+                    if field == "osm_id" and existing.osm_id:
+                        continue
+                    if getattr(existing, field) != value:
+                        setattr(existing, field, value)
+                        changed = True
+                if dry_run:
+                    action = "Would update" if changed else "Would keep"
+                    self.stdout.write(f"  {action}: {spot['name']} -> /usa/{city_slug}/")
+                elif changed:
+                    existing.save()
+                    self.stdout.write(f"  Updated: {spot['name']} -> /usa/{city_slug}/")
+                else:
+                    self.stdout.write(f"  Skipping {spot['name']} - already current")
                 skipped += 1
                 continue
 
-            unique_id = -abs(hash(f"{spot['name']}_hawaii")) % 90000000 - 1000000
-
-            location = SnorkelLocation(
-                osm_id=unique_id,
-                osm_type="manual",
-                name=spot["name"],
-                country="USA",
-                region=spot["region"],
-                country_slug="usa",
-                city_slug=city_slug,
-                latitude=spot["latitude"],
-                longitude=spot["longitude"],
-                timezone="Pacific/Honolulu",
-                description=spot["description"],
-                location_type=spot["location_type"],
-                is_popular=False,
-                is_verified=True,
-                quality_score=0.9,
-                source="manual",
-                osm_tags={},
-            )
+            location = SnorkelLocation(**defaults)
 
             if dry_run:
                 self.stdout.write(f"  Would create: {spot['name']} -> /usa/{city_slug}/")

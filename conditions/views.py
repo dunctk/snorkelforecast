@@ -884,6 +884,232 @@ def _status_word(rating: str | None) -> str:
     return "Poor"
 
 
+def _status_rank(status: str | None) -> int:
+    return {"excellent": 4, "good": 3, "fair": 2, "poor": 1}.get(status or "", 0)
+
+
+def _format_report_time(value: datetime | None) -> str:
+    return value.strftime("%a %H:%M") if value else ""
+
+
+def _build_area_spot_reports(
+    *,
+    country_slug: str,
+    city_slug: str,
+    area_slug: str,
+    limit: int = 8,
+) -> list[dict]:
+    """Return forecastable sibling spots for broad area reports."""
+    if not area_slug:
+        return []
+
+    spots = list(
+        SnorkelLocation.objects.filter(country_slug=country_slug, area_slug=area_slug)
+        .exclude(city_slug=city_slug)
+        .order_by("-is_popular", "-quality_score", "name")[:limit]
+    )
+    if not spots:
+        return []
+
+    spot_ids = [spot.id for spot in spots]
+    rows = (
+        ForecastHour.objects.filter(
+            location_id__in=spot_ids,
+            time__gte=django_timezone.now(),
+            time__lte=django_timezone.now() + timedelta(hours=72),
+        )
+        .order_by("location_id", "time")
+        .values_list("location_id", "time", "ok", "rating", "score", "wave_height", "wind_speed")
+    )
+    forecast_by_id: dict[int, dict] = {}
+    for location_id, time, ok, rating, score, wave_height, wind_speed in rows:
+        current = forecast_by_id.get(location_id)
+        row_score = float(score or 0.0)
+        row_rank = _status_rank(rating)
+        if current is None:
+            forecast_by_id[location_id] = {
+                "time": time,
+                "ok": ok,
+                "rating": rating or "poor",
+                "score": row_score,
+                "wave_height": wave_height,
+                "wind_speed": wind_speed,
+            }
+            continue
+        if ok and not current["ok"]:
+            forecast_by_id[location_id] = {
+                "time": time,
+                "ok": ok,
+                "rating": rating or "poor",
+                "score": row_score,
+                "wave_height": wave_height,
+                "wind_speed": wind_speed,
+            }
+        elif ok == current["ok"] and (row_rank, row_score) > (
+            _status_rank(current["rating"]),
+            current["score"],
+        ):
+            forecast_by_id[location_id] = {
+                "time": time,
+                "ok": ok,
+                "rating": rating or "poor",
+                "score": row_score,
+                "wave_height": wave_height,
+                "wind_speed": wind_speed,
+            }
+
+    reports = []
+    for spot in spots:
+        forecast = forecast_by_id.get(spot.id, {})
+        rating = forecast.get("rating") or "unknown"
+        reports.append(
+            {
+                "name": spot.name,
+                "city_slug": spot.city_slug,
+                "country_slug": spot.country_slug,
+                "url": _ranking_location_url(spot.country_slug, spot.city_slug),
+                "description": spot.description,
+                "rating": rating,
+                "rating_label": rating.replace("_", " ").title(),
+                "score": forecast.get("score"),
+                "score_label": (
+                    f"{round(float(forecast['score']) * 10, 1)}/10"
+                    if isinstance(forecast.get("score"), int | float)
+                    else "No recent score"
+                ),
+                "best_time": forecast.get("time"),
+                "best_time_label": _format_report_time(forecast.get("time")),
+                "ok": bool(forecast.get("ok", False)),
+                "wave_height": forecast.get("wave_height"),
+                "wind_speed": forecast.get("wind_speed"),
+                "sort_score": (
+                    _status_rank(rating),
+                    float(forecast.get("score") or 0.0),
+                    1 if forecast.get("ok") else 0,
+                ),
+            }
+        )
+
+    return sorted(reports, key=lambda item: item["sort_score"], reverse=True)
+
+
+def _build_daily_location_report(
+    *,
+    location_name: str,
+    country_name: str,
+    hours: list[dict],
+    summary: dict,
+    best_available: list[dict],
+    area_spots: list[dict],
+    local_tz: tz.tzfile | None,
+) -> dict:
+    """Build answer-first report copy for every location page."""
+    display_tz = local_tz or tz.tzutc()
+    now = datetime.now(tz=display_tz)
+    first_blocker = next(iter(summary.get("primary_blockers", [])), None)
+    main_risk = first_blocker["label"].lower() if first_blocker else "changing conditions"
+    best_hour = None
+    if summary.get("next_window"):
+        best_hour = summary["next_window"].get("start")
+    elif best_available:
+        best_hour = best_available[0].get("time")
+
+    upcoming_scores = [
+        float(h["score"]) for h in hours[:24] if isinstance(h.get("score"), int | float)
+    ]
+    top_score = max(upcoming_scores) if upcoming_scores else None
+    rating_score = round(top_score * 10, 1) if top_score is not None else None
+    if summary.get("can_snorkel"):
+        report_status = "good"
+        verdict = "Go in the best window"
+    elif best_available:
+        report_status = "fair"
+        verdict = "Marginal"
+    else:
+        report_status = "poor"
+        verdict = "Poor"
+
+    morning_hours = [
+        h
+        for h in hours
+        if h.get("time") and h["time"].astimezone(display_tz).date() == now.date()
+        and h["time"].astimezone(display_tz).hour < 12
+        and h.get("light_ok", True)
+    ]
+    afternoon_hours = [
+        h
+        for h in hours
+        if h.get("time") and h["time"].astimezone(display_tz).date() == now.date()
+        and h["time"].astimezone(display_tz).hour >= 12
+        and h.get("light_ok", True)
+    ]
+    best_morning = max(morning_hours, key=lambda h: h.get("score") or 0, default=None)
+    best_afternoon = max(afternoon_hours, key=lambda h: h.get("score") or 0, default=None)
+    afternoon_wind = [
+        float(h["wind_speed"])
+        for h in afternoon_hours
+        if isinstance(h.get("wind_speed"), int | float)
+    ]
+
+    if summary.get("can_snorkel") and best_hour:
+        skinny = (
+            f"{location_name} has a usable snorkeling window around "
+            f"{_format_report_time(best_hour)}. The main thing to watch is {main_risk}."
+        )
+    elif best_available and best_hour:
+        skinny = (
+            f"{location_name} looks marginal today. The least-bad daylight window is "
+            f"around {_format_report_time(best_hour)}, but {main_risk} is limiting the forecast."
+        )
+    else:
+        skinny = (
+            f"{location_name} does not show a clearly safe snorkeling window in the next "
+            f"72 hours. {main_risk.title()} is the main forecast limiter."
+        )
+
+    if best_morning:
+        morning_note = (
+            f"Best morning signal: {_format_report_time(best_morning['time'])} "
+            f"({str(best_morning.get('rating', 'unknown')).title()})."
+        )
+    else:
+        morning_note = "No useful morning window is showing yet."
+
+    if best_afternoon:
+        afternoon_note = (
+            f"Best afternoon signal: {_format_report_time(best_afternoon['time'])} "
+            f"({str(best_afternoon.get('rating', 'unknown')).title()})."
+        )
+        if afternoon_wind:
+            afternoon_note += f" Peak afternoon wind is about {round(max(afternoon_wind), 1)} m/s."
+    else:
+        afternoon_note = "No useful afternoon window is showing yet."
+
+    best_area_spots = [spot for spot in area_spots if spot["rating"] in {"excellent", "good"}][:3]
+    if not best_area_spots:
+        best_area_spots = area_spots[:3]
+    avoid_area_spots = [spot for spot in area_spots if spot["rating"] == "poor"][:3]
+
+    return {
+        "heading": f"{location_name} snorkel report today",
+        "subheading": f"{country_name} daily snorkeling conditions",
+        "updated_label": now.strftime("%a %H:%M"),
+        "status": report_status,
+        "verdict": verdict,
+        "rating_score": rating_score,
+        "rating_score_label": f"{rating_score}/10" if rating_score is not None else "No score",
+        "skinny": skinny,
+        "main_risk": main_risk.title(),
+        "best_time": best_hour,
+        "best_time_label": _format_report_time(best_hour),
+        "morning_note": morning_note,
+        "afternoon_note": afternoon_note,
+        "area_spots": area_spots,
+        "best_area_spots": best_area_spots,
+        "avoid_area_spots": avoid_area_spots,
+    }
+
+
 def _build_chart_summaries(hours: list[dict]) -> dict[str, str]:
     """Build plain-English summaries for 24h chart sections."""
     if not hours:
@@ -1167,11 +1393,31 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
                 self.country = data.get("country", "")
                 self.country_slug = data.get("country_slug", "")
                 self.city_slug = data.get("city_slug", "")
+                self.area_slug = data.get("area_slug", "")
                 self.description = data.get("description", "")
                 self.latitude = data.get("coordinates", {}).get("lat", 0)
                 self.longitude = data.get("coordinates", {}).get("lon", 0)
 
         context_location = MockLocation(location_data)
+
+    area_slug = getattr(context_location, "area_slug", "") or ""
+    if not area_slug and SnorkelLocation.objects.filter(country_slug=country, area_slug=city).exists():
+        area_slug = city
+
+    area_spot_reports = _build_area_spot_reports(
+        country_slug=country,
+        city_slug=city,
+        area_slug=area_slug,
+    )
+    daily_report = _build_daily_location_report(
+        location_name=context_location.name,
+        country_name=context_location.country,
+        hours=hours,
+        summary=decision_summary,
+        best_available=best_available,
+        area_spots=area_spot_reports,
+        local_tz=local_tz,
+    )
 
     # Nearby spots in the same country for internal linking and discovery
     nearby_spots = list(
@@ -1231,6 +1477,8 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "decision_summary": decision_summary,
         "day_planner": day_planner,
         "condition_tiles": condition_tiles,
+        "daily_report": daily_report,
+        "area_spot_reports": area_spot_reports,
         "best_available": best_available,
         "chart_summaries": chart_summaries,
         "rating_counts": rating_counts,

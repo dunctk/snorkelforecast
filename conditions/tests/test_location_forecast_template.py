@@ -108,6 +108,10 @@ class LocationForecastTemplateTests(TestCase):
         self.assertIn('id="day-planner"', html)
         self.assertIn('id="best-available"', html)
         self.assertIn('id="advanced-data"', html)
+        self.assertIn("Primary Spot Snorkel Report Today", html)
+        self.assertIn("The skinny", html)
+        self.assertIn("Best time", html)
+        self.assertIn("Main risk", html)
 
         # Decision-first ordering: forecast verdict -> 3-day planner -> best available -> advanced.
         self.assertLess(html.index('id="forecast-verdict"'), html.index('id="day-planner"'))
@@ -186,6 +190,107 @@ class LocationForecastTemplateTests(TestCase):
         self.assertEqual(len(faq.get("mainEntity", [])), 3)
         self.assertEqual(faq["mainEntity"][0].get("@type"), "Question")
         self.assertIn("acceptedAnswer", faq["mainEntity"][0])
+
+    @patch("conditions.views.fetch_forecast_payload")
+    def test_location_forecast_renders_area_spot_report_for_hub_pages(self, mock_payload):
+        maui, _ = SnorkelLocation.objects.update_or_create(
+            country_slug="usa",
+            city_slug="maui",
+            defaults={
+                "osm_id": 3030,
+                "osm_type": "node",
+                "name": "Maui",
+                "country": "USA",
+                "region": "Hawaii",
+                "latitude": 20.7984,
+                "longitude": -156.3319,
+                "timezone": "Pacific/Honolulu",
+                "location_type": "island",
+            },
+        )
+        kapalua, _ = SnorkelLocation.objects.update_or_create(
+            country_slug="usa",
+            city_slug="kapalua-bay",
+            defaults={
+                "osm_id": 3031,
+                "osm_type": "node",
+                "area_slug": "maui",
+                "name": "Kapalua Bay",
+                "country": "USA",
+                "region": "Maui, Hawaii",
+                "latitude": 21.0008,
+                "longitude": -156.6660,
+                "timezone": "Pacific/Honolulu",
+                "location_type": "bay",
+            },
+        )
+        honolua, _ = SnorkelLocation.objects.update_or_create(
+            country_slug="usa",
+            city_slug="honolua-bay",
+            defaults={
+                "osm_id": 3032,
+                "osm_type": "node",
+                "area_slug": "maui",
+                "name": "Honolua Bay",
+                "country": "USA",
+                "region": "Maui, Hawaii",
+                "latitude": 21.0145,
+                "longitude": -156.6385,
+                "timezone": "Pacific/Honolulu",
+                "location_type": "bay",
+            },
+        )
+        now = datetime.now(tz=tz.gettz("Pacific/Honolulu")) + timedelta(hours=1)
+        ForecastHour.objects.create(
+            location=kapalua,
+            country_slug="usa",
+            city_slug="kapalua-bay",
+            time=now,
+            ok=True,
+            score=0.82,
+            rating="excellent",
+            wave_height=0.2,
+            wind_speed=3.0,
+        )
+        ForecastHour.objects.create(
+            location=honolua,
+            country_slug="usa",
+            city_slug="honolua-bay",
+            time=now,
+            ok=False,
+            score=0.21,
+            rating="poor",
+            wave_height=1.8,
+            wind_speed=8.0,
+        )
+        mock_payload.return_value = self._forecast_payload()
+
+        request = self.factory.get(f"/{maui.country_slug}/{maui.city_slug}/")
+        response = views.location_forecast(
+            request,
+            country=maui.country_slug,
+            city=maui.city_slug,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("Maui Snorkel Report Today", html)
+        self.assertIn("Best nearby spots", html)
+        self.assertIn("Kapalua Bay", html)
+        self.assertIn("8.2/10", html)
+        self.assertIn("Weakest nearby now", html)
+        self.assertIn("Honolua Bay", html)
+
+        schema_blocks = re.findall(
+            r'<script type="application/ld\+json">\s*(\[.*?\])\s*</script>',
+            html,
+            flags=re.S,
+        )
+        schema = json.loads(schema_blocks[0])
+        types = {entry.get("@type") for entry in schema}
+        self.assertIn("ItemList", types)
+        faq = next(entry for entry in schema if entry.get("@type") == "FAQPage")
+        self.assertEqual(len(faq.get("mainEntity", [])), 4)
 
     @patch("conditions.views.fetch_forecast_payload")
     def test_location_forecast_can_shift_advanced_charts_to_yesterday(self, mock_payload):
