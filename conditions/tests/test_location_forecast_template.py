@@ -7,7 +7,7 @@ from dateutil import tz
 from django.test import RequestFactory, TestCase
 
 from conditions import views
-from conditions.models import SnorkelLocation
+from conditions.models import ForecastHour, SnorkelLocation
 
 
 def _build_hour(
@@ -169,3 +169,40 @@ class LocationForecastTemplateTests(TestCase):
         self.assertEqual(len(faq.get("mainEntity", [])), 3)
         self.assertEqual(faq["mainEntity"][0].get("@type"), "Question")
         self.assertIn("acceptedAnswer", faq["mainEntity"][0])
+
+    @patch("conditions.views.fetch_forecast_payload")
+    def test_location_forecast_can_shift_advanced_charts_to_yesterday(self, mock_payload):
+        mock_payload.return_value = self._forecast_payload()
+        local_tz = tz.gettz("Europe/Madrid")
+        start = datetime.now(tz=local_tz).replace(minute=0, second=0, microsecond=0) - timedelta(days=1)
+        ForecastHour.objects.create(
+            location=self.location_main,
+            country_slug=self.location_main.country_slug,
+            city_slug=self.location_main.city_slug,
+            time=start,
+            ok=True,
+            score=0.91,
+            rating="excellent",
+            wave_height=0.1,
+            wind_speed=2.0,
+            sea_surface_temperature=24.0,
+            sea_level_height=0.4,
+            current_velocity=0.1,
+        )
+
+        request = self.factory.get(
+            f"/{self.location_main.country_slug}/{self.location_main.city_slug}/?history_days=1"
+        )
+        response = views.location_forecast(
+            request,
+            country=self.location_main.country_slug,
+            city=self.location_main.city_slug,
+        )
+
+        html = response.content.decode()
+
+        self.assertIn("Viewing historical data", html)
+        self.assertIn("?history_days=0#advanced-data", html)
+        self.assertIn("72-hour historical overview", html)
+        self.assertIn(start.strftime("%a %H:00"), html)
+        self.assertIn("0.91", html)

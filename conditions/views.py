@@ -498,6 +498,90 @@ def _save_forecast_history(country_slug: str, city_slug: str, hours: list[dict])
     ForecastHour.objects.bulk_create(rows, ignore_conflicts=True)
 
 
+def _parse_history_days(value: str | None) -> int:
+    """Return a bounded whole-day history offset for chart browsing."""
+    if not value:
+        return 0
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, min(days, 30))
+
+
+def _forecast_rows_to_hours(rows: list[ForecastHour], timezone_str: str) -> list[dict]:
+    """Convert stored forecast rows into the template's hourly record shape."""
+    if not rows:
+        return []
+
+    local_tz = tz.gettz(timezone_str) or tz.tzutc()
+    sea = [row.sea_level_height for row in rows]
+    high_ix: set[int] = set()
+    for i in range(1, len(sea) - 1):
+        prev, now, nxt = sea[i - 1], sea[i], sea[i + 1]
+        if None not in (prev, now, nxt) and now is not None and now > prev and now > nxt:
+            high_ix.add(i)
+
+    converted = []
+    for i, row in enumerate(rows):
+        wave = row.wave_height
+        wind = row.wind_speed
+        sst = row.sea_surface_temperature
+        current = row.current_velocity
+        wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
+        wind_ok = wind is not None and wind <= THRESHOLDS["wind_speed"]
+        sst_ok = (
+            sst is not None
+            and THRESHOLDS["sea_surface_temperature"][0]
+            <= sst
+            <= THRESHOLDS["sea_surface_temperature"][1]
+        )
+        slack_ok = i in high_ix and current is not None and current <= THRESHOLDS["current_velocity"]
+        converted.append(
+            {
+                "time": row.time.astimezone(local_tz),
+                "ok": row.ok,
+                "score": row.score,
+                "rating": row.rating or "poor",
+                "wave_height": wave,
+                "wind_speed": wind,
+                "sea_surface_temperature": sst,
+                "sea_level_height": row.sea_level_height,
+                "current_velocity": current,
+                "wave_ok": wave_ok,
+                "wind_ok": wind_ok,
+                "sst_ok": sst_ok,
+                "slack_ok": slack_ok,
+                "is_high_tide": i in high_ix,
+                "light_ok": True,
+            }
+        )
+    return converted
+
+
+def _historical_chart_hours(
+    *,
+    location: SnorkelLocation | None,
+    country_slug: str,
+    city_slug: str,
+    timezone_str: str,
+    start_time: datetime,
+    hours: int = 72,
+) -> list[dict]:
+    """Load stored hourly data for a shifted chart window."""
+    end_time = start_time + timedelta(hours=hours)
+    rows = ForecastHour.objects.filter(
+        time__gte=start_time,
+        time__lt=end_time,
+    )
+    if location is not None and location.pk:
+        rows = rows.filter(location=location)
+    else:
+        rows = rows.filter(country_slug=country_slug, city_slug=city_slug)
+
+    return _forecast_rows_to_hours(list(rows.order_by("time")), timezone_str)
+
+
 def _count_blockers(hours: list[dict]) -> list[dict]:
     """Return top blocker metrics for a list of hourly records."""
     metrics: list[tuple[str, str]] = [
@@ -817,6 +901,31 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         )
 
     hours_24 = hours[:24]
+    chart_history_days = _parse_history_days(request.GET.get("history_days"))
+    chart_start = now.replace(minute=0, second=0, microsecond=0) - timedelta(
+        days=chart_history_days
+    )
+    if chart_history_days:
+        chart_hours = _historical_chart_hours(
+            location=location,
+            country_slug=country,
+            city_slug=city,
+            timezone_str=timezone_str,
+            start_time=chart_start,
+        )
+    else:
+        chart_hours = hours
+    chart_hours_24 = chart_hours[:24]
+    chart_end = chart_start + timedelta(hours=72)
+    chart_window = {
+        "history_days": chart_history_days,
+        "is_historical": chart_history_days > 0,
+        "start": chart_start,
+        "end": chart_end,
+        "previous_days": chart_history_days + 1,
+        "next_days": max(chart_history_days - 1, 0),
+        "has_data": bool(chart_hours),
+    }
     forecast_updated = forecast_payload.get("generated_at") or now
     total = len(hours)
     ok_hours = [h for h in hours if h.get("ok")]
@@ -857,7 +966,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
 
     day_planner = _build_day_summaries(hours, local_tz=local_tz)
     best_available = _best_available_hours(hours, limit=3)
-    chart_summaries = _build_chart_summaries(hours_24)
+    chart_summaries = _build_chart_summaries(chart_hours_24)
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
     next_early_high_tide = next((t for t in tide_times if t.hour < 9), None)
 
@@ -971,6 +1080,9 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "forecast_next_refresh_at": forecast_payload.get("next_refresh_at"),
         "hours": hours,
         "hours_24": hours_24,
+        "chart_hours": chart_hours,
+        "chart_hours_24": chart_hours_24,
+        "chart_window": chart_window,
         "summary": decision_summary,
         "decision_summary": decision_summary,
         "day_planner": day_planner,
