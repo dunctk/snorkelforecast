@@ -1,42 +1,59 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static l10n %}
 
-{% block title %}{% if is_spanish %}Mejor snorkel en {{ country_name }}: ranking y pronóstico 72h{% else %}Best Snorkeling in {{ country_name }}: Ranked Spots & 72-Hour Forecast{% endif %}{% endblock %}
+{% block title %}{% if is_spanish %}Snorkel en {{ country_name }}: lugares, temperatura y pronóstico{% else %}Snorkeling in {{ country_name }}: Spots, Water Temp & Forecast{% endif %}{% endblock %}
 
 {% block meta %}
-  <meta name="description" content="{% if is_spanish %}Mejor snorkel en {{ country_name }}, clasificado con datos históricos de SnorkelForecast y el pronóstico de las próximas 72 horas. Compara {{ cities|length }} lugares por oleaje, viento, temperatura y mareas.{% else %}Best snorkeling in {{ country_name }}, ranked from SnorkelForecast historical data and the next 72-hour forecast. Compare {{ cities|length }} spots by sea state, wind, water temperature and safe snorkeling windows.{% endif %}">
+  <meta name="description" content="{% if is_spanish %}Dónde hacer snorkel en {{ country_name }}: compara {{ cities|length }} lugares, regiones, temperatura del agua y pronósticos de 72 horas para elegir la mejor ventana.{% else %}Where to snorkel in {{ country_name }}: compare {{ cities|length }} spots, regions, water temperature and 72-hour forecasts to choose the best snorkeling window.{% endif %}">
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="{% if is_spanish %}Mejor snorkel en {{ country_name }} - Rankings en vivo{% else %}Best Snorkeling in {{ country_name }} - Live Rankings{% endif %}" />
-  <meta property="og:description" content="{% if is_spanish %}Ranking histórico y mejores lugares de {{ country_name }} para las próximas 72 horas, según oleaje, viento, temperatura, mareas y corrientes.{% else %}Historical snorkeling rankings and the best {{ country_name }} spots for the next 72 hours, based on wave height, wind, water temperature, tides and currents.{% endif %}" />
+  <meta property="og:title" content="{% if is_spanish %}Snorkel en {{ country_name }} - Lugares y pronóstico{% else %}Snorkeling in {{ country_name }} - Spots & Forecast{% endif %}" />
+  <meta property="og:description" content="{% if is_spanish %}Guía de snorkel de {{ country_name }} con lugares indexados, temperatura del mar, regiones y rankings cuando hay datos suficientes.{% else %}A {{ country_name }} snorkeling guide with indexed spots, sea temperature, regions and rankings when enough forecast data is available.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
   <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ country_slug }}/" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "{% if is_spanish %}Mejor snorkel en {{ country_name }}{% else %}Best Snorkeling in {{ country_name }}{% endif %}",
-    "description": "{% if is_spanish %}Lugares de snorkel clasificados en {{ country_name }} con datos históricos y pronóstico próximo.{% else %}Ranked snorkeling spots in {{ country_name }} using historical and upcoming forecast data.{% endif %}",
-    "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ country_slug }}/",
-    "mainEntity": {
-      "@type": "ItemList",
-      "numberOfItems": {{ rankings.historical|length }},
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      "name": "{% if is_spanish %}Snorkel en {{ country_name }}{% else %}Snorkeling in {{ country_name }}{% endif %}",
+      "description": "{% if is_spanish %}Lugares de snorkel, temperatura del agua y pronósticos en {{ country_name }}.{% else %}Snorkeling spots, water temperature and forecasts in {{ country_name }}.{% endif %}",
+      "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ country_slug }}/",
+      "mainEntity": {
+        "@type": "ItemList",
+        "numberOfItems": {{ cities|length }},
+        "itemListElement": [
+          {% for location in cities %}
+          {
+            "@type": "ListItem",
+            "position": {{ forloop.counter }},
+            "item": {
+              "@type": "TouristDestination",
+              "name": "{{ location.name|escapejs }}",
+              "description": "{{ location.description|default:''|truncatechars:180|escapejs }}",
+              "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/{{ location.city_slug }}/",
+              "address": {"@type": "PostalAddress", "addressCountry": "{{ location.country|escapejs }}"},
+              "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": {{ location.coordinates.lat|unlocalize }},
+                "longitude": {{ location.coordinates.lon|unlocalize }}
+              }
+            }
+          }{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
       "itemListElement": [
-        {% for location in rankings.historical|slice:":10" %}
-        {
-          "@type": "ListItem",
-          "position": {{ forloop.counter }},
-          "item": {
-            "@type": "TouristDestination",
-            "name": "{{ location.name|escapejs }}",
-            "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}{{ location.url }}",
-            "address": {"@type": "PostalAddress", "addressCountry": "{{ location.country|escapejs }}"}
-          }
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
+        {"@type": "ListItem", "position": 1, "name": "{% if is_spanish %}Inicio{% else %}Home{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es/{% else %}/{% endif %}"},
+        {"@type": "ListItem", "position": 2, "name": "{% if is_spanish %}Países{% else %}Countries{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/countries/"},
+        {"@type": "ListItem", "position": 3, "name": "{{ country_name|escapejs }}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ country_slug }}/"}
       ]
     }
-  }
+  ]
   </script>
 {% endblock %}
 
@@ -45,38 +62,114 @@
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
       <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'best_snorkeling' %}" class="hover:underline">{{ ui.nav_best }}</a></li>
+      <li><a href="{% url 'countries_index' %}" class="hover:underline">{{ ui.nav_countries }}</a></li>
       <li>/</li>
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ country_name }}</li>
     </ol>
   </nav>
 
-  <section class="bg-sky-50 ui-night:bg-slate-900 border-b border-sky-100 ui-night:border-slate-800">
+  <section class="border-b border-sky-100 bg-sky-50 ui-night:border-slate-800 ui-night:bg-slate-900">
     <div class="max-w-6xl mx-auto px-4 py-10 sm:py-14">
-      <p class="font-mono text-xs uppercase tracking-wide text-blue-700 ui-night:text-blue-300">{% if is_spanish %}Guía de destinos basada en datos{% else %}Data-led destination guide{% endif %}</p>
-      <h1 class="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-gray-950 ui-night:text-white">{% if is_spanish %}Mejor snorkel en {{ country_name }}{% else %}Best snorkeling in {{ country_name }}{% endif %}</h1>
+      <p class="font-mono text-xs uppercase tracking-wide text-blue-700 ui-night:text-blue-300">{% if is_spanish %}Guía de país con pronóstico en vivo{% else %}Country guide with live forecast data{% endif %}</p>
+      <h1 class="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-gray-950 ui-night:text-white">{% if is_spanish %}Snorkel en {{ country_name }}{% else %}Snorkeling in {{ country_name }}{% endif %}</h1>
       <p class="mt-4 max-w-3xl text-base sm:text-lg text-gray-700 ui-night:text-gray-200">
-        {% if is_spanish %}Ranking editorial en vivo de {{ cities|length }} lugar{{ cities|length|pluralize:"es" }} para hacer snorkel en {{ country_name }}. La lista combina puntuaciones históricas guardadas con el pronóstico de 72 horas, así que cambia cuando cambia el estado del mar.{% else %}A live editorial ranking of {{ cities|length }} snorkeling spot{{ cities|length|pluralize }} in {{ country_name }}. The list combines stored historical snorkel scores with the newest 72-hour forecast, so the page changes as the sea state changes.{% endif %}
+        {% if country_slug == "spain" %}
+          {% if is_spanish %}España combina calas mediterráneas, reservas marinas, islas Baleares y Canarias atlánticas. Usa esta página para comparar lugares, temperatura del agua y ventanas de mar tranquilo antes de elegir dónde meterte al agua.{% else %}Spain combines Mediterranean coves, marine reserves, the Balearic Islands and Atlantic Canary Islands. Use this page to compare spots, water temperature and calm-water forecast windows before choosing where to get in.{% endif %}
+        {% else %}
+          {% if is_spanish %}Compara lugares de snorkel en {{ country_name }} por región, temperatura del agua y pronóstico de 72 horas. Las páginas de cada lugar muestran oleaje, viento, mareas y horas recomendadas.{% else %}Compare snorkeling spots in {{ country_name }} by region, water temperature and 72-hour forecast. Each spot page shows wave height, wind, tides and recommended windows.{% endif %}
+        {% endif %}
       </p>
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+      <div class="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Ventana de pronóstico{% else %}Forecast window{% endif %}</span>
-          <strong class="text-xl">{{ rankings.forecast_hours }} {% if is_spanish %}horas{% else %}hours{% endif %}</strong>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Lugares indexados{% else %}Indexed spots{% endif %}</span>
+          <strong class="text-xl">{{ cities|length }}</strong>
         </div>
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Muestra histórica{% else %}Historical sample{% endif %}</span>
-          <strong class="text-xl">{{ rankings.historical_days }} {% if is_spanish %}días{% else %}days{% endif %}</strong>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Regiones{% else %}Regions{% endif %}</span>
+          <strong class="text-xl">{{ region_groups|length }}</strong>
         </div>
         <div class="card-enhanced p-4">
-          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Última actualización{% else %}Last rebuilt{% endif %}</span>
-          <strong class="text-xl">{{ rankings.generated_at|date:"M j, H:i" }}</strong>
+          <span class="block text-gray-500 ui-night:text-gray-400">{% if is_spanish %}Temperatura del agua{% else %}Water temperature{% endif %}</span>
+          <strong class="text-xl">{% if sst_summary.has_data %}{{ sst_summary.avg|floatformat:1 }}°C{% else %}{% if is_spanish %}Por lugar{% else %}By spot{% endif %}{% endif %}</strong>
         </div>
       </div>
     </div>
   </section>
 
   <section class="max-w-6xl mx-auto px-4 py-10">
-    <div class="grid grid-cols-1 lg:grid-cols-[1.25fr_.75fr] gap-8">
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_.85fr]">
+      <div>
+        <h2 class="text-2xl font-bold mb-3">{% if is_spanish %}Dónde hacer snorkel en {{ country_name }}{% else %}Where to snorkel in {{ country_name }}{% endif %}</h2>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700 ui-night:text-gray-300">
+          {% if is_spanish %}Empieza por las zonas con agua protegida: bahías, calas, reservas marinas e islas donde el viento y el oleaje quedan más filtrados. En cada ficha puedes abrir el pronóstico horario para comprobar si el mar está bajo, si el viento sigue manejable y si la temperatura del agua encaja con tu equipo.{% else %}Start with protected water: bays, coves, marine reserves and islands where wind and swell are filtered. Open each spot forecast to check whether waves stay low, wind remains manageable and the water temperature fits your gear.{% endif %}
+        </p>
+
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {% for location in featured_locations %}
+            <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="card-enhanced block p-4 transition-transform hover:-translate-y-0.5">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">{{ location.location_type_label }}{% if location.region %} · {{ location.region }}{% endif %}</p>
+                  <h3 class="text-lg font-semibold">{{ location.city }}</h3>
+                </div>
+                {% if location.current_sst %}
+                  <span class="badge badge-ok">{{ location.current_sst|floatformat:1 }}°C</span>
+                {% endif %}
+              </div>
+              {% if location.description %}
+                <p class="mt-3 text-sm text-gray-600 ui-night:text-gray-300">{{ location.description|truncatechars:135 }}</p>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside class="space-y-4">
+        <div class="card-enhanced p-5">
+          <h2 class="text-lg font-semibold">{% if is_spanish %}Condiciones de snorkel hoy{% else %}Snorkeling conditions today{% endif %}</h2>
+          <p class="mt-2 text-sm leading-relaxed text-gray-700 ui-night:text-gray-300">
+            {% if sst_summary.has_data %}
+              {% if is_spanish %}La temperatura superficial disponible para {{ country_name }} promedia <strong>{{ sst_summary.avg|floatformat:1 }}°C</strong>, con lecturas entre {{ sst_summary.min|floatformat:1 }}°C y {{ sst_summary.max|floatformat:1 }}°C en {{ sst_summary.count }} lugar{{ sst_summary.count|pluralize:"es" }}.{% else %}Available sea-surface readings for {{ country_name }} average <strong>{{ sst_summary.avg|floatformat:1 }}°C</strong>, ranging from {{ sst_summary.min|floatformat:1 }}°C to {{ sst_summary.max|floatformat:1 }}°C across {{ sst_summary.count }} spot{{ sst_summary.count|pluralize }}.{% endif %}
+            {% else %}
+              {% if is_spanish %}La temperatura del agua aparece en cuanto hay una lectura reciente para cada lugar. Abre una ficha para ver el pronóstico completo de oleaje, viento, mareas y temperatura.{% else %}Water temperature appears as soon as a recent reading is available for each spot. Open a spot page for the full wave, wind, tide and temperature forecast.{% endif %}
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="card-enhanced p-5">
+          <h2 class="text-lg font-semibold">{% if is_spanish %}Mejor época para hacer snorkel{% else %}Best time to snorkel{% endif %}</h2>
+          <p class="mt-2 text-sm leading-relaxed text-gray-700 ui-night:text-gray-300">
+            {% if country_slug == "spain" %}
+              {% if is_spanish %}En España, las mañanas con viento flojo suelen ser las ventanas más claras. Mediterráneo y Baleares tienden a ser más cálidos en verano y principios de otoño; Canarias puede funcionar gran parte del año, pero depende mucho del alisio y la orientación de la costa.{% else %}In Spain, light-wind mornings are usually the clearest windows. The Mediterranean and Balearics tend to be warmest in summer and early autumn; the Canaries can work through much of the year, but trade winds and coast orientation matter.{% endif %}
+            {% else %}
+              {% if is_spanish %}Busca mañanas con poco viento, oleaje bajo y buena luz. La mejor temporada exacta cambia por región, así que usa las páginas de cada lugar para comparar el pronóstico horario.{% else %}Look for low-wind mornings, small swell and good daylight. Exact seasonality changes by region, so use individual spot pages to compare the hourly forecast.{% endif %}
+            {% endif %}
+          </p>
+          <a href="{% url 'guide_detail' slug='best-time-to-snorkel' %}" class="btn btn-ghost w-full mt-5">{% if is_spanish %}Leer guía de horarios{% else %}Read timing guide{% endif %}</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="max-w-6xl mx-auto px-4 pb-10">
+    <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Regiones de snorkel en {{ country_name }}{% else %}Snorkeling regions in {{ country_name }}{% endif %}</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for group in region_groups %}
+        <article class="card-enhanced p-5">
+          <h3 class="text-lg font-semibold">{{ group.name }}</h3>
+          <p class="mt-1 text-sm text-gray-600 ui-night:text-gray-300">{{ group.spot_count }} {% if is_spanish %}lugar{{ group.spot_count|pluralize:"es" }}{% else %}spot{{ group.spot_count|pluralize }}{% endif %}</p>
+          <ul class="mt-4 space-y-2 text-sm">
+            {% for location in group.spots|slice:":5" %}
+              <li><a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-blue-700 ui-night:text-blue-300 hover:underline">{{ location.city }}</a></li>
+            {% endfor %}
+          </ul>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="max-w-6xl mx-auto px-4 pb-10">
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_.75fr]">
       <div>
         <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Mejores lugares de {{ country_name }} en las próximas 72 horas{% else %}Best {{ country_name }} spots over the next 72 hours{% endif %}</h2>
         {% if rankings.upcoming %}
@@ -94,22 +187,21 @@
                 <div class="mt-4 grid grid-cols-3 gap-2 text-xs sm:text-sm text-gray-700 ui-night:text-gray-300">
                   <span>{% if is_spanish %}Olas{% else %}Waves{% endif %} {{ location.avg_wave|floatformat:2 }}m</span>
                   <span>{% if is_spanish %}Viento{% else %}Wind{% endif %} {{ location.avg_wind|floatformat:1 }}m/s</span>
-                  <span>{% if is_spanish %}Agua{% else %}Water{% endif %} {{ location.avg_sst|floatformat:1 }}C</span>
+                  <span>{% if is_spanish %}Agua{% else %}Water{% endif %} {{ location.avg_sst|floatformat:1 }}°C</span>
                 </div>
               </a>
             {% endfor %}
           </div>
         {% else %}
-          <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Aún no hay suficientes datos próximos para un ranking de 72 horas. Las páginas individuales muestran cualquier pronóstico disponible.{% else %}We do not have enough upcoming forecast rows for a 72-hour ranking yet. Individual location pages still show any available forecast data.{% endif %}</div>
+          <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}Aún no hay suficientes filas próximas para ordenar todos los lugares. Usa la lista completa de lugares abajo: cada página individual mostrará cualquier pronóstico disponible.{% else %}There are not enough upcoming rows to rank every spot yet. Use the full spot list below: each individual page still shows any available forecast data.{% endif %}</div>
         {% endif %}
       </div>
 
       <aside>
-        <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Cómo leer este ranking{% else %}How to read this{% endif %}</h2>
+        <h2 class="text-2xl font-bold mb-4">{% if is_spanish %}Cómo leer los rankings{% else %}How to read rankings{% endif %}</h2>
         <div class="card-enhanced p-5 text-sm leading-relaxed text-gray-700 ui-night:text-gray-300">
-          <p>{% if is_spanish %}Los lugares mejor clasificados han tenido menos oleaje, menos viento, temperatura más cómoda y mejores ventanas de marea/corriente en los datos guardados.{% else %}Higher ranked spots have had calmer waves, lighter wind, more comfortable water temperature, and better tide/current windows in the stored forecast data.{% endif %}</p>
-          <p class="mt-3">{% if is_spanish %}Usa la lista de 72 horas para planear salidas próximas. Usa el ranking histórico para elegir destino o comparar zonas de {{ country_name }}.{% else %}Use the 72-hour list for near-term trip planning. Use the historical list below for choosing a destination or comparing areas inside {{ country_name }}.{% endif %}</p>
-          <a href="{% url 'guides_index' %}" class="btn btn-ghost w-full mt-5">{% if is_spanish %}Leer guías de snorkel{% else %}Read snorkeling guides{% endif %}</a>
+          <p>{% if is_spanish %}Los rankings se activan cuando hay suficientes horas guardadas. Favorecen agua tranquila, viento ligero, temperatura cómoda y ventanas de marea/corriente más débiles.{% else %}Rankings activate once enough forecast hours are stored. They favor calm water, light wind, comfortable water temperature and weaker tide/current windows.{% endif %}</p>
+          <p class="mt-3">{% if is_spanish %}Para decidir hoy, abre la ficha del lugar. Para elegir zona, combina esta página con el ranking histórico cuando esté disponible.{% else %}For a same-day decision, open the spot page. For choosing an area, combine this hub with the historical ranking when available.{% endif %}</p>
         </div>
       </aside>
     </div>
@@ -136,18 +228,30 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}El ranking histórico aparecerá cuando haya suficientes horas guardadas para {{ country_name }}.{% else %}Historical rankings will appear after enough forecast hours have been stored for {{ country_name }}.{% endif %}</div>
+      <div class="card-enhanced p-5 text-gray-700 ui-night:text-gray-300">{% if is_spanish %}El ranking histórico aparecerá cuando haya suficientes horas guardadas para {{ country_name }}. Mientras tanto, la lista de lugares sigue funcionando como directorio indexable.{% else %}Historical rankings will appear after enough forecast hours have been stored for {{ country_name }}. Until then, the spot list still works as an indexable directory.{% endif %}</div>
     {% endif %}
   </section>
 
   <section class="max-w-6xl mx-auto px-4 pb-4">
-    <div class="card-enhanced p-5 sm:p-6">
-      <h2 class="text-xl font-bold">{% if is_spanish %}Lugares para hacer snorkel en {{ country_name }}{% else %}Snorkeling spots in {{ country_name }}{% endif %}</h2>
-      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {% for location in cities %}
-          <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-sm text-blue-700 ui-night:text-blue-300 hover:underline">{{ location.city }}</a>
-        {% endfor %}
-      </div>
+    <div>
+      <h2 class="text-2xl font-bold">{% if is_spanish %}Todos los lugares para hacer snorkel en {{ country_name }}{% else %}All snorkeling spots in {{ country_name }}{% endif %}</h2>
+      <p class="mt-2 max-w-3xl text-sm text-gray-600 ui-night:text-gray-300">{% if is_spanish %}Cada ficha enlaza al pronóstico completo y a la página dedicada de temperatura del mar para consultas rápidas.{% else %}Each listing links to the full forecast and the dedicated sea-temperature page for quick checks.{% endif %}</p>
+    </div>
+    <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for location in cities %}
+        <article class="card-enhanced p-4">
+          <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">{{ location.location_type_label }}{% if location.region %} · {{ location.region }}{% endif %}</p>
+          <h3 class="mt-1 font-semibold">{{ location.city }}</h3>
+          {% if location.description %}
+            <p class="mt-2 text-sm text-gray-600 ui-night:text-gray-300">{{ location.description|truncatechars:110 }}</p>
+          {% endif %}
+          <div class="mt-3 flex flex-wrap gap-3 text-sm">
+            <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-blue-700 ui-night:text-blue-300 hover:underline">{% if is_spanish %}Pronóstico{% else %}Forecast{% endif %}</a>
+            <a href="{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" class="text-blue-700 ui-night:text-blue-300 hover:underline">{% if is_spanish %}Temperatura del mar{% else %}Sea temperature{% endif %}</a>
+            {% if location.current_sst %}<span class="text-gray-600 ui-night:text-gray-300">{{ location.current_sst|floatformat:1 }}°C</span>{% endif %}
+          </div>
+        </article>
+      {% endfor %}
     </div>
   </section>
 {% endblock %}

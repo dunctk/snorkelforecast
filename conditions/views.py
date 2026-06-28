@@ -302,6 +302,54 @@ def _current_sst_by_location_id(locations: list[SnorkelLocation]) -> dict[int, f
     return current_sst
 
 
+def _location_type_label(location_type: str | None) -> str:
+    labels = {
+        "beach": "Beach",
+        "cove": "Cove",
+        "bay": "Bay",
+        "island": "Island",
+        "reef": "Reef",
+        "dive_site": "Dive site",
+        "marine_park": "Marine park",
+        "other": "Spot",
+    }
+    return labels.get(location_type or "other", "Spot")
+
+
+def _build_country_region_groups(cities: list[dict]) -> list[dict]:
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    for city in cities:
+        region_name = city.get("region") or "Featured snorkeling areas"
+        grouped[region_name].append(city)
+
+    return [
+        {
+            "name": region_name,
+            "spots": sorted(spots, key=lambda item: item["city"].lower()),
+            "spot_count": len(spots),
+        }
+        for region_name, spots in sorted(grouped.items(), key=lambda item: item[0].lower())
+    ]
+
+
+def _build_country_sst_summary(cities: list[dict]) -> dict:
+    values = [
+        float(city["current_sst"])
+        for city in cities
+        if isinstance(city.get("current_sst"), int | float)
+    ]
+    if not values:
+        return {"has_data": False, "count": 0, "avg": None, "min": None, "max": None}
+
+    return {
+        "has_data": True,
+        "count": len(values),
+        "avg": sum(values) / len(values),
+        "min": min(values),
+        "max": max(values),
+    }
+
+
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def homepage(request: HttpRequest) -> HttpResponse:
     """Homepage showing popular snorkeling locations."""
@@ -383,9 +431,15 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
             "name": location.name,
             "city": location.name,  # For template compatibility
             "country": location.country,
+            "region": location.region,
             "coordinates": location.coordinates_dict,
             "timezone": location.timezone,
             "description": location.description,
+            "location_type": location.location_type,
+            "location_type_label": _location_type_label(location.location_type),
+            "is_verified": location.is_verified,
+            "is_popular": location.is_popular,
+            "quality_score": location.quality_score,
             "country_slug": country,
             "city_slug": location.city_slug,
         }
@@ -396,11 +450,24 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
 
     # Get country name from first location
     country_name = country_locations[0].country
+    cities.sort(
+        key=lambda item: (
+            not item.get("is_popular"),
+            -(item.get("quality_score") or 0),
+            item["city"].lower(),
+        )
+    )
+    region_groups = _build_country_region_groups(cities)
+    featured_locations = cities[:6]
+    sst_summary = _build_country_sst_summary(cities)
 
     context = {
         "country_slug": country,
         "country_name": country_name,
         "cities": cities,
+        "region_groups": region_groups,
+        "featured_locations": featured_locations,
+        "sst_summary": sst_summary,
         "rankings": get_best_snorkeling_rankings(
             country,
             include_countries=False,
@@ -545,6 +612,7 @@ def _forecast_rows_to_hours(rows: list[ForecastHour], timezone_str: str) -> list
                 "rating": row.rating or "poor",
                 "wave_height": wave,
                 "wind_speed": wind,
+                "air_temperature": None,
                 "sea_surface_temperature": sst,
                 "sea_level_height": row.sea_level_height,
                 "current_velocity": current,
@@ -729,6 +797,81 @@ def _format_best_window(hours: list[dict], next_window: dict | None) -> dict | N
         "end": end,
         "duration_hours": None if not end or not start else int((end - start).total_seconds() / 3600),
         "label": "Good window" if end and end != start else "Best hour",
+    }
+
+
+def _build_location_condition_tiles(hours: list[dict], local_tz: tz.tzfile | None) -> dict:
+    """Summarize the most useful same-day conditions for the page header."""
+    fallback = {
+        "sunrise": None,
+        "sunrise_label": None,
+        "sunset": None,
+        "sunset_label": None,
+        "water_temp": None,
+        "max_air_temp": None,
+        "sky_label": "Sky",
+        "sky_label_es": "Cielo",
+        "sky_detail": "No data",
+        "sky_detail_es": "Sin datos",
+        "cloud_cover": None,
+    }
+    if not hours:
+        return fallback
+
+    now = datetime.now(tz=local_tz or tz.tzutc())
+    today_hours = [h for h in hours if h.get("time") and h["time"].date() == now.date()]
+    display_hours = today_hours or hours[:24]
+    nearest_hour = display_hours[0]
+
+    sunrise = next((h.get("sunrise") for h in display_hours if h.get("sunrise")), None)
+    sunset = next((h.get("sunset") for h in display_hours if h.get("sunset")), None)
+    display_tz = local_tz or tz.tzutc()
+    local_sunrise = sunrise.astimezone(display_tz) if sunrise else None
+    local_sunset = sunset.astimezone(display_tz) if sunset else None
+    water_values = [
+        float(h["sea_surface_temperature"])
+        for h in display_hours
+        if isinstance(h.get("sea_surface_temperature"), int | float)
+    ]
+    air_values = [
+        float(h["air_temperature"])
+        for h in display_hours
+        if isinstance(h.get("air_temperature"), int | float)
+    ]
+    cloud_cover = nearest_hour.get("cloud_cover")
+
+    if isinstance(cloud_cover, int | float):
+        cloud_value = round(float(cloud_cover))
+        if cloud_value <= 30:
+            sky_label = "Clear"
+            sky_label_es = "Despejado"
+        elif cloud_value <= 70:
+            sky_label = "Partly cloudy"
+            sky_label_es = "Parcialmente nublado"
+        else:
+            sky_label = "Cloudy"
+            sky_label_es = "Nublado"
+        sky_detail = f"{cloud_value}% cloud"
+        sky_detail_es = f"{cloud_value}% nubes"
+    else:
+        sky_label = "Sky"
+        sky_label_es = "Cielo"
+        sky_detail = "No data"
+        sky_detail_es = "Sin datos"
+
+    return {
+        **fallback,
+        "sunrise": local_sunrise,
+        "sunrise_label": local_sunrise.strftime("%H:%M") if local_sunrise else None,
+        "sunset": local_sunset,
+        "sunset_label": local_sunset.strftime("%H:%M") if local_sunset else None,
+        "water_temp": water_values[0] if water_values else None,
+        "max_air_temp": max(air_values) if air_values else None,
+        "sky_label": sky_label,
+        "sky_label_es": sky_label_es,
+        "sky_detail": sky_detail,
+        "sky_detail_es": sky_detail_es,
+        "cloud_cover": cloud_cover,
     }
 
 
@@ -965,6 +1108,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
     }
 
     day_planner = _build_day_summaries(hours, local_tz=local_tz)
+    condition_tiles = _build_location_condition_tiles(hours, local_tz)
     best_available = _best_available_hours(hours, limit=3)
     chart_summaries = _build_chart_summaries(chart_hours_24)
     tide_times = [h["time"] for h in hours if h.get("is_high_tide")]
@@ -1086,6 +1230,7 @@ def location_forecast(request: HttpRequest, country: str, city: str) -> HttpResp
         "summary": decision_summary,
         "decision_summary": decision_summary,
         "day_planner": day_planner,
+        "condition_tiles": condition_tiles,
         "best_available": best_available,
         "chart_summaries": chart_summaries,
         "rating_counts": rating_counts,

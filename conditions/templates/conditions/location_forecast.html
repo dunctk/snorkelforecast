@@ -108,6 +108,73 @@
       </p>
     </div>
 
+    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+      <div class="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-left ui-night:border-amber-900/70 ui-night:bg-amber-950/30">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 ui-night:bg-amber-900/70 ui-night:text-amber-200" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/><circle cx="12" cy="12" r="4"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-amber-800 ui-night:text-amber-200">{% if is_spanish %}Amanecer{% else %}Sunrise{% endif %}</p>
+            <p class="text-base font-semibold text-gray-950 ui-night:text-gray-50">{% firstof condition_tiles.sunrise_label "-" %}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-orange-200 bg-orange-50/80 p-3 text-left ui-night:border-orange-900/70 ui-night:bg-orange-950/30">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700 ui-night:bg-orange-900/70 ui-night:text-orange-200" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 10V2"/><path d="m4.93 10.93 1.41-1.41"/><path d="M2 18h20"/><path d="M4 14h16"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="m17.66 9.52 1.41 1.41"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-orange-800 ui-night:text-orange-200">{% if is_spanish %}Atardecer{% else %}Sunset{% endif %}</p>
+            <p class="text-base font-semibold text-gray-950 ui-night:text-gray-50">{% firstof condition_tiles.sunset_label "-" %}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-cyan-200 bg-cyan-50/80 p-3 text-left ui-night:border-cyan-900/70 ui-night:bg-cyan-950/30">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 ui-night:bg-cyan-900/70 ui-night:text-cyan-200" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 14c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M2 19c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2"/><path d="M12 2v7"/><path d="m9 6 3 3 3-3"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-cyan-800 ui-night:text-cyan-200">{% if is_spanish %}Agua{% else %}Water{% endif %}</p>
+            <p class="text-base font-semibold text-gray-950 ui-night:text-gray-50">{% if condition_tiles.water_temp %}{{ condition_tiles.water_temp|floatformat:1 }}°C{% else %}-{% endif %}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-left ui-night:border-rose-900/70 ui-night:bg-rose-950/30">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 ui-night:bg-rose-900/70 ui-night:text-rose-200" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/><path d="M10 9h4"/></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-rose-800 ui-night:text-rose-200">{% if is_spanish %}Max aire{% else %}Max air{% endif %}</p>
+            <p class="text-base font-semibold text-gray-950 ui-night:text-gray-50">{% if condition_tiles.max_air_temp %}{{ condition_tiles.max_air_temp|floatformat:1 }}°C{% else %}-{% endif %}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-left ui-night:border-slate-700 ui-night:bg-slate-900/50">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 ui-night:bg-slate-800 ui-night:text-slate-200" aria-hidden="true">
+            {% if condition_tiles.sky_label == "Clear" %}
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>
+            {% else %}
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+            {% endif %}
+          </span>
+          <div class="min-w-0">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-slate-700 ui-night:text-slate-200">{% if is_spanish %}Cielo{% else %}Sky{% endif %}</p>
+            <p class="truncate text-base font-semibold text-gray-950 ui-night:text-gray-50">{% if is_spanish %}{{ condition_tiles.sky_label_es }}{% else %}{{ condition_tiles.sky_label }}{% endif %}</p>
+            <p class="text-xs text-slate-600 ui-night:text-slate-300">{% if is_spanish %}{{ condition_tiles.sky_detail_es }}{% else %}{{ condition_tiles.sky_detail }}{% endif %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="w-full max-w-2xl mx-auto mt-4 mb-6">
       <section role="status" aria-live="polite" class="rounded-xl border border-emerald-200 bg-emerald-50 ui-night:bg-emerald-900/20 ui-night:border-emerald-800 p-4 sm:p-5">
         {% if summary.total_hours > 0 %}

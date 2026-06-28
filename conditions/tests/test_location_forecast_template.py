@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from dateutil import tz
+from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 
 from conditions import views
@@ -29,14 +30,19 @@ def _build_hour(
         "light_ok": True,
         "wave_height": 0.2,
         "wind_speed": 4.1,
+        "air_temperature": 25.0 + (hour % 4),
         "sea_surface_temperature": 24.4,
         "sea_level_height": 0.9,
         "is_high_tide": False,
+        "sunrise": start_time.replace(hour=7, minute=10, second=0, microsecond=0),
+        "sunset": start_time.replace(hour=21, minute=25, second=0, microsecond=0),
+        "cloud_cover": 18,
     }
 
 
 class LocationForecastTemplateTests(TestCase):
     def setUp(self) -> None:
+        cache.clear()
         self.factory = RequestFactory()
         self.location_main = SnorkelLocation.objects.create(
             osm_id=2020,
@@ -110,6 +116,17 @@ class LocationForecastTemplateTests(TestCase):
 
         for action in ["#day-planner", "#best-available", "#advanced-data"]:
             self.assertIn(f'href="{action}"', html)
+
+        self.assertIn("Sunrise", html)
+        self.assertIn("07:10", html)
+        self.assertIn("Sunset", html)
+        self.assertIn("21:25", html)
+        self.assertIn("Water", html)
+        self.assertIn("24.4°C", html)
+        self.assertIn("Max air", html)
+        self.assertIn("28.0°C", html)
+        self.assertIn("Clear", html)
+        self.assertIn("18% cloud", html)
 
         self.assertGreaterEqual(html.count("<details"), 3)
         self.assertIn("72-hour forecast overview", html)

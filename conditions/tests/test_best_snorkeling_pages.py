@@ -104,10 +104,74 @@ class BestSnorkelingPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
 
-        self.assertIn("Best snorkeling in Greece", html)
+        self.assertIn("Snorkeling in Greece", html)
+        self.assertIn("Where to snorkel in Greece", html)
+        self.assertIn("All snorkeling spots in Greece", html)
         self.assertIn("Best Greece spots over the next 72 hours", html)
         self.assertIn("Milos", html)
         self.assertNotIn("Cozumel</h3>", html)
+        self.assertIn('"numberOfItems": 1', html)
+        self.assertIn("Countries", html)
+
+    def test_country_page_remains_useful_without_rankings(self):
+        cache.clear()
+        spain = SnorkelLocation.objects.create(
+            osm_id=9003,
+            osm_type="node",
+            country_slug="spain",
+            city_slug="cabo-de-gata",
+            name="Cabo de Gata",
+            country="Spain",
+            region="Andalusia",
+            latitude=36.764,
+            longitude=-2.109,
+            timezone="Europe/Madrid",
+            description="Volcanic coves and clear Mediterranean water.",
+            location_type="cove",
+            is_popular=True,
+            quality_score=0.9,
+        )
+        SnorkelLocation.objects.create(
+            osm_id=9004,
+            osm_type="node",
+            country_slug="spain",
+            city_slug="tenerife",
+            name="Tenerife",
+            country="Spain",
+            region="Canary Islands",
+            latitude=28.291,
+            longitude=-16.629,
+            timezone="Atlantic/Canary",
+            description="Atlantic island with sheltered rocky entries.",
+            location_type="island",
+        )
+        ForecastHour.objects.create(
+            location=spain,
+            country_slug=spain.country_slug,
+            city_slug=spain.city_slug,
+            time=timezone.now(),
+            ok=True,
+            score=0.8,
+            rating="excellent",
+            wave_height=0.2,
+            wind_speed=3.0,
+            sea_surface_temperature=23.4,
+        )
+
+        request = self.factory.get("/spain/")
+        response = views.country_directory(request, country="spain")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+
+        self.assertIn("Spain combines Mediterranean coves", html)
+        self.assertIn("Andalusia", html)
+        self.assertIn("Canary Islands", html)
+        self.assertIn("Cabo de Gata", html)
+        self.assertIn("Tenerife", html)
+        self.assertIn("Sea temperature", html)
+        self.assertIn("There are not enough upcoming rows", html)
+        self.assertIn('"numberOfItems": 2', html)
 
     def test_country_rankings_skip_global_country_list_and_cap_history(self):
         rankings = views.get_best_snorkeling_rankings(

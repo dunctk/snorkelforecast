@@ -169,7 +169,7 @@ class I18nSeoTests(TestCase):
             "/es/countries/": "Destinos de snorkel por país",
             "/es/search/": "Buscar lugares para hacer snorkel",
             "/es/guides/": "Guías de snorkel",
-            "/es/spain/": "Mejor snorkel en Spain",
+            "/es/spain/": "Snorkel en Spain",
             "/es/spain/carboneras/history/": "Tendencias históricas",
             "/es/spain/carboneras/embed/sea-temperature/": '<html lang="es">',
         }

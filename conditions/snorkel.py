@@ -66,6 +66,7 @@ class Hour(TypedDict):
     rating: str
     wave_height: float | None
     wind_speed: float | None
+    air_temperature: float | None
     sea_surface_temperature: float | None
     sea_level_height: float | None
     current_velocity: float | None
@@ -290,6 +291,7 @@ def _fallback_from_db(
                     "rating": r.rating,
                     "wave_height": wave,
                     "wind_speed": wind,
+                    "air_temperature": None,
                     "sea_surface_temperature": sst,
                     "sea_level_height": r.sea_level_height,
                     "current_velocity": current,
@@ -353,6 +355,7 @@ def _serialize_snapshot_hours(hours: list[Hour]) -> list[dict]:
                 "rating": h.get("rating"),
                 "wave_height": h.get("wave_height"),
                 "wind_speed": h.get("wind_speed"),
+                "air_temperature": h.get("air_temperature"),
                 "sea_surface_temperature": h.get("sea_surface_temperature"),
                 "sea_level_height": h.get("sea_level_height"),
                 "current_velocity": h.get("current_velocity"),
@@ -389,6 +392,7 @@ def _deserialize_snapshot_rows(snapshot_hours: list[object]) -> list[Hour]:
                 "rating": row.get("rating") or "poor",
                 "wave_height": row.get("wave_height"),
                 "wind_speed": row.get("wind_speed"),
+                "air_temperature": row.get("air_temperature"),
                 "sea_surface_temperature": row.get("sea_surface_temperature"),
                 "sea_level_height": row.get("sea_level_height"),
                 "current_velocity": row.get("current_velocity"),
@@ -509,7 +513,7 @@ def _api_fetch_hours(
     wx_url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={coordinates['lat']}&longitude={coordinates['lon']}"
-        "&hourly=wind_speed_10m,cloud_cover&daily=sunrise,sunset"
+        "&hourly=wind_speed_10m,temperature_2m,cloud_cover&daily=sunrise,sunset"
         "&timezone=UTC"
         f"&past_hours=0&forecast_hours={hours}"
     )
@@ -614,6 +618,7 @@ def _api_fetch_hours(
 
     sea = marine["hourly"].get("sea_level_height_msl", [])
     curr = marine["hourly"].get("ocean_current_velocity", [])
+    air_temperature = wx["hourly"].get("temperature_2m", [])
     cloud_cover = wx["hourly"].get("cloud_cover", [])
 
     # Identify high tides (local maxima)
@@ -642,6 +647,7 @@ def _api_fetch_hours(
         wind = wx["hourly"]["wind_speed_10m"][i]
         tide = sea[i] if i < len(sea) else None
         current = curr[i] if i < len(curr) else None
+        this_air_temperature = air_temperature[i] if i < len(air_temperature) else None
         this_cloud_cover = cloud_cover[i] if i < len(cloud_cover) else None
 
         wave_ok = wave is not None and wave <= THRESHOLDS["wave_height"]
@@ -690,6 +696,7 @@ def _api_fetch_hours(
                 "rating": rating,
                 "wave_height": wave,
                 "wind_speed": wind,
+                "air_temperature": this_air_temperature,
                 "sea_surface_temperature": sst,
                 "sea_level_height": tide,
                 "current_velocity": current,
