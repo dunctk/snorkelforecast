@@ -34,9 +34,11 @@ def _run_once() -> None:
     delay = float(os.getenv("SCHEDULER_REQUEST_DELAY_SECONDS", "0.5"))
 
     locations = _iter_locations()
+    refreshed_country_slugs: set[str] = set()
     for location in locations:
         coords = location.coordinates_dict
         tz = location.timezone
+        refreshed_country_slugs.add(location.country_slug)
         try:
             payload = fetch_forecast_payload(
                 coordinates=coords,
@@ -61,6 +63,16 @@ def _run_once() -> None:
         if delay > 0:
             # Small jitter avoids a regular request cadence.
             time.sleep(delay + random.uniform(0, delay))
+
+    try:
+        from .views import warm_best_snorkeling_ranking_cache
+
+        warm_best_snorkeling_ranking_cache(sorted(refreshed_country_slugs))
+        print(
+            f"[scheduler] warmed ranking caches for {len(refreshed_country_slugs)} countries"
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"[scheduler] ranking cache warm failed: {e}", file=sys.stderr)
 
 
 def main() -> None:

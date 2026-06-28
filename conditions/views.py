@@ -4,6 +4,7 @@ from collections import defaultdict
 from io import BytesIO
 
 from dateutil import tz
+from django.core.cache import cache
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
@@ -34,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 RANKING_MIN_UPCOMING_HOURS = 6
 RANKING_MIN_HISTORICAL_HOURS = 24
+RANKING_CACHE_TTL = getattr(settings, "RANKING_CACHE_TTL", 1800)
+COUNTRY_PAGE_CACHE_TTL = getattr(settings, "COUNTRY_PAGE_CACHE_TTL", 1800)
 
 
 def _rating_label(score: float | None) -> str:
@@ -52,7 +55,18 @@ def _ranking_location_url(country_slug: str, city_slug: str) -> str:
     return f"/{country_slug}/{city_slug}/"
 
 
-def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str, object]:
+def _ranking_cache_key(country_slug: str | None, include_countries: bool, historical_limit: int) -> str:
+    scope = country_slug or "global"
+    countries_flag = "with-countries" if include_countries else "no-countries"
+    return f"best-snorkeling-rankings:v2:{scope}:{countries_flag}:h{historical_limit}"
+
+
+def _build_best_snorkeling_rankings(
+    country_slug: str | None = None,
+    *,
+    include_countries: bool = True,
+    historical_limit: int = 80,
+) -> dict[str, object]:
     """Build historical and 72-hour rankings from stored forecast rows."""
     now = django_timezone.now()
     next_72h = now + timedelta(hours=72)
@@ -60,7 +74,7 @@ def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str
 
     location_filter = Q(location__isnull=False)
     if country_slug:
-        location_filter &= Q(location__country_slug=country_slug)
+        location_filter &= Q(country_slug=country_slug)
 
     upcoming_rows = (
         ForecastHour.objects.filter(location_filter, time__gte=now, time__lte=next_72h)
@@ -138,7 +152,7 @@ def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str
     )
 
     historical = []
-    for row in historical_rows[:80]:
+    for row in historical_rows[:historical_limit]:
         sample_hours = int(row["sample_hours"] or 0)
         ok_hours = int(row["ok_hours"] or 0)
         avg_score = row["avg_score"]
@@ -166,23 +180,28 @@ def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str
         )
 
     countries = []
-    country_rows = (
-        ForecastHour.objects.filter(location__isnull=False, time__gte=historical_cutoff, time__lt=now)
-        .values("location__country_slug", "location__country")
-        .annotate(avg_score=Avg("score"), sample_hours=Count("id"))
-        .filter(sample_hours__gte=RANKING_MIN_HISTORICAL_HOURS)
-        .order_by("-avg_score", "location__country")
-    )
-    for row in country_rows:
-        countries.append(
-            {
-                "slug": row["location__country_slug"],
-                "name": row["location__country"],
-                "url": f"/{row['location__country_slug']}/",
-                "score_percent": round((row["avg_score"] or 0) * 100),
-                "sample_hours": row["sample_hours"],
-            }
+    if include_countries:
+        country_rows = (
+            ForecastHour.objects.filter(
+                location__isnull=False,
+                time__gte=historical_cutoff,
+                time__lt=now,
+            )
+            .values("country_slug", "location__country")
+            .annotate(avg_score=Avg("score"), sample_hours=Count("id"))
+            .filter(sample_hours__gte=RANKING_MIN_HISTORICAL_HOURS)
+            .order_by("-avg_score", "location__country")
         )
+        for row in country_rows:
+            countries.append(
+                {
+                    "slug": row["country_slug"],
+                    "name": row["location__country"],
+                    "url": f"/{row['country_slug']}/",
+                    "score_percent": round((row["avg_score"] or 0) * 100),
+                    "sample_hours": row["sample_hours"],
+                }
+            )
 
     return {
         "upcoming": upcoming,
@@ -192,6 +211,46 @@ def _build_best_snorkeling_rankings(country_slug: str | None = None) -> dict[str
         "historical_days": 365,
         "forecast_hours": 72,
     }
+
+
+def get_best_snorkeling_rankings(
+    country_slug: str | None = None,
+    *,
+    include_countries: bool = True,
+    historical_limit: int = 80,
+) -> dict[str, object]:
+    """Return cached rankings, computing them on cache miss."""
+    cache_key = _ranking_cache_key(country_slug, include_countries, historical_limit)
+    rankings = cache.get(cache_key)
+    if rankings is not None:
+        return rankings
+
+    rankings = _build_best_snorkeling_rankings(
+        country_slug,
+        include_countries=include_countries,
+        historical_limit=historical_limit,
+    )
+    cache.set(cache_key, rankings, RANKING_CACHE_TTL)
+    return rankings
+
+
+def warm_best_snorkeling_ranking_cache(country_slugs: list[str] | None = None) -> None:
+    """Precompute ranking blobs after scheduled forecast refreshes."""
+    global_rankings = _build_best_snorkeling_rankings()
+    cache.set(_ranking_cache_key(None, True, 80), global_rankings, RANKING_CACHE_TTL)
+
+    if country_slugs is None:
+        country_slugs = list(
+            SnorkelLocation.objects.values_list("country_slug", flat=True).distinct()
+        )
+
+    for country_slug in country_slugs:
+        rankings = _build_best_snorkeling_rankings(
+            country_slug,
+            include_countries=False,
+            historical_limit=30,
+        )
+        cache.set(_ranking_cache_key(country_slug, False, 30), rankings, RANKING_CACHE_TTL)
 
 
 def _current_sst_by_location_id(locations: list[SnorkelLocation]) -> dict[int, float | None]:
@@ -304,7 +363,7 @@ def homepage(request: HttpRequest) -> HttpResponse:
     return render(request, "conditions/homepage.html", context)
 
 
-@cache_page(getattr(settings, "CACHE_TTL", 300))
+@cache_page(COUNTRY_PAGE_CACHE_TTL)
 def country_directory(request: HttpRequest, country: str) -> HttpResponse:
     """Country directory page listing supported locations in the country.
 
@@ -342,7 +401,11 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
         "country_slug": country,
         "country_name": country_name,
         "cities": cities,
-        "rankings": _build_best_snorkeling_rankings(country),
+        "rankings": get_best_snorkeling_rankings(
+            country,
+            include_countries=False,
+            historical_limit=30,
+        ),
         "is_country_page": True,
     }
     return render(request, "conditions/country.html", context)
@@ -351,7 +414,7 @@ def country_directory(request: HttpRequest, country: str) -> HttpResponse:
 @cache_page(getattr(settings, "CACHE_TTL", 300))
 def best_snorkeling(request: HttpRequest) -> HttpResponse:
     """Editorial ranking page for the best snorkeling places worldwide."""
-    rankings = _build_best_snorkeling_rankings()
+    rankings = get_best_snorkeling_rankings()
     context = {
         "rankings": rankings,
         "country_name": "the World",

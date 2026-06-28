@@ -108,3 +108,14 @@ class BestSnorkelingPageTests(TestCase):
         self.assertIn("Best Greece spots over the next 72 hours", html)
         self.assertIn("Milos", html)
         self.assertNotIn("Cozumel</h3>", html)
+
+    def test_country_rankings_skip_global_country_list_and_cap_history(self):
+        rankings = views.get_best_snorkeling_rankings(
+            "greece",
+            include_countries=False,
+            historical_limit=1,
+        )
+
+        self.assertEqual(rankings["countries"], [])
+        self.assertEqual(len(rankings["historical"]), 1)
+        self.assertEqual(rankings["historical"][0]["country_slug"], "greece")

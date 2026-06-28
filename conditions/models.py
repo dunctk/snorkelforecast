@@ -76,10 +76,10 @@ class SnorkelLocation(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["country_slug", "city_slug"]),
-            models.Index(fields=["is_popular", "quality_score"]),
-            models.Index(fields=["location_type"]),
-            models.Index(fields=["source"]),
+            models.Index(fields=["country_slug", "city_slug"], name="conditions__country_fe201f_idx"),
+            models.Index(fields=["is_popular", "quality_score"], name="conditions__is_popu_d10500_idx"),
+            models.Index(fields=["location_type"], name="conditions__locatio_021a63_idx"),
+            models.Index(fields=["source"], name="conditions__source_413629_idx"),
         ]
 
     def __str__(self) -> str:
@@ -139,9 +139,10 @@ class ForecastHour(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["location", "time"]),
+            models.Index(fields=["location", "time"], name="conditions__locatio_05efe1_idx"),
+            models.Index(fields=["country_slug", "time"], name="cond_fh_country_time_idx"),
             # Keep legacy indexes for migration compatibility
-            models.Index(fields=["country_slug", "city_slug", "time"]),
+            models.Index(fields=["country_slug", "city_slug", "time"], name="conditions__country_916ec8_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - convenience only
@@ -186,9 +187,15 @@ class LocationForecastSnapshot(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["location", "horizon_hours"]),
-            models.Index(fields=["country_slug", "city_slug", "horizon_hours"]),
-            models.Index(fields=["valid_until"]),
+            models.Index(
+                fields=["location", "horizon_hours"],
+                name="conditions__locatio_cfbdcd_idx",
+            ),
+            models.Index(
+                fields=["country_slug", "city_slug", "horizon_hours"],
+                name="conditions__country_8544c0_idx",
+            ),
+            models.Index(fields=["valid_until"], name="conditions__valid_u_1bd383_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - convenience only
