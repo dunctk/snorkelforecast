@@ -1,5 +1,5 @@
 {% extends 'conditions/base.html' %}
-{% load static l10n %}
+{% load static l10n localized_urls %}
 
 {% block title %}{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy y medias mensuales | {{ location.country }}{% else %}{{ location.city }} Sea Temperature Today & Monthly Averages | {{ location.country }}{% endif %}{% endblock %}
 
@@ -8,7 +8,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy y medias mensuales{% else %}{{ location.city }} Sea Temperature Today & Monthly Averages{% endif %}" />
   <meta property="og:description" content="{% if is_spanish %}{% if current_sst %}Temperatura actual del mar en {{ location.name }}: {{ current_sst|floatformat:1 }} °C. {% endif %}Consulta medias mensuales, tendencias históricas y la mejor época para agua cálida.{% else %}{% if current_sst %}Current sea temperature in {{ location.name }}: {{ current_sst|floatformat:1 }}°C. {% endif %}View monthly water temperature averages, historical trends, and the best time of year for warm water.{% endif %}" />
-  <meta property="og:url" content="https://snorkelforecast.com{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}{{ spanish_path }}{% else %}{% url 'location_sea_temperature' country=location.country_slug city=location.city_slug %}{% endif %}" />
   <meta name="twitter:title" content="{% if is_spanish %}Temperatura del mar en {{ location.city }} hoy{% else %}{{ location.city }} Sea Temperature Today{% endif %}" />
   <meta name="twitter:description" content="{% if is_spanish %}{% if current_sst %}Temperatura actual: {{ current_sst|floatformat:1 }} °C. {% endif %}Medias mensuales y datos históricos de temperatura para {{ location.name }}.{% else %}{% if current_sst %}Current sea temperature: {{ current_sst|floatformat:1 }}°C. {% endif %}Monthly averages and historical water temperature data for {{ location.name }}.{% endif %}" />
 {% endblock %}
@@ -18,11 +18,11 @@
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
       <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'countries_index' %}" class="hover:underline">{{ ui.nav_countries }}</a></li>
+      <li><a href="{% if is_spanish %}/es/destinos/{% else %}{% url 'countries_index' %}{% endif %}" class="hover:underline">{{ ui.nav_countries }}</a></li>
       <li>/</li>
-      <li><a href="{% if is_spanish %}/es{% endif %}/{% firstof location.country_slug %}/" class="hover:underline">{{ location.country }}</a></li>
+      <li><a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|spanish_path_for }}{% else %}/{% firstof location.country_slug %}/{% endif %}" class="hover:underline">{{ location.country }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="hover:underline">{{ location.city }}</a></li>
+      <li><a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' country=location.country_slug city=location.city_slug %}{% endif %}" class="hover:underline">{{ location.city }}</a></li>
       <li>/</li>
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{% if is_spanish %}Temperatura del mar{% else %}Sea Temperature{% endif %}</li>
     </ol>
@@ -33,7 +33,7 @@
       <h1 class="text-xl sm:text-2xl font-bold mb-2">{% if is_spanish %}Temperatura del mar en {{ location.city }}{% else %}{{ location.city }} Sea Temperature{% endif %}</h1>
       <p class="text-xs sm:text-sm text-gray-600 ui-night:text-gray-300">{{ location.country }} · {% if is_spanish %}Actualizado cada hora con datos satelitales y marinos{% else %}Updated hourly from satellite and marine data{% endif %}</p>
       <p class="mt-2 text-sm">
-        <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
+        <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' country=location.country_slug city=location.city_slug %}{% endif %}" class="text-blue-600 ui-night:text-blue-400 hover:underline font-medium">
           ← {% if is_spanish %}Pronóstico de snorkel para {{ location.city }}{% else %}Snorkel forecast for {{ location.city }}{% endif %}
         </a>
       </p>
@@ -197,7 +197,7 @@
         {% if is_spanish %}Consulta cómo se combinan la temperatura del mar, el oleaje, el viento y las mareas de hoy en una puntuación detallada para {{ location.city }}.{% else %}See how today's sea temperature, wave height, wind, and tides combine into a
         detailed snorkeling score for {{ location.city }}.{% endif %}
       </p>
-      <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
+      <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' country=location.country_slug city=location.city_slug %}{% endif %}"
          class="inline-block rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 text-sm font-medium transition-colors">
         {% if is_spanish %}Ver pronóstico de snorkel{% else %}View Snorkel Forecast{% endif %} →
       </a>
@@ -208,7 +208,7 @@
         <h2 class="text-base sm:text-lg font-semibold mb-3">{% if is_spanish %}Temperaturas del mar cercanas{% else %}Sea temperatures nearby{% endif %}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {% for spot in nearby_locations %}
-            <a href="{% url 'location_sea_temperature' country=spot.country_slug city=spot.city_slug %}"
+            <a href="{% if is_spanish %}{{ '/'|add:spot.country_slug|add:'/'|add:spot.city_slug|add:'/sea-temperature/'|spanish_path_for }}{% else %}{% url 'location_sea_temperature' country=spot.country_slug city=spot.city_slug %}{% endif %}"
                class="block p-4 rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 border border-gray-200 ui-night:border-gray-700 transition-colors">
               <span class="font-semibold block">{{ spot.name }}</span>
               {% if spot.description %}<span class="text-sm text-gray-600 ui-night:text-gray-400 line-clamp-2">{{ spot.description|truncatechars:90 }}</span>{% endif %}
@@ -216,7 +216,7 @@
           {% endfor %}
         </div>
         <p class="mt-3 text-sm">
-          <a href="{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/" class="text-blue-600 ui-night:text-blue-400 hover:underline">{% if is_spanish %}Ver todos los lugares en {{ location.country }}{% else %}See all spots in {{ location.country }}{% endif %} →</a>
+          <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|spanish_path_for }}{% else %}/{{ location.country_slug }}/{% endif %}" class="text-blue-600 ui-night:text-blue-400 hover:underline">{% if is_spanish %}Ver todos los lugares en {{ location.country }}{% else %}See all spots in {{ location.country }}{% endif %} →</a>
         </p>
       </nav>
     {% endif %}

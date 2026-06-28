@@ -1,5 +1,5 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static localized_urls %}
 
 {% block title %}{% if is_spanish %}Snorkel por país: {{ countries|length }} destinos en el mundo{% else %}Snorkeling by Country: {{ countries|length }} Destinations Worldwide{% endif %}{% endblock %}
 
@@ -12,7 +12,7 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:image" content="https://snorkelforecast.com/og.png" />
-  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/countries/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es/destinos/{% else %}/countries/{% endif %}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
@@ -20,13 +20,13 @@
     "@type": "CollectionPage",
     "name": "{% if is_spanish %}Destinos de snorkel por país{% else %}Snorkeling Destinations by Country{% endif %}",
     "description": "{% if is_spanish %}Explora {{ countries|length }} países con pronósticos de snorkel en vivo.{% else %}Browse {{ countries|length }} countries with live snorkeling forecasts worldwide.{% endif %}",
-    "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/countries/",
+    "url": "https://snorkelforecast.com{% if is_spanish %}/es/destinos/{% else %}/countries/{% endif %}",
     "mainEntity": {
       "@type": "ItemList",
       "numberOfItems": {{ countries|length }},
       "itemListElement": [
         {% for c in countries %}
-        {"@type": "ListItem", "position": {{ forloop.counter }}, "name": "{% if is_spanish %}Snorkel en {{ c.name }}{% else %}Snorkeling in {{ c.name }}{% endif %}", "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ c.slug }}/"}{% if not forloop.last %},{% endif %}
+        {"@type": "ListItem", "position": {{ forloop.counter }}, "name": "{% if is_spanish %}Snorkel en {{ c.name }}{% else %}Snorkeling in {{ c.name }}{% endif %}", "url": "https://snorkelforecast.com{% if is_spanish %}{{ '/'|add:c.slug|add:'/'|spanish_path_for }}{% else %}/{{ c.slug }}/{% endif %}"}{% if not forloop.last %},{% endif %}
         {% endfor %}
       ]
     }
@@ -51,7 +51,7 @@
     <h2 class="sr-only">{{ ui.footer_all_countries }}</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {% for c in countries %}
-      <a href="{% if is_spanish %}/es{% endif %}/{% firstof c.slug %}/" class="group block">
+      <a href="{% if is_spanish %}{{ '/'|add:c.slug|add:'/'|spanish_path_for }}{% else %}/{{ c.slug }}/{% endif %}" class="group block">
         <div class="card-enhanced p-5 h-full transition-transform group-hover:-translate-y-0.5">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold">{{ c.name }}</h2>

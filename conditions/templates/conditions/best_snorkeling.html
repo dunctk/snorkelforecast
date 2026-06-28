@@ -1,4 +1,5 @@
 {% extends 'conditions/base.html' %}
+{% load localized_urls %}
 
 {% block title %}{% if is_spanish %}Mejores lugares para hacer snorkel: ranking mundial y pronóstico 72h{% else %}Best Places to Snorkel: Live Global Rankings & 72-Hour Forecast{% endif %}{% endblock %}
 
@@ -8,7 +9,7 @@
   <meta property="og:title" content="{% if is_spanish %}Mejores lugares para hacer snorkel - Ranking mundial en vivo{% else %}Best Places to Snorkel - Live Global Rankings{% endif %}" />
   <meta property="og:description" content="{% if is_spanish %}Guía basada en datos de los mejores lugares para hacer snorkel, actualizada con condiciones históricas y el pronóstico de 72 horas.{% else %}A data-led guide to the world's best snorkeling spots, auto-updated from historical conditions and the next 72-hour forecast.{% endif %}" />
   <meta property="og:image" content="https://snorkelforecast.com/og.png" />
-  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/best-snorkeling/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es/mejor-snorkel/{% else %}/best-snorkeling/{% endif %}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
@@ -16,7 +17,7 @@
     "@type": "CollectionPage",
     "name": "{% if is_spanish %}Mejores lugares para hacer snorkel{% else %}Best Places to Snorkel{% endif %}",
     "description": "{% if is_spanish %}Ranking mundial de snorkel basado en datos históricos y pronósticos próximos.{% else %}Global snorkeling rankings based on historical and upcoming forecast data.{% endif %}",
-    "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/best-snorkeling/",
+    "url": "https://snorkelforecast.com{% if is_spanish %}/es/mejor-snorkel/{% else %}/best-snorkeling/{% endif %}",
     "mainEntity": {
       "@type": "ItemList",
       "numberOfItems": {{ rankings.historical|length }},
@@ -28,7 +29,7 @@
           "item": {
             "@type": "TouristDestination",
             "name": "{{ location.name|escapejs }}",
-            "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}{{ location.url }}",
+            "url": "https://snorkelforecast.com{% if is_spanish %}{{ location.url|spanish_path_for }}{% else %}{{ location.url }}{% endif %}",
             "address": {"@type": "PostalAddress", "addressCountry": "{{ location.country|escapejs }}"}
           }
         }{% if not forloop.last %},{% endif %}
@@ -79,7 +80,7 @@
         {% if rankings.upcoming %}
           <div class="space-y-3">
             {% for location in rankings.upcoming|slice:":10" %}
-              <a href="{% if is_spanish %}/es{% endif %}{{ location.url }}" class="card-enhanced block p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
+              <a href="{% if is_spanish %}{{ location.url|spanish_path_for }}{% else %}{{ location.url }}{% endif %}" class="card-enhanced block p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
                 <div class="flex items-start justify-between gap-4">
                   <div>
                     <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} {% if is_spanish %}según el pronóstico{% else %}forecast pick{% endif %}</p>
@@ -108,7 +109,7 @@
             <ol class="space-y-3">
               {% for country in rankings.countries|slice:":12" %}
                 <li class="flex items-center justify-between gap-3 text-sm">
-                  <a href="{% if is_spanish %}/es{% endif %}{{ country.url }}" class="font-medium text-blue-700 ui-night:text-blue-300 hover:underline">{% if is_spanish %}Mejor snorkel en {{ country.name }}{% else %}Best snorkeling in {{ country.name }}{% endif %}</a>
+                  <a href="{% if is_spanish %}{{ country.url|spanish_path_for }}{% else %}{{ country.url }}{% endif %}" class="font-medium text-blue-700 ui-night:text-blue-300 hover:underline">{% if is_spanish %}Mejor snorkel en {{ country.name }}{% else %}Best snorkeling in {{ country.name }}{% endif %}</a>
                   <span class="text-gray-500 ui-night:text-gray-400">{{ country.score_percent }}</span>
                 </li>
               {% endfor %}
@@ -129,7 +130,7 @@
     {% if rankings.historical %}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for location in rankings.historical|slice:":30" %}
-          <a href="{% if is_spanish %}/es{% endif %}{{ location.url }}" class="card-enhanced p-5 block transition-transform hover:-translate-y-0.5">
+          <a href="{% if is_spanish %}{{ location.url|spanish_path_for }}{% else %}{{ location.url }}{% endif %}" class="card-enhanced p-5 block transition-transform hover:-translate-y-0.5">
             <div class="flex items-start justify-between gap-3">
               <div>
                 <p class="font-mono text-xs text-gray-500 ui-night:text-gray-400">#{{ forloop.counter }} {% if is_spanish %}histórico{% else %}historical{% endif %}</p>

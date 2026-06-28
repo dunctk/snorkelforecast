@@ -1,5 +1,5 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static localized_urls %}
 
 {% block title %}{{ guide.title }}{% endblock %}
 
@@ -12,7 +12,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/{{ guide.slug }}/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es/guias/{{ guide.slug }}/{% else %}/guides/{{ guide.slug }}/{% endif %}" />
   <script type="application/ld+json">
   [
     {
@@ -20,17 +20,17 @@
       "@type": "Article",
       "headline": "{{ guide.title }}",
       "description": "{{ guide.summary }}",
-      "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/{{ guide.slug }}/",
+      "url": "https://snorkelforecast.com{% if is_spanish %}/es/guias/{{ guide.slug }}/{% else %}/guides/{{ guide.slug }}/{% endif %}",
       "publisher": {"@type": "Organization", "name": "SnorkelForecast.com"},
-      "mainEntityOfPage": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/{{ guide.slug }}/"
+      "mainEntityOfPage": "https://snorkelforecast.com{% if is_spanish %}/es/guias/{{ guide.slug }}/{% else %}/guides/{{ guide.slug }}/{% endif %}"
     },
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
         {"@type": "ListItem", "position": 1, "name": "{% if is_spanish %}Inicio{% else %}Home{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es/{% else %}/{% endif %}"},
-        {"@type": "ListItem", "position": 2, "name": "{% if is_spanish %}Guías{% else %}Guides{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/"},
-        {"@type": "ListItem", "position": 3, "name": "{{ guide.title }}", "item": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/guides/{{ guide.slug }}/"}
+        {"@type": "ListItem", "position": 2, "name": "{% if is_spanish %}Guías{% else %}Guides{% endif %}", "item": "https://snorkelforecast.com{% if is_spanish %}/es/guias/{% else %}/guides/{% endif %}"},
+        {"@type": "ListItem", "position": 3, "name": "{{ guide.title }}", "item": "https://snorkelforecast.com{% if is_spanish %}/es/guias/{{ guide.slug }}/{% else %}/guides/{{ guide.slug }}/{% endif %}"}
       ]
     },
     {
@@ -55,7 +55,7 @@
     <ol class="flex flex-wrap items-center gap-1 text-sm text-gray-600 ui-night:text-gray-300">
       <li><a href="{% url 'homepage' %}" class="hover:underline">{{ ui.footer_home }}</a></li>
       <li>/</li>
-      <li><a href="{% url 'guides_index' %}" class="hover:underline">{{ ui.nav_guides }}</a></li>
+      <li><a href="{% if is_spanish %}/es/guias/{% else %}{% url 'guides_index' %}{% endif %}" class="hover:underline">{{ ui.nav_guides }}</a></li>
       <li>/</li>
       <li class="text-gray-900 ui-night:text-gray-100" aria-current="page">{{ guide.title }}</li>
     </ol>
@@ -88,14 +88,14 @@
         <h2 class="text-xl font-bold mb-4">{% if is_spanish %}Consulta condiciones en vivo para un lugar{% else %}Check live conditions for a spot{% endif %}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {% for loc in popular_locations %}
-            <a href="{% if is_spanish %}/es{% endif %}/{{ loc.country_slug }}/{{ loc.city_slug }}/"
+            <a href="{% if is_spanish %}{{ '/'|add:loc.country_slug|add:'/'|add:loc.city_slug|add:'/'|spanish_path_for }}{% else %}/{{ loc.country_slug }}/{{ loc.city_slug }}/{% endif %}"
                class="block p-3 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 border border-gray-200 ui-night:border-gray-700 transition-colors text-sm font-medium">
               {{ loc.name }}
             </a>
           {% endfor %}
         </div>
         <p class="mt-4 text-sm">
-          <a href="{% url 'countries_index' %}" class="text-blue-600 ui-night:text-blue-400 hover:underline">{% if is_spanish %}Ver todos los destinos de snorkel{% else %}Browse all snorkeling destinations{% endif %} →</a>
+          <a href="{% if is_spanish %}/es/destinos/{% else %}{% url 'countries_index' %}{% endif %}" class="text-blue-600 ui-night:text-blue-400 hover:underline">{% if is_spanish %}Ver todos los destinos de snorkel{% else %}Browse all snorkeling destinations{% endif %} →</a>
         </p>
       </section>
     {% endif %}

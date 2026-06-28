@@ -457,8 +457,8 @@ GUIDES_ES = [
 
 <h2>Pacífico y Hawái</h2>
 <ul>
-  <li><a href="/es/usa/maui/">Maui, Hawái</a>: tortugas y arrecifes accesibles desde playas fáciles.</li>
-  <li><a href="/es/usa/hanauma-bay/">Hanauma Bay, Oahu</a>: arrecife protegido en un cráter volcánico.</li>
+  <li><a href="/es/estados-unidos/maui/">Maui, Hawái</a>: tortugas y arrecifes accesibles desde playas fáciles.</li>
+  <li><a href="/es/estados-unidos/hanauma-bay/">Hanauma Bay, Oahu</a>: arrecife protegido en un cráter volcánico.</li>
   <li><a href="/es/french-polynesia/moorea/">Moorea</a> y <a href="/es/french-polynesia/bora-bora/">Bora Bora</a>: lagunas cálidas con rayas y tiburones de arrecife.</li>
 </ul>
 
@@ -481,7 +481,7 @@ GUIDES_ES = [
 </ul>
 
 <h2>Antes de ir</h2>
-<p>La regla se repite en casi todos los destinos: busca una mañana calmada, cerca de la pleamar, con poco viento y poca ola. Abre cualquier destino para ver su puntuación de snorkel en las próximas 72 horas o <a href="/es/countries/">explora todos los países</a>.</p>
+<p>La regla se repite en casi todos los destinos: busca una mañana calmada, cerca de la pleamar, con poco viento y poca ola. Abre cualquier destino para ver su puntuación de snorkel en las próximas 72 horas o <a href="/es/destinos/">explora todos los países</a>.</p>
 """
         ),
     },
@@ -566,20 +566,20 @@ GUIDES_ES = [
 
 <h2>Maui</h2>
 <ul>
-  <li><a href="/es/usa/honolua-bay/">Honolua Bay</a>: reserva marina con coral vivo, mejor en mañanas calmadas.</li>
-  <li><a href="/es/usa/molokini-crater/">Molokini Crater</a>: cráter volcánico con gran visibilidad.</li>
-  <li><a href="/es/usa/kaanapali-beach/">Kaanapali</a>, <a href="/es/usa/napili-bay/">Napili Bay</a> y <a href="/es/usa/kapalua-bay/">Kapalua Bay</a>: playas fáciles y frecuentes tortugas.</li>
+  <li><a href="/es/estados-unidos/honolua-bay/">Honolua Bay</a>: reserva marina con coral vivo, mejor en mañanas calmadas.</li>
+  <li><a href="/es/estados-unidos/molokini-crater/">Molokini Crater</a>: cráter volcánico con gran visibilidad.</li>
+  <li><a href="/es/estados-unidos/kaanapali-beach/">Kaanapali</a>, <a href="/es/estados-unidos/napili-bay/">Napili Bay</a> y <a href="/es/estados-unidos/kapalua-bay/">Kapalua Bay</a>: playas fáciles y frecuentes tortugas.</li>
 </ul>
 
 <h2>Oahu y Big Island</h2>
 <ul>
-  <li><a href="/es/usa/hanauma-bay/">Hanauma Bay</a>: arrecife protegido dentro de un cono volcánico.</li>
-  <li><a href="/es/usa/kealakekua-bay/">Kealakekua Bay</a>: santuario marino con coral sano.</li>
-  <li><a href="/es/usa/two-step-honaunau/">Two Step</a>: entrada desde lava y arrecife lleno de vida.</li>
+  <li><a href="/es/estados-unidos/hanauma-bay/">Hanauma Bay</a>: arrecife protegido dentro de un cono volcánico.</li>
+  <li><a href="/es/estados-unidos/kealakekua-bay/">Kealakekua Bay</a>: santuario marino con coral sano.</li>
+  <li><a href="/es/estados-unidos/two-step-honaunau/">Two Step</a>: entrada desde lava y arrecife lleno de vida.</li>
 </ul>
 
 <h2>Comprueba antes de ir</h2>
-<p>La regla de oro en Hawái es hacer snorkel por la mañana, cerca de pleamar y antes de que suban viento y surf. Abre cualquier lugar para ver la puntuación de hoy, la próxima buena ventana y los mejores meses. O <a href="/es/usa/">consulta todos los lugares de Hawái y Estados Unidos que pronosticamos</a>.</p>
+<p>La regla de oro en Hawái es hacer snorkel por la mañana, cerca de pleamar y antes de que suban viento y surf. Abre cualquier lugar para ver la puntuación de hoy, la próxima buena ventana y los mejores meses. O <a href="/es/estados-unidos/">consulta todos los lugares de Hawái y Estados Unidos que pronosticamos</a>.</p>
 """
         ),
     },

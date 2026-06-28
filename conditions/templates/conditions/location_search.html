@@ -1,4 +1,5 @@
 {% extends "conditions/base.html" %}
+{% load localized_urls %}
 
 {% block title %}{% if is_spanish %}Buscar lugares para hacer snorkel - SnorkelForecast.com{% else %}Search Snorkeling Locations Worldwide - SnorkelForecast.com{% endif %}{% endblock %}
 
@@ -8,7 +9,7 @@
   {% if search_performed %}<meta name="robots" content="noindex,follow">{% endif %}
   <meta property="og:type" content="website" />
   <meta property="og:title" content="{% if is_spanish %}Buscar lugares para hacer snorkel{% else %}Search Snorkeling Locations Worldwide{% endif %}" />
-  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/search/" />
+  <meta property="og:url" content="https://snorkelforecast.com{% if is_spanish %}/es/buscar/{% else %}/search/{% endif %}" />
 {% endblock %}
 
 {% block content %}
@@ -82,7 +83,7 @@
                     {{ ui.nav_search }}
                 </button>
                 <a
-                    href="{% url 'location_search' %}"
+                    href="{% if is_spanish %}/es/buscar/{% else %}{% url 'location_search' %}{% endif %}"
                     class="bg-gray-200 ui-night:bg-gray-700 hover:bg-gray-300 ui-night:hover:bg-gray-600 text-gray-700 ui-night:text-gray-300 px-6 py-2 rounded-md font-medium transition-colors"
                 >
                     {% if is_spanish %}Limpiar{% else %}Clear{% endif %}
@@ -136,7 +137,7 @@
                             {{ location.location_type|title }}
                         </span>
                         <a
-                            href="{% url 'location_forecast' location.country_slug location.city_slug %}"
+                            href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' location.country_slug location.city_slug %}{% endif %}"
                             class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium text-sm"
                         >
                             {% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %} →
@@ -191,7 +192,7 @@
                     {{ location.country }}
                 </p>
                 <a
-                    href="{% url 'location_forecast' location.country_slug location.city_slug %}"
+                    href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' location.country_slug location.city_slug %}{% endif %}"
                     class="text-blue-600 hover:text-blue-700 ui-night:text-blue-400 ui-night:hover:text-blue-300 font-medium"
                 >
                     {% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %} →

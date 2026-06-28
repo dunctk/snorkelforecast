@@ -69,10 +69,10 @@ class I18nSeoTests(TestCase):
         self.assertIn('hreflang="en" href="https://snorkelforecast.com/"', html)
         self.assertIn('hreflang="es" href="https://snorkelforecast.com/es/"', html)
         self.assertIn("Pronósticos de snorkel", html)
-        self.assertIn('href="/es/search/"', html)
+        self.assertIn('href="/es/buscar/"', html)
 
     def test_spanish_best_snorkeling_page_has_spanish_metadata(self):
-        response = self.client.get("/es/best-snorkeling/")
+        response = self.client.get("/es/mejor-snorkel/")
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
@@ -82,7 +82,7 @@ class I18nSeoTests(TestCase):
             html,
         )
         self.assertIn(
-            'hreflang="es" href="https://snorkelforecast.com/es/best-snorkeling/"',
+            'hreflang="es" href="https://snorkelforecast.com/es/mejor-snorkel/"',
             html,
         )
 
@@ -101,7 +101,7 @@ class I18nSeoTests(TestCase):
             timezone="Europe/Madrid",
         )
 
-        response = self.client.get("/es/spain/carboneras/")
+        response = self.client.get("/es/espana/carboneras/")
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
@@ -112,10 +112,10 @@ class I18nSeoTests(TestCase):
             html,
         )
         self.assertIn(
-            'hreflang="es" href="https://snorkelforecast.com/es/spain/carboneras/"',
+            'hreflang="es" href="https://snorkelforecast.com/es/espana/carboneras/"',
             html,
         )
-        self.assertIn('"url": "https://snorkelforecast.com/es/spain/carboneras/"', html)
+        self.assertIn('"url": "https://snorkelforecast.com/es/espana/carboneras/"', html)
 
     def test_sitemap_exposes_spanish_urls_and_alternates(self):
         SnorkelLocation.objects.create(
@@ -135,9 +135,9 @@ class I18nSeoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         xml = response.content.decode()
         self.assertNotIn("https://snorkelforecast.com/en/", xml)
-        self.assertIn("https://snorkelforecast.com/es/best-snorkeling/", xml)
-        self.assertIn("https://snorkelforecast.com/es/spain/carboneras/", xml)
-        self.assertIn("https://snorkelforecast.com/es/spain/carboneras/sea-temperature/", xml)
+        self.assertIn("https://snorkelforecast.com/es/mejor-snorkel/", xml)
+        self.assertIn("https://snorkelforecast.com/es/espana/carboneras/", xml)
+        self.assertIn("https://snorkelforecast.com/es/espana/carboneras/temperatura-del-mar/", xml)
         self.assertIn('hreflang="es"', xml)
         self.assertIn('hreflang="x-default"', xml)
 
@@ -166,11 +166,11 @@ class I18nSeoTests(TestCase):
         )
 
         pages = {
-            "/es/countries/": "Destinos de snorkel por país",
-            "/es/search/": "Buscar lugares para hacer snorkel",
-            "/es/guides/": "Guías de snorkel",
-            "/es/spain/": "Snorkel en Spain",
-            "/es/spain/carboneras/history/": "Tendencias históricas",
+            "/es/destinos/": "Destinos de snorkel por país",
+            "/es/buscar/": "Buscar lugares para hacer snorkel",
+            "/es/guias/": "Guías de snorkel",
+            "/es/espana/": "Snorkel en Spain",
+            "/es/espana/carboneras/historial/": "Tendencias históricas",
             "/es/spain/carboneras/embed/sea-temperature/": '<html lang="es">',
         }
 
@@ -198,7 +198,7 @@ class I18nSeoTests(TestCase):
             timezone="Europe/Madrid",
         )
 
-        response = self.client.get("/es/spain/carboneras/sea-temperature/")
+        response = self.client.get("/es/espana/carboneras/temperatura-del-mar/")
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
@@ -209,7 +209,7 @@ class I18nSeoTests(TestCase):
             html,
         )
         self.assertIn(
-            'hreflang="es" href="https://snorkelforecast.com/es/spain/carboneras/sea-temperature/"',
+            'hreflang="es" href="https://snorkelforecast.com/es/espana/carboneras/temperatura-del-mar/"',
             html,
         )
         self.assertNotIn("const sstAvgData = [24,2", html)

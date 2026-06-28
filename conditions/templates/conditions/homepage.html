@@ -1,5 +1,5 @@
 {% extends 'conditions/base.html' %}
-{% load static %}
+{% load static localized_urls %}
 
 {% block title %}{% if is_spanish %}SnorkelForecast.com - Pronóstico de snorkel en todo el mundo{% else %}SnorkelForecast.com – Snorkeling Conditions Worldwide{% endif %}{% endblock %}
 
@@ -23,7 +23,7 @@
     "url": "https://snorkelforecast.com{% if is_spanish %}/es/{% endif %}",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/search/?q={search_term_string}",
+      "target": "https://snorkelforecast.com{% if is_spanish %}/es/buscar/{% else %}/search/{% endif %}?q={search_term_string}",
       "query-input": "required name=search_term_string"
     },
     "mainEntity": {
@@ -38,7 +38,7 @@
           "item": {
             "@type": "TouristDestination",
             "name": "{{ location.city }}",
-            "url": "https://snorkelforecast.com{% if is_spanish %}/es{% endif %}/{{ location.country_slug }}/{{ location.city_slug }}/",
+            "url": "https://snorkelforecast.com{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}/{{ location.country_slug }}/{{ location.city_slug }}/{% endif %}",
             "address": {
               "@type": "PostalAddress",
               "addressCountry": "{{ location.country }}"
@@ -100,7 +100,7 @@
        </div>
       <div class="hero-actions mt-7 flex flex-col sm:flex-row items-center justify-center gap-3 reveal reveal-4">
         <a href="#popular" class="btn btn-primary">{% if is_spanish %}Ver lugares populares{% else %}Explore popular spots{% endif %}</a>
-        <a href="{% url 'countries_index' %}" class="btn btn-ghost">{% if is_spanish %}Ver {{ country_count }} países{% else %}Browse {{ country_count }} countries{% endif %}</a>
+        <a href="{% if is_spanish %}/es/destinos/{% else %}{% url 'countries_index' %}{% endif %}" class="btn btn-ghost">{% if is_spanish %}Ver {{ country_count }} países{% else %}Browse {{ country_count }} countries{% endif %}</a>
       </div>
       <div class="mobile-proof-strip reveal reveal-4" aria-label="Forecast factors">
         <span>{% if is_spanish %}Olas{% else %}Waves{% endif %}</span>
@@ -116,11 +116,11 @@
     <div class="homepage-section mb-10">
         <div class="section-heading-row">
           <h2 class="text-xl sm:text-2xl font-bold">{% if is_spanish %}Explorar por país{% else %}Browse by Country{% endif %}</h2>
-          <a href="{% url 'countries_index' %}" class="section-heading-link">{{ ui.footer_all_countries }}</a>
+          <a href="{% if is_spanish %}/es/destinos/{% else %}{% url 'countries_index' %}{% endif %}" class="section-heading-link">{{ ui.footer_all_countries }}</a>
         </div>
         <div class="country-chip-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {% for c in countries %}
-                <a href="{{ localized_prefix }}/{% firstof c.slug %}/"
+                <a href="{% if is_spanish %}{{ '/'|add:c.slug|add:'/'|spanish_path_for }}{% else %}/{{ c.slug }}/{% endif %}"
                    class="country-chip block p-4 text-center rounded-lg bg-gray-100 hover:bg-gray-200 ui-night:bg-gray-800 ui-night:hover:bg-gray-700 transition-colors border border-gray-200 ui-night:border-gray-700">
                     <span class="country-chip-emoji">{{ c.emoji }}</span>
                     <span class="country-chip-name">{{ c.name }}</span>
@@ -132,7 +132,7 @@
     <div id="popular" class="homepage-section mb-12 sm:mb-16">
       <div class="section-heading-row">
         <h2 class="text-xl sm:text-2xl font-bold">{% if is_spanish %}Destinos populares para hacer snorkel{% else %}Popular Snorkeling Destinations{% endif %}</h2>
-        <a href="{% url 'best_snorkeling' %}" class="section-heading-link">{% if is_spanish %}Mejores ahora{% else %}Best now{% endif %}</a>
+        <a href="{% if is_spanish %}/es/mejor-snorkel/{% else %}{% url 'best_snorkeling' %}{% endif %}" class="section-heading-link">{% if is_spanish %}Mejores ahora{% else %}Best now{% endif %}</a>
       </div>
       <div class="popular-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
              {% for location in popular_locations %}
@@ -145,10 +145,10 @@
              <div class="flex items-start justify-between gap-2">
                <div>
                  <h3 class="text-lg font-semibold">
-                   <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}" class="hover:text-blue-600 ui-night:hover:text-blue-400">{{ location.city }}</a>
+                   <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' country=location.country_slug city=location.city_slug %}{% endif %}" class="hover:text-blue-600 ui-night:hover:text-blue-400">{{ location.city }}</a>
                  </h3>
                  <p class="text-sm">
-                   <a href="{% url 'country_directory' country=location.country_slug %}" class="text-gray-700 ui-night:text-gray-200 hover:underline">{{ location.country }}</a>
+                   <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|spanish_path_for }}{% else %}{% url 'country_directory' country=location.country_slug %}{% endif %}" class="text-gray-700 ui-night:text-gray-200 hover:underline">{{ location.country }}</a>
                  </p>
                </div>
                {% if location.current_sst %}
@@ -158,7 +158,7 @@
              {% if location.description %}
              <p class="text-sm mt-3">{{ location.description }}</p>
             {% endif %}
-            <a href="{% url 'location_forecast' country=location.country_slug city=location.city_slug %}"
+            <a href="{% if is_spanish %}{{ '/'|add:location.country_slug|add:'/'|add:location.city_slug|add:'/'|spanish_path_for }}{% else %}{% url 'location_forecast' country=location.country_slug city=location.city_slug %}{% endif %}"
                class="btn btn-ghost w-full mt-4">{% if is_spanish %}Ver pronóstico{% else %}View Forecast{% endif %}</a>
           </div>
         </div>
