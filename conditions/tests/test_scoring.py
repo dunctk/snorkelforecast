@@ -4,13 +4,13 @@ from conditions.snorkel import _rating_from_score, _tide_score, _calculate_score
 
 class RatingTest(SimpleTestCase):
     def test_rating_thresholds(self):
-        self.assertEqual(_rating_from_score(0.81), "excellent")
-        self.assertEqual(_rating_from_score(0.8), "excellent")
-        self.assertEqual(_rating_from_score(0.75), "good")
-        self.assertEqual(_rating_from_score(0.6), "good")
+        self.assertEqual(_rating_from_score(0.73), "excellent")
+        self.assertEqual(_rating_from_score(0.72), "excellent")
+        self.assertEqual(_rating_from_score(0.71), "good")
+        self.assertEqual(_rating_from_score(0.55), "good")
         self.assertEqual(_rating_from_score(0.45), "fair")
-        self.assertEqual(_rating_from_score(0.4), "fair")
-        self.assertEqual(_rating_from_score(0.39), "poor")
+        self.assertEqual(_rating_from_score(0.35), "fair")
+        self.assertEqual(_rating_from_score(0.34), "poor")
 
     def test_rating_poor_on_low_score(self):
         self.assertEqual(_rating_from_score(0.2), "poor")
@@ -89,3 +89,13 @@ class CalculateScoreTest(SimpleTestCase):
         clear = _calculate_score(0.3, 2.0, 25.0, 1.0, True, 0.0)
         overcast = _calculate_score(0.3, 2.0, 25.0, 1.0, True, 100.0)
         self.assertLess(overcast, clear)
+
+    def test_cloud_penalty_is_a_minor_modifier(self):
+        clear = _calculate_score(0.12, 2.5, 24.0, 0.8, True, 0.0)
+        overcast = _calculate_score(0.12, 2.5, 24.0, 0.8, True, 100.0)
+        self.assertAlmostEqual(clear - overcast, 0.12)
+        self.assertEqual(_rating_from_score(overcast), "excellent")
+
+    def test_near_ideal_conditions_rate_excellent(self):
+        score = _calculate_score(0.2, 4.0, 24.0, 0.625, True, 20.0)
+        self.assertEqual(_rating_from_score(score), "excellent")

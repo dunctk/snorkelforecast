@@ -25,6 +25,11 @@ THRESHOLDS.update(
         "slack_window_minutes": 72,
     }
 )
+RATING_THRESHOLDS = {
+    "excellent": 0.72,
+    "good": 0.55,
+    "fair": 0.35,
+}
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +167,9 @@ def _calculate_score(
         + tide_score * 0.15
         + 0.10  # daylight bonus (already gated on light_ok)
     )
-    # Clear skies should help visibility and heavily overcast windows should
-    # reduce snorkelability even when other metrics are acceptable.
-    score = base_score - ((1.0 - cloud_score) * 0.30)
+    # Cloud cover affects light/visibility, but field reports suggest it should
+    # not dominate otherwise calm, warm, daylight snorkeling windows.
+    score = base_score - ((1.0 - cloud_score) * 0.12)
     return max(0.0, min(1.0, score))
 
 
@@ -172,18 +177,18 @@ def _rating_from_score(score: float) -> str:
     """Map a numeric score to a rating tier.
 
     Tiers:
-    - excellent: score >= 0.8
-    - good:      score >= 0.6
-    - fair:      score >= 0.4
+    - excellent: score >= 0.72
+    - good:      score >= 0.55
+    - fair:      score >= 0.35
     - poor:      otherwise
 
     Tide/current is baked into the score, so no separate cap is needed.
     """
-    if score >= 0.8:
+    if score >= RATING_THRESHOLDS["excellent"]:
         return "excellent"
-    elif score >= 0.6:
+    elif score >= RATING_THRESHOLDS["good"]:
         return "good"
-    elif score >= 0.4:
+    elif score >= RATING_THRESHOLDS["fair"]:
         return "fair"
     else:
         return "poor"

@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import os
 import math
 
-from .snorkel import THRESHOLDS, fetch_forecast, fetch_forecast_payload
+from .snorkel import RATING_THRESHOLDS, THRESHOLDS, fetch_forecast, fetch_forecast_payload
 from .models import ForecastHour, SnorkelLocation
 from .history import (
     get_recent_averages,
@@ -42,11 +42,11 @@ COUNTRY_PAGE_CACHE_TTL = getattr(settings, "COUNTRY_PAGE_CACHE_TTL", 1800)
 def _rating_label(score: float | None) -> str:
     if score is None:
         return "No data"
-    if score >= 0.8:
+    if score >= RATING_THRESHOLDS["excellent"]:
         return "Excellent"
-    if score >= 0.6:
+    if score >= RATING_THRESHOLDS["good"]:
         return "Good"
-    if score >= 0.4:
+    if score >= RATING_THRESHOLDS["fair"]:
         return "Fair"
     return "Poor"
 
