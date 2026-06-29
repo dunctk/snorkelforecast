@@ -26,6 +26,48 @@ class ForecastViewHelperTests(SimpleTestCase):
         self.assertEqual(blockers[0], {"label": "Waves", "count": 2})
         self.assertEqual(blockers[1], {"label": "Wind", "count": 2})
 
+    def test_count_blockers_does_not_flag_normal_non_slack_tide(self):
+        now = datetime(2026, 6, 24, 9, tzinfo=tz.UTC)
+        hours = [
+            {
+                "time": now,
+                "score": 0.65,
+                "wave_ok": True,
+                "wind_ok": True,
+                "sst_ok": True,
+                "slack_ok": False,
+                "tide_score": 0.625,
+                "current_velocity": 0.1,
+                "light_ok": True,
+                "rating": "good",
+            },
+        ]
+
+        blockers = _count_blockers(hours)
+
+        self.assertEqual(blockers, [])
+
+    def test_count_blockers_flags_strong_current(self):
+        now = datetime(2026, 6, 24, 9, tzinfo=tz.UTC)
+        hours = [
+            {
+                "time": now,
+                "score": 0.4,
+                "wave_ok": True,
+                "wind_ok": True,
+                "sst_ok": True,
+                "slack_ok": False,
+                "tide_score": 0.625,
+                "current_velocity": 0.6,
+                "light_ok": True,
+                "rating": "fair",
+            },
+        ]
+
+        blockers = _count_blockers(hours)
+
+        self.assertEqual(blockers, [{"label": "Tide/current", "count": 1}])
+
     def test_best_available_orders_by_score_then_time(self):
         now = datetime(2026, 6, 24, 12, tzinfo=tz.UTC)
         hours = [

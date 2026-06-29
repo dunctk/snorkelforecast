@@ -99,8 +99,7 @@ def _tide_score(
       raw  5 → 0.625 after high tide (falling)
       raw  0 → 0.5   neutral / no data
       raw -10 → 0.25 strong current
-      raw -20 → 0.0  very low tide / exposed rocks
-      raw -30 → 0.0  combined penalties (clamped)
+      raw -20 → 0.0  combined penalties (clamped)
     """
     raw = 0  # → 0.5 after normalisation
 
@@ -117,10 +116,6 @@ def _tide_score(
         # Strong current penalty (overrides weaker positive scores)
         if current_velocity is not None and current_velocity > 0.5:
             raw = -10
-
-        # Very low tide — severe penalty
-        if sea_level_height < -0.5:
-            raw = -20
 
         # Spring-tide / large tidal-range penalty
         if tidal_range is not None and tidal_range > 2.0:

@@ -655,21 +655,35 @@ def _historical_chart_hours(
 
 def _count_blockers(hours: list[dict]) -> list[dict]:
     """Return top blocker metrics for a list of hourly records."""
-    metrics: list[tuple[str, str]] = [
+    def is_tide_blocked(hour: dict) -> bool:
+        current = hour.get("current_velocity")
+        if isinstance(current, int | float) and current > THRESHOLDS["current_velocity"]:
+            return True
+
+        tide_score = hour.get("tide_score")
+        if isinstance(tide_score, int | float):
+            return tide_score <= 0.25
+
+        return False
+
+    metrics: list[tuple[str, str | None]] = [
         ("Waves", "wave_ok"),
         ("Wind", "wind_ok"),
         ("Sea temperature", "sst_ok"),
-        ("Tide/current", "slack_ok"),
+        ("Tide/current", None),
         ("Darkness", "light_ok"),
     ]
 
     counts: list[dict] = []
     for label, key in metrics:
-        bad = [
-            h
-            for h in hours
-            if (h.get(key) is not None and not bool(h.get(key)) and h.get("score") is not None)
-        ]
+        if key is None:
+            bad = [h for h in hours if h.get("score") is not None and is_tide_blocked(h)]
+        else:
+            bad = [
+                h
+                for h in hours
+                if (h.get(key) is not None and not bool(h.get(key)) and h.get("score") is not None)
+            ]
         if bad:
             counts.append({"label": label, "count": len(bad)})
 
@@ -745,7 +759,16 @@ def _best_available_hours(hours: list[dict], limit: int = 3) -> list[dict]:
             blockers.append("wind")
         if hour.get("sst_ok") is not None and not bool(hour.get("sst_ok")):
             blockers.append("sea temperature")
-        if hour.get("slack_ok") is not None and not bool(hour.get("slack_ok")):
+        current = hour.get("current_velocity")
+        tide_score = hour.get("tide_score")
+        tide_blocked = (
+            isinstance(current, int | float)
+            and current > THRESHOLDS["current_velocity"]
+        ) or (
+            isinstance(tide_score, int | float)
+            and tide_score <= 0.25
+        )
+        if tide_blocked:
             blockers.append("tide/current")
         if hour.get("light_ok") is not None and not bool(hour.get("light_ok")):
             blockers.append("darkness")

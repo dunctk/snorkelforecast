@@ -42,9 +42,9 @@ class TideScoreTest(SimpleTestCase):
         score = _tide_score(0.5, 0.8, False, True, 1.0)
         self.assertAlmostEqual(score, 0.25)
 
-    def test_very_low_tide(self):
+    def test_negative_mean_sea_level_is_not_low_tide_by_itself(self):
         score = _tide_score(-0.8, 0.1, False, True, 1.0)
-        self.assertAlmostEqual(score, 0.0)
+        self.assertAlmostEqual(score, 0.7)
 
     def test_large_tidal_range_penalty(self):
         score = _tide_score(0.5, 0.1, True, True, 2.5)
